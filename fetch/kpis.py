@@ -132,6 +132,34 @@ def kpi_positioning(bc, dv, st, fg, fr, cm):
     out['spark'] = spark(pd_, pv, a['stable'] if 'stable' in a else np.full(len(pv), np.nan))
     return out
 
+def selftest(kp, bc, cm):
+    """Independent recomputation of the headline numbers by a different route than the main functions."""
+    fails, warns = [], []
+    try:  # Metcalfe: closed-form k from log means, cumulative users via plain cumsum, no interpolation helper
+        pd_, pv = to_daily(bc['price']); ad = dict(to_daily(bc['unique_addresses']) and zip(*to_daily(bc['unique_addresses'])))
+        ads = sorted(ad); cum = {}; c = 0.0
+        for d in ads: c += ad[d]; cum[d] = c
+        sd, sv = to_daily(bc['supply']); sup = dict(zip(sd, sv))
+        rows = [(d, v, cum[d], sup.get(d)) for d, v in zip(pd_, pv) if v > 0 and d in cum and sup.get(d)]
+        w = [(d, v, n, s) for d, v, n, s in rows if d >= dt.date(2011, 1, 1)]
+        k = sum(math.log(v) - math.log(n * n / s) for d, v, n, s in w) / len(w); d, v, n, s = rows[-1]; met = math.exp(k) * n * n / s
+        if abs(met / kp['metcalfe']['value_full_history'] - 1) > 0.02: fails.append(f'metcalfe comparable: selftest {met:.0f} vs {kp["metcalfe"]["value_full_history"]:.0f}')
+    except Exception as e: warns.append('metcalfe selftest not run: ' + str(e)[:120])
+    try:  # power law: normal equations instead of polyfit
+        pd_, pv = to_daily(bc['price']); pts = [((d - GENESIS).days, v) for d, v in zip(pd_, pv) if v > 0 and (d - GENESIS).days >= 560]
+        xs = [math.log10(t) for t, _ in pts]; ys = [math.log10(v) for _, v in pts]; n = len(xs); mx, my = sum(xs) / n, sum(ys) / n
+        b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sum((x - mx) ** 2 for x in xs); a = my - b * mx; trend = 10 ** (a + b * xs[-1])
+        if abs(trend / kp['powerlaw']['trend'] - 1) > 0.005: fails.append(f'powerlaw: selftest {trend:.0f} vs {kp["powerlaw"]["trend"]:.0f}')
+        if abs(b - kp['powerlaw']['beta']) > 0.01: fails.append(f'powerlaw beta: {b:.3f} vs {kp["powerlaw"]["beta"]}')
+    except Exception as e: warns.append('powerlaw selftest not run: ' + str(e)[:120])
+    try:  # realised: last-row division straight from the raw series
+        if kp.get('realised') and cm.get('CapMrktCurUSD'):
+            last = {k: dict(cm[k])[max(dict(cm[k]))] for k in ('CapMrktCurUSD', 'CapMVRVCur', 'SplyCur')}
+            rp = last['CapMrktCurUSD'] / last['CapMVRVCur'] / last['SplyCur']
+            if abs(rp / kp['realised']['realised_price'] - 1) > 0.005: fails.append(f'realised: selftest {rp:.0f} vs {kp["realised"]["realised_price"]:.0f}')
+    except Exception as e: warns.append('realised selftest not run: ' + str(e)[:120])
+    return {'failures': fails, 'warnings': warns, 'status': 'ok'}
+
 def main():
     bc, cm, dv, st, fg, fr = (load(x) for x in ('blockchain', 'coinmetrics', 'derivatives', 'stablecoins', 'fear_greed', 'fred'))
     kp = {'generated_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(), 'note': 'Headline readings of each tool page at its default specification, computed from the same snapshot. Price-dependent readings are recomputed live on the hub from the spot price.'}
@@ -139,7 +167,22 @@ def main():
     p, _, _, _ = kpi_powerlaw(bc); kp['powerlaw'] = p
     r, _, _, _ = kpi_realised(cm); kp['realised'] = r
     kp['positioning'] = kpi_positioning(bc, dv, st, fg, fr, cm)
+    # (4) self-test: recompute each headline a second, independent way and fail loudly on drift
+    st = selftest(kp, bc, cm); kp['selftest'] = st
+    # (2) daily history of the readings (one row per snapshot date, overwritten if the job runs twice in a day)
+    hist_p = os.path.join(OUT, 'kpis_history.json')
+    hist = json.load(open(hist_p)) if os.path.exists(hist_p) else {'note': 'one row per day: as_of, price_close, metcalfe (comparable, 2011), metcalfe_validated (2017), powerlaw_trend, realised_price, composite_percentile', 'rows': []}
+    row = {'date': kp['as_of'], 'price': kp['price_close'], 'metcalfe': m['value_full_history'], 'metcalfe_validated': m['value'], 'powerlaw': p['trend'], 'realised': r['realised_price'] if r else None, 'composite': kp['positioning'].get('composite_percentile'), 'generated_at': kp['generated_at']}
+    hist['rows'] = [x for x in hist['rows'] if x.get('date') != row['date']] + [row]; hist['rows'].sort(key=lambda x: x['date'])
+    # drift check against the previous row
+    prev = hist['rows'][-2] if len(hist['rows']) > 1 else None
+    if prev:
+        for k in ('metcalfe', 'metcalfe_validated', 'powerlaw', 'realised'):
+            if prev.get(k) and row.get(k) and abs(row[k] / prev[k] - 1) > 0.25: st['warnings'].append(f'{k} moved {100*(row[k]/prev[k]-1):+.0f}% since {prev["date"]}')
+    st['status'] = 'fail' if st['failures'] else ('warn' if st['warnings'] else 'ok')
+    with open(hist_p, 'w') as f: json.dump(hist, f, separators=(',', ':'))
     with open(os.path.join(OUT, 'kpis.json'), 'w') as f: json.dump(kp, f, separators=(',', ':'))
+    if st['failures']: raise RuntimeError('self-test failed: ' + '; '.join(st['failures']))
     print(f"  ok  kpis: price {kp['price_close']}, metcalfe {m['value']}, power law {p['trend']}, realised {r['realised_price'] if r else None}, composite {kp['positioning'].get('composite_percentile')}")
 
 if __name__ == '__main__': main()

@@ -186,11 +186,16 @@ def src_derivatives():
 
 # ---------------------------------------------------------------- ETF flows (phase 2)
 def src_etf():
-    """Placeholder. Issuer daily holdings files differ in format and change URLs; implement per issuer after the
-    first run confirms the rest of the pipeline. Until then the manifest records this source as not implemented."""
-    manifest['etf_flows'] = {'status': 'not_implemented', 'fetched_at': NOW,
-                             'plan': 'derive net flows from issuer daily holdings (IBIT, FBTC, GBTC, BTC, ARKB, BITB, HODL, BTCO, EZBC, BRRR, BTCW)'}
-    print('  --  etf_flows: not implemented yet')
+    """Issuer holdings -> net flows. Each issuer parser is isolated; see fetch/etf.py."""
+    import etf
+    price = {}
+    try:
+        bc = load_existing('blockchain'); 
+        if bc: price = {d: v for d, v in bc['series'].get('price', [])}
+    except Exception: pass
+    res = etf.run(OUT, price)
+    manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures'}
+    print(f"  {'ok ' if res['status']=='ok' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('mempool', src_mempool),
            ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('derivatives', src_derivatives), ('etf_flows', src_etf)]
