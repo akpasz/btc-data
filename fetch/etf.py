@@ -5,14 +5,30 @@ Issuer file formats change without notice, so each parser is isolated and report
 shows which issuers parsed. Holdings are merged into data/etf_holdings.json (issuer -> [[date, btc]]) so the
 history accumulates from the first successful run; flows are derived from that history.
 """
-import re, io, csv, json, os, datetime as dt
+import re, io, csv, json, os, time, datetime as dt
 import requests
 
-UA = {'User-Agent': 'Mozilla/5.0 (compatible; CryptoExponentials-DataSnapshot/1.0; +https://cryptoexponentials.com/tools/)'}
+UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,text/csv,application/json;q=0.9,*/*;q=0.8', 'Accept-Language': 'en-US,en;q=0.9'}
 TODAY = dt.date.today().isoformat()
 
-def _get(url, **kw):
-    r = requests.get(url, headers=UA, timeout=60, **kw); r.raise_for_status(); return r
+def _get(url, tries=3, **kw):
+    last = None
+    for k in range(tries):
+        try:
+            r = requests.get(url, headers=UA, timeout=60, **kw)
+            if r.status_code == 429 or r.status_code >= 500: raise requests.HTTPError(f'{r.status_code} for {url}', response=r)
+            r.raise_for_status(); return r
+        except Exception as e:
+            last = e; time.sleep(8 * (k + 1))
+    raise last
+
+def _first_ok(urls):
+    last = None
+    for u in urls:
+        try: return _get(u)
+        except Exception as e: last = e
+    raise last
 
 def _num(s):
     s = re.sub(r'[^0-9.\-]', '', str(s)); return float(s) if s not in ('', '-', '.') else None
@@ -25,32 +41,31 @@ def ibit():
     m = re.search(r'Fund Holdings as of,"?([A-Za-z]{3} \d{1,2}, \d{4})', txt)
     if m: date = dt.datetime.strptime(m.group(1), '%b %d, %Y').date().isoformat()
     for row in csv.reader(io.StringIO(txt)):
-        if row and row[0].strip().upper() in ('BTC', 'BITCOIN') or (len(row) > 1 and 'BITCOIN' in row[1].upper() and 'CASH' not in row[1].upper()):
-            for cell in row[2:8]:
-                v = _num(cell)
-                if v and v > 10000: btc = v; break
-            if btc: break
+        head = ' '.join(row[:2]).upper()   # ticker and name cells only; the asset-class cell says "Cash and/or Derivatives" for the coin itself
+        if row and (row[0].strip().upper() == 'BTC' or 'BITCOIN' in head) and 'USD CASH' not in head and 'TREASURY' not in head:
+            # the coin quantity is the largest number in the row that is a plausible BTC count (dollar notional is far larger)
+            cands = [v for v in (_num(c) for c in row) if v and 1e4 <= v <= 5e6]
+            if cands: btc = max(cands); break
     return date or TODAY, btc
 
 def grayscale(ticker):
     # Grayscale product pages expose "Bitcoin per Share" and "Shares Outstanding"; holdings = product of the two
     url = {'GBTC': 'https://etfs.grayscale.com/gbtc', 'BTC': 'https://etfs.grayscale.com/btc'}[ticker]
-    txt = _get(url).text
+    time.sleep(6); txt = _get(url).text
     per = re.search(r'Bitcoin per Share[^0-9]*([0-9.]+)', txt, re.I); sh = re.search(r'Shares Outstanding[^0-9]*([0-9,]+)', txt, re.I)
     if not (per and sh): raise RuntimeError('fields not found on page')
     date = re.search(r'as of\s*([0-9/]+)', txt, re.I); d = dt.datetime.strptime(date.group(1), '%m/%d/%Y').date().isoformat() if date else TODAY
     return d, float(per.group(1)) * float(sh.group(1).replace(',', ''))
 
 def arkb():
-    url = 'https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv'
-    txt = _get(url).text; date = None; btc = None
+    txt = _first_ok(['https://assets.ark-funds.com/fund-documents/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv',
+                     'https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv']).text; date = None; btc = None
     for row in csv.reader(io.StringIO(txt)):
         if not row: continue
         if not date and re.match(r'\d{1,2}/\d{1,2}/\d{4}', row[0].strip()): date = dt.datetime.strptime(row[0].strip(), '%m/%d/%Y').date().isoformat()
         if any('BITCOIN' in c.upper() for c in row) and not any('CASH' in c.upper() for c in row):
-            for c in row:
-                v = _num(c)
-                if v and v > 1000: btc = v
+            cands = [v for v in (_num(c) for c in row) if v and 1e3 <= v <= 5e6]
+            if cands: btc = max(cands)
     return date or TODAY, btc
 
 def bitwise():
