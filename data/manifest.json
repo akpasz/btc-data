@@ -1,17 +1,17 @@
 {
- "generated_at": "2026-09-01T18:56:33+00:00",
+ "generated_at": "2026-09-01T19:15:49+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
-    "unique_addresses": 6414,
-    "price": 6451,
     "tx_volume_usd": 5826,
+    "unique_addresses": 6414,
+    "fees_usd": 6429,
+    "price": 6451,
+    "supply": 6446,
     "hash_rate": 6440,
     "transactions": 6426,
-    "fees_usd": 6429,
-    "supply": 6446,
     "utxo_count": 6430
    },
    "last_date": "2026-09-01",
@@ -19,25 +19,25 @@
   },
   "coinmetrics": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
+    "TxCnt": 5890,
     "SplyCur": 5890,
     "CapMVRVCur": 5889,
-    "TxCnt": 5890,
-    "IssTotUSD": 5889,
-    "AdrActCnt": 5890,
-    "ROI30d": 5859,
     "PriceUSD": 5889,
+    "HashRate": 5890,
+    "IssTotUSD": 5889,
+    "ROI30d": 5859,
     "CapMrktCurUSD": 5889,
     "AdrBalCnt": 5890,
-    "HashRate": 5890
+    "AdrActCnt": 5890
    },
    "last_date": "2026-08-31",
    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
     "spot": 1
    },
@@ -46,18 +46,18 @@
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
     "fee_fastest_sat_vb": 1,
-    "difficulty": 79,
-    "hash_rate_ehs": 1096
+    "hash_rate_ehs": 1096,
+    "difficulty": 79
    },
    "last_date": "2026-09-01",
    "source_url": "https://mempool.space/api/v1/"
   },
   "stablecoins": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
     "total_usd": 3199
    },
@@ -66,20 +66,20 @@
   },
   "fred": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
-    "real_yield_10y": 4417,
-    "dollar_index_broad": 4397,
-    "treasury_10y": 4417,
     "fed_funds_effective": 6449,
-    "m2": 211
+    "real_yield_10y": 4417,
+    "m2": 211,
+    "dollar_index_broad": 4397,
+    "treasury_10y": 4417
    },
    "last_date": "2026-08-28",
    "source_url": "https://fred.stlouisfed.org/"
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
     "index": 3131
    },
@@ -88,7 +88,7 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "metrics": {
     "cme_btc_open_interest_contracts": 1,
     "okx_open_interest_usd": 180,
@@ -118,7 +118,7 @@
     "BTCW"
    ],
    "note": "flows derive from daily differences and start accumulating from the first successful run",
-   "fetched_at": "2026-09-01T18:56:33+00:00",
+   "fetched_at": "2026-09-01T19:15:49+00:00",
    "source_url": "issuer disclosures"
   }
  },
