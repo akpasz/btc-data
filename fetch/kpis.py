@@ -116,8 +116,13 @@ def kpi_positioning(bc, dv, st, fg, fr, cm):
     if 'dvol' in a: i = last(a['dvol']); out['dvol'] = round(float(a['dvol'][i]), 2); out['dvol_percentile'] = pct(a['dvol'], a['dvol'][i])
     if 'stable' in a: i = last(a['stable']); out['stablecoin_supply_usd'] = float(a['stable'][i]); out['stablecoin_30d_change_pct'] = round(float(100 * (a['stable'][i] / a['stable'][i - 30] - 1)), 2)
     if 'fng' in a: i = last(a['fng']); out['fear_greed'] = int(a['fng'][i]); out['fear_greed_percentile'] = pct(a['fng'], a['fng'][i])
-    if 'dxy' in a: i = last(a['dxy']); out['dollar_index'] = round(float(a['dxy'][i]), 2)
-    if 'realy' in a: i = last(a['realy']); out['real_yield_10y'] = round(float(a['realy'][i]), 2)
+    if 'dxy' in a: i = last(a['dxy']); out['dollar_index'] = round(float(a['dxy'][i]), 2); j = i - 30; out['dollar_30d_change_pct'] = round(float(100 * (a['dxy'][i] / a['dxy'][j] - 1)), 2) if j >= 0 and np.isfinite(a['dxy'][j]) else None
+    if 'realy' in a: i = last(a['realy']); out['real_yield_10y'] = round(float(a['realy'][i]), 2); j = i - 30; out['real_yield_30d_change'] = round(float(a['realy'][i] - a['realy'][j]), 2) if j >= 0 and np.isfinite(a['realy'][j]) else None
+    # market structure from price alone
+    P = pv; i = len(P) - 1
+    out['price_200d_avg'] = round(float(P[i-199:i+1].mean()), 2); out['price_vs_200d_pct'] = round(float(100 * (P[i] / out['price_200d_avg'] - 1)), 2)
+    hi90, lo90 = float(P[i-89:i+1].max()), float(P[i-89:i+1].min()); out['high_90d'] = round(hi90, 2); out['low_90d'] = round(lo90, 2); out['position_in_90d_range_pct'] = round(100 * (P[i] - lo90) / (hi90 - lo90), 1) if hi90 > lo90 else None
+    out['price_30d_change_pct'] = round(float(100 * (P[i] / P[i-30] - 1)), 2)
     comps = [out.get(k) for k in ('funding_percentile', 'oi_share_percentile', 'fear_greed_percentile') if out.get(k) is not None]
     out['composite_percentile'] = round(sum(comps) / len(comps), 0) if len(comps) >= 2 else None
     # composite series over the window (same rule as the Flows page) and its sorted distribution, so the hub can rank today's value against it
