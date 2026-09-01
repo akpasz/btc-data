@@ -5,6 +5,7 @@ on:
   workflow_dispatch:          # lets you run it by hand from the Actions tab
 permissions:
   contents: write
+  pages: write
 concurrency:
   group: snapshot
   cancel-in-progress: false
@@ -12,8 +13,8 @@ jobs:
   snapshot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
       - run: pip install -r fetch/requirements.txt
       - run: python fetch/fetch_all.py
@@ -24,3 +25,6 @@ jobs:
           git add data/
           git diff --cached --quiet || git commit -m "snapshot $(date -u +%F)"
           git push
+      - name: Request Pages build
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true

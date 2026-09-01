@@ -157,11 +157,15 @@ def src_derivatives():
         j = get('https://www.deribit.com/api/v2/public/get_volatility_index_data', params={'currency': 'BTC', 'resolution': '1D', 'start_timestamp': start, 'end_timestamp': end}).json()
         series['deribit_dvol_close'] = [[day(p[0] / 1000), p[4]] for p in j['result']['data']]
     except Exception as e: errs.append(f'dvol: {e}')
-    try:  # Deribit perpetual funding history (8h), aggregated to daily mean
-        end = int(time.time() * 1000); start = end - 365 * 86400 * 1000
-        j = get('https://www.deribit.com/api/v2/public/get_funding_rate_history', params={'instrument_name': 'BTC-PERPETUAL', 'start_timestamp': start, 'end_timestamp': end}).json()
-        byd = {}
-        for p in j['result']: byd.setdefault(day(p['timestamp'] / 1000), []).append(p['interest_8h'])
+    try:  # Deribit perpetual funding history (8h), aggregated to daily mean; the endpoint returns about a month per call, so page monthly over a year
+        byd = {}; end = int(time.time() * 1000)
+        for k in range(12):
+            e_ = end - k * 30 * 86400 * 1000; s_ = e_ - 30 * 86400 * 1000
+            try:
+                j = get('https://www.deribit.com/api/v2/public/get_funding_rate_history', params={'instrument_name': 'BTC-PERPETUAL', 'start_timestamp': s_, 'end_timestamp': e_}).json()
+                for p in j['result']: byd.setdefault(day(p['timestamp'] / 1000), []).append(p['interest_8h'])
+            except Exception: break
+        if not byd: raise RuntimeError('no funding rows')
         series['deribit_funding_8h_daily_mean'] = [[d, sum(v) / len(v)] for d, v in sorted(byd.items())]
     except Exception as e: errs.append(f'funding: {e}')
     try:  # OKX open interest history for BTC swaps, daily
