@@ -112,7 +112,7 @@ def kpi_positioning(bc, dv, st, fg, fr, cm):
     def pct(arr, v):
         s = np.sort(arr[w & np.isfinite(arr)]); return round(pct_of(s, v), 0) if len(s) > 30 else None
     if 'funding' in a: i = last(a['funding']); fa = a['funding'] * 1095 * 100; out['funding_annualised_pct'] = round(float(fa[i]), 2); out['funding_percentile'] = pct(fa, fa[i]); out['funding_date'] = pd_[i].isoformat()
-    if 'oi' in a and 'mkt' in a: i = last(a['oi']); oish = 100 * a['oi'] / a['mkt']; out['open_interest_usd'] = float(a['oi'][i]); out['oi_share_pct'] = round(float(oish[i]), 3); out['oi_share_percentile'] = pct(oish, oish[i])
+    if 'oi' in a and 'mkt' in a: i = last(a['oi']); oish = 100 * a['oi'] / a['mkt']; out['open_interest_usd'] = float(a['oi'][i]); out['oi_share_pct'] = round(float(oish[i]), 3); out['oi_share_percentile'] = pct(oish, oish[i]); out['oi_history_days'] = int(np.isfinite(a['oi'][w]).sum())
     if 'dvol' in a: i = last(a['dvol']); out['dvol'] = round(float(a['dvol'][i]), 2); out['dvol_percentile'] = pct(a['dvol'], a['dvol'][i])
     if 'stable' in a: i = last(a['stable']); out['stablecoin_supply_usd'] = float(a['stable'][i]); out['stablecoin_30d_change_pct'] = round(float(100 * (a['stable'][i] / a['stable'][i - 30] - 1)), 2)
     if 'fng' in a: i = last(a['fng']); out['fear_greed'] = int(a['fng'][i]); out['fear_greed_percentile'] = pct(a['fng'], a['fng'][i])
