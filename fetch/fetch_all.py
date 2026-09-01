@@ -10,6 +10,7 @@ file untouched. Nothing here needs an API key or a paid plan.
 import json, os, sys, time, datetime as dt, io, csv
 from typing import Dict, List, Tuple
 import requests
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'data')
 UA = {'User-Agent': 'CryptoExponentials-DataSnapshot/1.0 (+https://cryptoexponentials.com/tools/)'}
@@ -202,6 +203,10 @@ def main():
     manifest_doc = {'generated_at': NOW, 'sources': manifest,
                     'ok': sorted(k for k, v in manifest.items() if v['status'] == 'ok'),
                     'errors': sorted(k for k, v in manifest.items() if v['status'] == 'error')}
+    try:
+        import kpis; kpis.OUT = OUT; kpis.main(); manifest_doc['kpis'] = 'ok'
+    except Exception as e:
+        manifest_doc['kpis'] = 'error: ' + str(e)[:300]; print('  ERR kpis:', str(e)[:200], file=sys.stderr)
     with open(os.path.join(OUT, 'manifest.json'), 'w') as f: json.dump(manifest_doc, f, indent=1)
     print('Done. ok:', manifest_doc['ok'], 'errors:', manifest_doc['errors'])
     return 0
