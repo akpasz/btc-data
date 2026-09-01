@@ -1,0 +1,118 @@
+{
+ "generated_at": "2026-09-01T17:01:43+00:00",
+ "sources": {
+  "blockchain": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "hash_rate": 6440,
+    "supply": 6446,
+    "transactions": 6426,
+    "price": 6451,
+    "unique_addresses": 6414,
+    "fees_usd": 6429,
+    "utxo_count": 6430,
+    "tx_volume_usd": 5826
+   },
+   "last_date": "2026-09-01",
+   "source_url": "https://api.blockchain.info/charts/"
+  },
+  "coinmetrics": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "CapMrktCurUSD": 5889,
+    "PriceUSD": 5889,
+    "SplyCur": 5890,
+    "AdrActCnt": 5890,
+    "HashRate": 5890,
+    "IssTotUSD": 5889,
+    "ROI30d": 5859,
+    "AdrBalCnt": 5890,
+    "CapMVRVCur": 5889,
+    "TxCnt": 5890
+   },
+   "last_date": "2026-08-31",
+   "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
+  },
+  "coinbase": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "spot": 1
+   },
+   "last_date": "2026-09-01",
+   "source_url": "https://api.coinbase.com/v2/prices/BTC-USD/spot"
+  },
+  "mempool": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "difficulty": 79,
+    "hash_rate_ehs": 1096,
+    "fee_fastest_sat_vb": 1
+   },
+   "last_date": "2026-09-01",
+   "source_url": "https://mempool.space/api/v1/"
+  },
+  "stablecoins": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "total_usd": 3199
+   },
+   "last_date": "2026-09-01",
+   "source_url": "https://stablecoins.llama.fi/stablecoincharts/all"
+  },
+  "fred": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "dollar_index_broad": 4397,
+    "treasury_10y": 4417,
+    "m2": 211,
+    "fed_funds_effective": 6449,
+    "real_yield_10y": 4417
+   },
+   "last_date": "2026-08-28",
+   "source_url": "https://fred.stlouisfed.org/"
+  },
+  "fear_greed": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "index": 3131
+   },
+   "last_date": "2026-09-01",
+   "source_url": "https://api.alternative.me/fng/?limit=0&format=json"
+  },
+  "derivatives": {
+   "status": "ok",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "metrics": {
+    "deribit_dvol_close": 1000,
+    "okx_open_interest_usd": 180,
+    "deribit_funding_8h_daily_mean": 32,
+    "cme_btc_open_interest_contracts": 1
+   },
+   "last_date": "2026-09-01",
+   "source_url": "Deribit, OKX, CFTC public endpoints"
+  },
+  "etf_flows": {
+   "status": "not_implemented",
+   "fetched_at": "2026-09-01T17:01:43+00:00",
+   "plan": "derive net flows from issuer daily holdings (IBIT, FBTC, GBTC, BTC, ARKB, BITB, HODL, BTCO, EZBC, BRRR, BTCW)"
+  }
+ },
+ "ok": [
+  "blockchain",
+  "coinbase",
+  "coinmetrics",
+  "derivatives",
+  "fear_greed",
+  "fred",
+  "mempool",
+  "stablecoins"
+ ],
+ "errors": []
+}
