@@ -31,13 +31,21 @@ def _first_ok(urls):
     raise last
 
 def _num(s):
-    s = re.sub(r'[^0-9.\-]', '', str(s)); return float(s) if s not in ('', '-', '.') else None
+    s = re.sub(r'[^0-9.\-]', '', str(s))
+    try: return float(s) if s not in ('', '-', '.') else None
+    except ValueError: return None
+
+def _csv_text(r):
+    """Return the body as text, or raise if the endpoint answered with an HTML page instead of a data file."""
+    t = r.text
+    if '<html' in t[:2000].lower() or '<!doctype' in t[:200].lower(): raise RuntimeError('endpoint returned an HTML page, not a data file; source needs a new address')
+    return t
 
 # --- parsers: each returns (date_iso, btc_held) for the latest disclosure ------------------------------------------
 def ibit():
     # iShares publishes a holdings CSV; the BTC row carries the quantity. Endpoint pattern used by their product pages.
     url = 'https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax?fileType=csv&fileName=IBIT_holdings&dataType=fund'
-    txt = _get(url).text; date = None; btc = None
+    txt = _csv_text(_get(url)); date = None; btc = None
     m = re.search(r'Fund Holdings as of,"?([A-Za-z]{3} \d{1,2}, \d{4})', txt)
     if m: date = dt.datetime.strptime(m.group(1), '%b %d, %Y').date().isoformat()
     for row in csv.reader(io.StringIO(txt)):
@@ -58,8 +66,8 @@ def grayscale(ticker):
     return d, float(per.group(1)) * float(sh.group(1).replace(',', ''))
 
 def arkb():
-    txt = _first_ok(['https://assets.ark-funds.com/fund-documents/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv',
-                     'https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv']).text; date = None; btc = None
+    txt = _csv_text(_first_ok(['https://assets.ark-funds.com/fund-documents/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv',
+                     'https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv'])); date = None; btc = None
     for row in csv.reader(io.StringIO(txt)):
         if not row: continue
         if not date and re.match(r'\d{1,2}/\d{1,2}/\d{4}', row[0].strip()): date = dt.datetime.strptime(row[0].strip(), '%m/%d/%Y').date().isoformat()
