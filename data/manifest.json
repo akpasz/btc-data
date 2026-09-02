@@ -1,35 +1,35 @@
 {
- "generated_at": "2026-09-02T03:52:36+00:00",
+ "generated_at": "2026-09-02T04:02:29+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
-    "transactions": 6427,
-    "price": 6451,
-    "tx_volume_usd": 5827,
     "unique_addresses": 6415,
-    "supply": 6446,
+    "transactions": 6427,
     "hash_rate": 6441,
+    "tx_volume_usd": 5827,
+    "price": 6451,
+    "fees_usd": 6430,
     "utxo_count": 6431,
-    "fees_usd": 6430
+    "supply": 6446
    },
    "last_date": "2026-09-02",
    "source_url": "https://api.blockchain.info/charts/"
   },
   "coinmetrics": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
-    "PriceUSD": 5890,
-    "IssTotUSD": 5890,
-    "HashRate": 5891,
-    "SplyCur": 5891,
-    "AdrBalCnt": 5891,
-    "AdrActCnt": 5891,
     "TxCnt": 5891,
+    "HashRate": 5891,
+    "AdrActCnt": 5891,
     "CapMVRVCur": 5890,
+    "IssTotUSD": 5890,
+    "SplyCur": 5891,
     "ROI30d": 5860,
+    "AdrBalCnt": 5891,
+    "PriceUSD": 5890,
     "CapMrktCurUSD": 5890
    },
    "last_date": "2026-09-01",
@@ -37,7 +37,7 @@
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
     "spot": 2
    },
@@ -46,7 +46,7 @@
   },
   "offshore_spot": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
     "close_usdt": 300
    },
@@ -55,18 +55,18 @@
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
-    "fee_fastest_sat_vb": 2,
     "hash_rate_ehs": 1097,
-    "difficulty": 79
+    "difficulty": 79,
+    "fee_fastest_sat_vb": 2
    },
    "last_date": "2026-09-02",
    "source_url": "https://mempool.space/api/v1/"
   },
   "stablecoins": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
     "total_usd": 3200
    },
@@ -75,23 +75,23 @@
   },
   "fred": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
     "tga": 921,
-    "dollar_index_broad": 4397,
-    "rrp_on": 3246,
     "fed_funds_effective": 6452,
-    "treasury_10y": 4418,
+    "m2": 211,
+    "dollar_index_broad": 4397,
     "walcl": 921,
-    "real_yield_10y": 4418,
-    "m2": 211
+    "rrp_on": 3246,
+    "treasury_10y": 4418,
+    "real_yield_10y": 4418
    },
    "last_date": "2026-09-01",
    "source_url": "https://fred.stlouisfed.org/"
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
     "index": 3132
    },
@@ -100,7 +100,7 @@
   },
   "coingecko_global": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
     "btc_dominance_pct": 1
    },
@@ -109,40 +109,38 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "metrics": {
-    "deribit_funding_8h_daily_mean": 362,
-    "deribit_basis_90d_ann_pct": 1,
     "okx_open_interest_usd": 180,
-    "cme_btc_open_interest_contracts": 1,
     "deribit_putcall_oi_ratio": 1,
-    "deribit_dvol_close": 1001
+    "cme_btc_open_interest_contracts": 1,
+    "deribit_basis_90d_ann_pct": 1,
+    "deribit_dvol_close": 1001,
+    "deribit_funding_8h_daily_mean": 362
    },
    "last_date": "2026-09-02",
    "source_url": "Deribit, OKX, CFTC public endpoints"
   },
   "etf_flows": {
    "status": "partial",
+   "last_date": "2026-09-02",
    "issuers_ok": [
     "IBIT",
     "ARKB",
-    "BITB"
+    "BITB",
+    "HODL"
    ],
    "issuers_error": [
     "GBTC",
-    "BTC",
-    "HODL"
+    "BTC"
    ],
    "pending": [
-    "FBTC",
-    "HODL",
-    "BTCO",
     "EZBC",
     "BRRR",
     "BTCW"
    ],
    "note": "flows derive from daily differences and start accumulating from the first successful run",
-   "fetched_at": "2026-09-02T03:52:36+00:00",
+   "fetched_at": "2026-09-02T04:02:29+00:00",
    "source_url": "issuer disclosures"
   }
  },
