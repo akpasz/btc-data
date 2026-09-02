@@ -162,6 +162,13 @@ def kpi_extended(bc, cm, dv, fr=None, cb=None, bn=None, cg=None):
     out['spark_mayer'] = spark(dates, price, ma200)
     out['spark_ribbons'] = spark(dates, hr30 / 1e6, hr60 / 1e6)
 
+    def last_of(series):
+        try:
+            for d_, v_ in reversed(series):
+                fv = float(v_)
+                if math.isfinite(fv): return fv
+        except Exception: pass
+        return None
     extras = {}
     if fr.get('walcl') and fr.get('tga') and fr.get('rrp_on'):
         # FRED units: WALCL and WTREGEN in $ millions, RRPONTSYD in $ billions
@@ -171,22 +178,26 @@ def kpi_extended(bc, cm, dv, fr=None, cb=None, bn=None, cg=None):
                                        'change_90d_pct': round(float(100 * (nl[i] / nl[j] - 1)), 2) if j >= 0 and np.isfinite(nl[j]) else None,
                                        'spec': 'WALCL - TGA (WTREGEN) - ON RRP (RRPONTSYD)'}
     if cg.get('btc_dominance_pct'):
-        dom = ffill(cg['btc_dominance_pct']); j = i - 30
-        extras['btc_dominance'] = {'pct': round(float(dom[i]), 2) if np.isfinite(dom[i]) else None,
-                                   'change_30d_pts': round(float(dom[i] - dom[j]), 2) if j >= 0 and np.isfinite(dom[j]) else None}
+        cur = last_of(cg['btc_dominance_pct']); dom = ffill(cg['btc_dominance_pct']); j = i - 30
+        extras['btc_dominance'] = {'pct': round(cur, 2) if cur is not None else None,
+                                   'change_30d_pts': round(float(cur - dom[j]), 2) if cur is not None and j >= 0 and np.isfinite(dom[j]) else None}
     if cb.get('spot') and bn.get('close_usdt'):
         cbs = ffill(cb['spot']); bns = ffill(bn['close_usdt']); prem = np.where(bns > 0, 100 * (cbs / bns - 1), np.nan)
         ok = np.isfinite(prem)
-        extras['coinbase_premium'] = {'pct': round(float(prem[i]), 3) if np.isfinite(prem[i]) else None,
-                                      'pct_rank': pct(prem, prem[i], win=ok) if ok.sum() > 100 else None,
+        cbm = {d_: float(v_) for d_, v_ in cb['spot']}; cur = None
+        for d_, v_ in reversed(bn['close_usdt']):
+            if d_ in cbm and float(v_) > 0: cur = 100 * (cbm[d_] / float(v_) - 1); break
+        if cur is None and np.isfinite(prem[i]): cur = float(prem[i])
+        extras['coinbase_premium'] = {'pct': round(cur, 3) if cur is not None else None,
+                                      'pct_rank': pct(prem, cur, win=ok) if ok.sum() > 100 and cur is not None else None,
                                       'note': 'Coinbase USD spot vs offshore USDT close (OKX); USDT peg deviation is inside this number'}
     if dv.get('deribit_basis_90d_ann_pct'):
-        bas = ffill(dv['deribit_basis_90d_ann_pct']); ok = np.isfinite(bas)
-        extras['futures_basis'] = {'ann_pct': round(float(bas[i]), 2) if np.isfinite(bas[i]) else None,
-                                   'pct_rank': pct(bas, bas[i], win=ok) if ok.sum() > 100 else None}
+        cur = last_of(dv['deribit_basis_90d_ann_pct']); bas = ffill(dv['deribit_basis_90d_ann_pct']); ok = np.isfinite(bas)
+        extras['futures_basis'] = {'ann_pct': round(cur, 2) if cur is not None else None,
+                                   'pct_rank': pct(bas, cur, win=ok) if ok.sum() > 100 and cur is not None else None}
     if dv.get('deribit_putcall_oi_ratio'):
-        pc = ffill(dv['deribit_putcall_oi_ratio'])
-        extras['putcall_oi'] = {'ratio': round(float(pc[i]), 3) if np.isfinite(pc[i]) else None}
+        cur = last_of(dv['deribit_putcall_oi_ratio'])
+        extras['putcall_oi'] = {'ratio': round(cur, 3) if cur is not None else None}
     if extras: out['flows_extras'] = extras
     return out
 
