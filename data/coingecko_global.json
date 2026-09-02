@@ -1,1 +1,1 @@
-{"source":"coingecko_global","source_url":"https://api.coingecko.com/api/v3/global","fetched_at":"2026-09-02T04:16:26+00:00","note":"one point per day; history accumulates via merge","series":{"btc_dominance_pct":[["2026-09-02",59.10080676467238]]}}
+{"source":"coingecko_global","source_url":"https://api.coingecko.com/api/v3/global","fetched_at":"2026-09-02T04:17:58+00:00","note":"one point per day; history accumulates via merge","series":{"btc_dominance_pct":[["2026-09-02",59.10080676467238]]}}
