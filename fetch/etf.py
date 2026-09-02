@@ -112,9 +112,22 @@ def bitwise():
     if not m: raise RuntimeError('holdings not found')
     return TODAY, float(m.group(1).replace(',', ''))
 
+def hodl():
+    # VanEck server-renders the exact custody figure on the product page: "Bitcoin in Trust" in the ETF Statistics table,
+    # with its as-of date. Read verbatim off https://www.vaneck.com/us/en/investments/bitcoin-etf-hodl/ (2026-08-31: 15,347.858 BTC).
+    txt = _get('https://www.vaneck.com/us/en/investments/bitcoin-etf-hodl/').text
+    d = re.search(r'ETF Statistics as of\s*(\d{2}/\d{2}/\d{4})', txt)
+    date = dt.datetime.strptime(d.group(1), '%m/%d/%Y').date().isoformat() if d else None
+    m = re.search(r'Bitcoin in Trust[^0-9]{0,400}?([0-9][0-9,]*(?:\.[0-9]+)?)', txt, re.S)
+    btc = float(m.group(1).replace(',', '')) if m else None
+    if not (date and btc and 1e3 <= btc <= 5e6):
+        raise RuntimeError('HODL product page did not yield the Bitcoin-in-Trust figure; layout may have changed '
+                           '(fallback file endpoint: /us/en/investments/bitcoin-etf-hodl/downloads/holdings/)')
+    return date, btc
+
 ISSUERS = [('IBIT', 'iShares Bitcoin Trust', ibit), ('GBTC', 'Grayscale Bitcoin Trust', lambda: grayscale('GBTC')), ('BTC', 'Grayscale Bitcoin Mini Trust', lambda: grayscale('BTC')),
-           ('ARKB', 'ARK 21Shares Bitcoin ETF', arkb), ('BITB', 'Bitwise Bitcoin ETF', bitwise)]
-# FBTC, HODL, BTCO, EZBC, BRRR, BTCW: pending parsers; their pages are JS-rendered or PDF-only and need per-issuer work after the first run.
+           ('ARKB', 'ARK 21Shares Bitcoin ETF', arkb), ('BITB', 'Bitwise Bitcoin ETF', bitwise), ('HODL', 'VanEck Bitcoin ETF', hodl)]
+# FBTC: no machine-readable primary file (JS-only pages; aggregators rejected as secondary). BTCO, EZBC, BRRR, BTCW: pending parsers; their pages are JS-rendered or PDF-only and need per-issuer work after the first run.
 
 def run(out_dir, price_by_date):
     hold_p = os.path.join(out_dir, 'etf_holdings.json'); hold = json.load(open(hold_p)) if os.path.exists(hold_p) else {}
