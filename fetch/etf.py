@@ -59,7 +59,7 @@ def ibit():
 def grayscale(ticker):
     # Grayscale product pages expose "Bitcoin per Share" and "Shares Outstanding"; holdings = product of the two
     url = {'GBTC': 'https://etfs.grayscale.com/gbtc', 'BTC': 'https://etfs.grayscale.com/btc'}[ticker]
-    time.sleep(6); txt = _get(url).text
+    time.sleep(20); txt = _get(url, tries=4).text
     per = re.search(r'Bitcoin per Share[^0-9]*([0-9.]+)', txt, re.I); sh = re.search(r'Shares Outstanding[^0-9]*([0-9,]+)', txt, re.I)
     if not (per and sh): raise RuntimeError('fields not found on page')
     date = re.search(r'as of\s*([0-9/]+)', txt, re.I); d = dt.datetime.strptime(date.group(1), '%m/%d/%Y').date().isoformat() if date else TODAY
@@ -113,4 +113,6 @@ def run(out_dir, price_by_date):
            'series': {'net_flow_usd': sorted([[d, v] for d, v in flows.items()]), 'btc_held_by_issuer': {tk: ser[-1] for tk, ser in hold.items() if ser}}}
     with open(os.path.join(out_dir, 'etf_flows.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
     ok = [k for k, v in status.items() if v['status'] == 'ok']
-    return {'status': 'ok' if ok else 'error', 'issuers_ok': ok, 'issuers_error': [k for k, v in status.items() if v['status'] != 'ok'], 'pending': doc['pending'], 'note': 'flows derive from daily differences and start accumulating from the first successful run'}
+    bad = [k for k, v in status.items() if v['status'] != 'ok']
+    # 'partial' when some issuers fail, so the hub does not show a green 'ok' over a mostly-failing source
+    return {'status': ('ok' if not bad else 'partial') if ok else 'error', 'issuers_ok': ok, 'issuers_error': bad, 'pending': doc['pending'], 'note': 'flows derive from daily differences and start accumulating from the first successful run'}

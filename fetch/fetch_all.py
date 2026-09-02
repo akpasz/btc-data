@@ -195,7 +195,7 @@ def src_etf():
     except Exception: pass
     res = etf.run(OUT, price)
     manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures'}
-    print(f"  {'ok ' if res['status']=='ok' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
+    print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('mempool', src_mempool),
            ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('derivatives', src_derivatives), ('etf_flows', src_etf)]

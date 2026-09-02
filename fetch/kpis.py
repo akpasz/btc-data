@@ -40,6 +40,20 @@ def align(*named):
 
 def pct_of(sorted_arr, v): return 100.0 * np.searchsorted(sorted_arr, v, side='left') / len(sorted_arr)
 
+def oos_rmse(dates, lnP, X, start):
+    """Expanding-window annual refits of the Metcalfe constant from `start`: fit through each 31 December,
+    predict the following year, pool the errors. Returns RMSE in log points, matching the tool page's
+    out-of-sample validation table for the fixed-exponent model. The hub renders these figures instead of
+    hardcoded numbers."""
+    errs = []
+    for Y in range(start.year + 3, dates[-1].year + 1):
+        cut = dt.date(Y, 1, 1); end = dt.date(Y + 1, 1, 1)
+        idx = [i for i, d in enumerate(dates) if start <= d < cut]
+        if len(idx) < 365 * 3: continue
+        k = float(np.mean([lnP[i] - X[i] for i in idx]))
+        errs += [float(lnP[i] - k - X[i]) for i, d in enumerate(dates) if cut <= d < end]
+    return round(100 * math.sqrt(sum(e * e for e in errs) / len(errs)), 1) if errs else None
+
 def spark(dates, *arrays, weeks=104):
     idx = list(range(len(dates) - 1, -1, -7))[:weeks][::-1]
     return [[dates[i].isoformat()] + [None if not np.isfinite(a[i]) else round(float(a[i]), 4) for a in arrays] for i in idx]
@@ -73,11 +87,12 @@ def kpi_metcalfe(bc):
     # "comparable" calibration: fit from 2011-01-01 (excludes the first months of 2010, which fit worst by a factor of fifty); reproduces published figures within about 1%
     wf = np.array([d >= dt.date(2011, 1, 1) for d in dates]); k_full = np.mean(lnP[wf] - X[wf]); met_full = float(np.exp(k_full + X[-1])); prem_full = 100 * (lnP - k_full - X); pfs = np.sort(prem_full[wf])
     rf = lnP[wf] - k_full - X[wf]; sig_full = 100 * math.sqrt((rf ** 2).sum() / (wf.sum() - 1))
+    oos_v = oos_rmse(dates, lnP, X, dt.date(2017, 1, 1)); oos_f = oos_rmse(dates, lnP, X, dt.date(2011, 1, 1))
     return {'value': round(float(met[-1]), 2), 'value_full_history': round(met_full, 2), 'full_history_fit_from': '2011-01-01', 'sigma_pts_full_history': round(sig_full, 1),
             'prem_sorted_full_history': [round(float(v), 2) for v in pfs[::10]], 'prem_full_p10_p50_p90': [round(float(np.quantile(pfs, q)), 1) for q in (0.1, 0.5, 0.9)], 'k': float(np.exp(k)), 'sigma_pts': round(sig, 1), 'r2_window': round(float(r2), 3), 'premium_pct_close': round(float(prem[-1]), 1),
             'percentile_close': round(pct_of(ps, prem[-1]), 0), 'prem_sorted_p10_p50_p90': [round(float(np.quantile(ps, q)), 1) for q in (0.1, 0.5, 0.9)],
             'users': float(n[-1]), 'effective_supply': float(seff[-1]), 'fit_from': '2017-01-01', 'spec': 'cumulative addresses, n², no lost-coin adjustment, fit 2017 onward',
-            'prem_sorted': [round(float(v), 2) for v in ps[::10]], 'spark': spark(dates, price, met)}, dates, price, met
+            'prem_sorted': [round(float(v), 2) for v in ps[::10]], 'oos_rmse_pts': oos_v, 'oos_rmse_pts_full_history': oos_f, 'spark': spark(dates, price, met)}, dates, price, met
 
 # ------------------------------------------------------------ Power law (genesis origin, from day 560)
 def kpi_powerlaw(bc):
@@ -140,8 +155,8 @@ def kpi_positioning(bc, dv, st, fg, fr, cm):
 def selftest(kp, bc, cm):
     """Independent recomputation of the headline numbers by a different route than the main functions."""
     fails, warns = [], []
-    try:  # Metcalfe: closed-form k from log means, cumulative users via plain cumsum, no interpolation helper
-        pd_, pv = to_daily(bc['price']); ad = dict(to_daily(bc['unique_addresses']) and zip(*to_daily(bc['unique_addresses'])))
+    try:  # Metcalfe: closed-form k from log means, cumulative users via plain cumsum (shares to_daily for calendar fill)
+        pd_, pv = to_daily(bc['price']); _ad_d, _ad_v = to_daily(bc['unique_addresses']); ad = dict(zip(_ad_d, _ad_v))
         ads = sorted(ad); cum = {}; c = 0.0
         for d in ads: c += ad[d]; cum[d] = c
         sd, sv = to_daily(bc['supply']); sup = dict(zip(sd, sv))
@@ -173,7 +188,7 @@ def main():
     r, _, _, _ = kpi_realised(cm); kp['realised'] = r
     kp['positioning'] = kpi_positioning(bc, dv, st, fg, fr, cm)
     # (4) self-test: recompute each headline a second, independent way and fail loudly on drift
-    st = selftest(kp, bc, cm); kp['selftest'] = st
+    sf = selftest(kp, bc, cm); kp['selftest'] = sf
     # (2) daily history of the readings (one row per snapshot date, overwritten if the job runs twice in a day)
     hist_p = os.path.join(OUT, 'kpis_history.json')
     hist = json.load(open(hist_p)) if os.path.exists(hist_p) else {'note': 'one row per day: as_of, price_close, metcalfe (comparable, 2011), metcalfe_validated (2017), powerlaw_trend, realised_price, composite_percentile', 'rows': []}
@@ -183,11 +198,11 @@ def main():
     prev = hist['rows'][-2] if len(hist['rows']) > 1 else None
     if prev:
         for k in ('metcalfe', 'metcalfe_validated', 'powerlaw', 'realised'):
-            if prev.get(k) and row.get(k) and abs(row[k] / prev[k] - 1) > 0.25: st['warnings'].append(f'{k} moved {100*(row[k]/prev[k]-1):+.0f}% since {prev["date"]}')
-    st['status'] = 'fail' if st['failures'] else ('warn' if st['warnings'] else 'ok')
+            if prev.get(k) and row.get(k) and abs(row[k] / prev[k] - 1) > 0.25: sf['warnings'].append(f'{k} moved {100*(row[k]/prev[k]-1):+.0f}% since {prev["date"]}')
+    sf['status'] = 'fail' if sf['failures'] else ('warn' if sf['warnings'] else 'ok')
     with open(hist_p, 'w') as f: json.dump(hist, f, separators=(',', ':'))
     with open(os.path.join(OUT, 'kpis.json'), 'w') as f: json.dump(kp, f, separators=(',', ':'))
-    if st['failures']: raise RuntimeError('self-test failed: ' + '; '.join(st['failures']))
+    if sf['failures']: raise RuntimeError('self-test failed: ' + '; '.join(sf['failures']))
     print(f"  ok  kpis: price {kp['price_close']}, metcalfe {m['value']}, power law {p['trend']}, realised {r['realised_price'] if r else None}, composite {kp['positioning'].get('composite_percentile')}")
 
 if __name__ == '__main__': main()
