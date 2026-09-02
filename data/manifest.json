@@ -1,43 +1,43 @@
 {
- "generated_at": "2026-09-02T04:11:47+00:00",
+ "generated_at": "2026-09-02T04:16:26+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
-    "fees_usd": 6430,
-    "utxo_count": 6431,
-    "price": 6451,
+    "supply": 6446,
     "transactions": 6427,
+    "utxo_count": 6431,
     "unique_addresses": 6415,
     "hash_rate": 6441,
-    "supply": 6446,
-    "tx_volume_usd": 5827
+    "fees_usd": 6430,
+    "tx_volume_usd": 5827,
+    "price": 6451
    },
    "last_date": "2026-09-02",
    "source_url": "https://api.blockchain.info/charts/"
   },
   "coinmetrics": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
     "TxCnt": 5891,
-    "CapMrktCurUSD": 5890,
-    "CapMVRVCur": 5890,
-    "IssTotUSD": 5890,
     "ROI30d": 5860,
     "PriceUSD": 5890,
-    "AdrBalCnt": 5891,
+    "CapMrktCurUSD": 5890,
+    "CapMVRVCur": 5890,
     "SplyCur": 5891,
+    "HashRate": 5891,
     "AdrActCnt": 5891,
-    "HashRate": 5891
+    "AdrBalCnt": 5891,
+    "IssTotUSD": 5890
    },
    "last_date": "2026-09-01",
    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
     "spot": 2
    },
@@ -46,7 +46,7 @@
   },
   "offshore_spot": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
     "close_usdt": 300
    },
@@ -55,18 +55,18 @@
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
+    "fee_fastest_sat_vb": 2,
     "hash_rate_ehs": 1097,
-    "difficulty": 79,
-    "fee_fastest_sat_vb": 2
+    "difficulty": 79
    },
    "last_date": "2026-09-02",
    "source_url": "https://mempool.space/api/v1/"
   },
   "stablecoins": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
     "total_usd": 3200
    },
@@ -75,15 +75,15 @@
   },
   "fred": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
-    "real_yield_10y": 4418,
-    "fed_funds_effective": 6452,
-    "walcl": 921,
-    "tga": 921,
     "treasury_10y": 4418,
     "m2": 211,
+    "tga": 921,
+    "walcl": 921,
+    "real_yield_10y": 4418,
     "dollar_index_broad": 4397,
+    "fed_funds_effective": 6452,
     "rrp_on": 3246
    },
    "last_date": "2026-09-01",
@@ -91,7 +91,7 @@
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
     "index": 3132
    },
@@ -100,7 +100,7 @@
   },
   "coingecko_global": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
     "btc_dominance_pct": 1
    },
@@ -109,14 +109,14 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "metrics": {
-    "deribit_putcall_oi_ratio": 1,
-    "deribit_basis_90d_ann_pct": 1,
-    "deribit_funding_8h_daily_mean": 362,
-    "cme_btc_open_interest_contracts": 1,
     "okx_open_interest_usd": 180,
-    "deribit_dvol_close": 1001
+    "cme_btc_open_interest_contracts": 1,
+    "deribit_dvol_close": 1001,
+    "deribit_basis_90d_ann_pct": 1,
+    "deribit_putcall_oi_ratio": 1,
+    "deribit_funding_8h_daily_mean": 362
    },
    "last_date": "2026-09-02",
    "source_url": "Deribit, OKX, CFTC public endpoints"
@@ -131,13 +131,9 @@
     "HODL"
    ],
    "issuers_error": [],
-   "pending": [
-    "EZBC",
-    "BRRR",
-    "BTCW"
-   ],
+   "pending": [],
    "note": "flows derive from daily differences and start accumulating from the first successful run",
-   "fetched_at": "2026-09-02T04:11:47+00:00",
+   "fetched_at": "2026-09-02T04:16:26+00:00",
    "source_url": "issuer disclosures"
   }
  },
