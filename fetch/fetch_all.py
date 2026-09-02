@@ -51,7 +51,7 @@ def save(name, source_url, series: Dict[str, List], note=''):
 
 # HTTP 200 is not freshness: a source can answer with yesterday's data. Each source has an expected maximum age in days;
 # beyond it the run is still 'ok' (the fetch worked) but freshness is 'stale', and the dashboard can say so.
-EXPECTED_MAX_AGE_DAYS = {'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2}
+EXPECTED_MAX_AGE_DAYS = {'lppls': 3, 'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2}
 def freshness(name, last_date):
     if not last_date: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
     try: age = (dt.datetime.fromisoformat(NOW).date() - dt.date.fromisoformat(last_date[:10])).days
@@ -347,6 +347,24 @@ def src_etf():
     manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures', **freshness('etf_flows', res.get('last_date'))}
     print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
+# ---------------------------------------------------------------- LPPLS bubble indicator, point-in-time
+def src_lppls():
+    """Log-periodic power law singularity confidence, computed as of each day on the stored price series.
+    The deep history ships with the repository (computed once); each run extends it by the days not yet stored."""
+    import lppls, datetime as _dt
+    bc = load_existing('blockchain')
+    if not bc: raise RuntimeError('blockchain price series not available')
+    m = {d: float(v) for d, v in bc['series'].get('price', []) if float(v) > 0}
+    ds = sorted(m); dates = [_dt.date.fromisoformat(d) for d in ds]; prices = [m[d] for d in ds]
+    existing = load_existing('lppls')
+    doc = lppls.build_history(dates, prices, os.path.join(OUT, 'lppls.json'), existing=existing, log=lambda s: print(s))
+    n_pos = len(doc['series']['lppls_pos'])
+    manifest['lppls'] = {'status': 'ok', 'fetched_at': NOW, 'source_url': 'computed from the blockchain.com daily price series',
+                         'last_date': doc['series']['lppls_pos'][-1][0] if n_pos else None, 'points': n_pos,
+                         'today': doc['today'], 'note': 'positive-bubble confidence = share of 8 window lengths whose best LPPLS fit passes the stated filters',
+                         **freshness('lppls', doc['series']['lppls_pos'][-1][0] if n_pos else None)}
+    print(f"  ok  lppls: {n_pos} points, today pos {doc['today']['pos'] if doc['today'] else None}")
+
 # ---------------------------------------------------------------- Relative value: what one bitcoin buys of other assets
 def _coinbase_daily(product, start='2016-01-01'):
     """Daily closes from Coinbase Exchange candles, paginated in 300-day windows. Keyless, primary exchange data."""
@@ -454,7 +472,7 @@ def src_relative():
     if errs: manifest[name]['note'] = '; '.join(errs)
 
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('offshore_spot', src_offshore_spot), ('mempool', src_mempool),
-           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf)]
+           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf), ('lppls', src_lppls)]
 
 def main():
     os.makedirs(OUT, exist_ok=True); print('Snapshot at', NOW)
