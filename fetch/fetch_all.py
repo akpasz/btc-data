@@ -7,7 +7,7 @@ and writes one JSON file per source plus data/manifest.json describing what succ
 Every source is isolated: a failure records an error in the manifest and leaves the previous
 file untouched. Nothing here needs an API key or a paid plan.
 """
-import json, os, sys, time, datetime as dt, io, csv
+import json, os, sys, time, datetime as dt, io, csv, math
 from typing import Dict, List, Tuple
 import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -172,6 +172,63 @@ def src_coingecko_global():
     save(name, url, {'btc_dominance_pct': [[NOW[:10], d]]}, note='one point per day; history accumulates via merge')
 
 # ---------------------------------------------------------------- Derivatives (Deribit and OKX public)
+# ---------------------------------------------------------------- options skew (helper for src_derivatives)
+def _norm_cdf(x):
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+def _parse_option(name):
+    """BTC-26SEP26-100000-C -> (expiry datetime UTC 08:00, strike, 'C'|'P'); None if it is not a standard option."""
+    parts = name.split('-')
+    if len(parts) != 4 or parts[3] not in ('C', 'P'): return None
+    try:
+        exp = dt.datetime.strptime(parts[1], '%d%b%y').replace(hour=8, tzinfo=dt.timezone.utc)
+        return exp, float(parts[2]), parts[3]
+    except Exception: return None
+
+def options_skew(chain, target_days=30, min_days=7):
+    """25-delta risk reversal (put IV - call IV) and butterfly, in volatility points, on the listed expiry nearest
+    target_days. Deltas are Black-Scholes with r=0 on the underlying the exchange quotes with each instrument.
+    Returns None when the chain is too thin to interpolate both wings."""
+    now = dt.datetime.now(dt.timezone.utc); byexp = {}
+    for o in chain:
+        p = _parse_option(o.get('instrument_name', '') or '')
+        iv = o.get('mark_iv'); und = o.get('underlying_price')
+        if not p or not iv or not und or iv <= 0 or und <= 0: continue
+        exp, strike, cp = p
+        days = (exp - now).total_seconds() / 86400.0
+        if days < min_days: continue
+        byexp.setdefault(exp, []).append((strike, cp, float(iv) / 100.0, float(und), days))
+    if not byexp: return None
+    exp = min(byexp, key=lambda e: abs((e - now).total_seconds() / 86400.0 - target_days))
+    rows = byexp[exp]; days = rows[0][4]; T = days / 365.0
+    calls, puts = [], []
+    for strike, cp, sig, und, _ in rows:
+        if sig <= 0 or T <= 0 or strike <= 0: continue
+        d1 = (math.log(und / strike) + 0.5 * sig * sig * T) / (sig * math.sqrt(T))
+        delta = _norm_cdf(d1) if cp == 'C' else _norm_cdf(d1) - 1.0
+        (calls if cp == 'C' else puts).append((delta, sig * 100.0))
+    def interp(points, target):
+        """IV at a target delta by linear interpolation on delta; points are (delta, iv_pts)."""
+        pts = sorted(points)
+        if len(pts) < 2: return None
+        lo, hi = pts[0][0], pts[-1][0]
+        if not (lo <= target <= hi): return None
+        for (d0, v0), (d1_, v1) in zip(pts, pts[1:]):
+            if d0 <= target <= d1_:
+                if d1_ == d0: return v0
+                w = (target - d0) / (d1_ - d0)
+                return v0 + w * (v1 - v0)
+        return None
+    c25 = interp(calls, 0.25); p25 = interp(puts, -0.25)
+    atm_c = interp(calls, 0.50); atm_p = interp(puts, -0.50)
+    atm = None
+    if atm_c is not None and atm_p is not None: atm = (atm_c + atm_p) / 2.0
+    elif atm_c is not None: atm = atm_c
+    elif atm_p is not None: atm = atm_p
+    if c25 is None or p25 is None or atm is None: return None
+    return {'expiry': exp.date().isoformat(), 'days_to_expiry': round(days, 1), 'atm_iv': round(atm, 2),
+            'skew_25d': round(p25 - c25, 2), 'fly_25d': round((c25 + p25) / 2.0 - atm, 2)}
+
 def src_derivatives():
     name = 'derivatives'; series = {}; errs = []
     try:  # Deribit DVOL (BTC implied volatility index), last 3 years daily
@@ -210,12 +267,23 @@ def src_derivatives():
             basis = ((best[1] / idx) - 1) * 365 / best[0] * 100
             series['deribit_basis_90d_ann_pct'] = [[NOW[:10], round(basis, 3)]]
     except Exception as e: errs.append(f'basis: {e}')
-    try:  # Deribit options put/call open-interest ratio (UNTESTED stub: verify on first run; OI is in BTC, ratio is unitless)
+    jo = None
+    try:  # Deribit options put/call open-interest ratio (OI is in BTC, ratio is unitless)
         jo = get('https://www.deribit.com/api/v2/public/get_book_summary_by_currency', params={'currency': 'BTC', 'kind': 'option'}).json()['result']
         oc = sum(o.get('open_interest', 0) or 0 for o in jo if o.get('instrument_name', '').endswith('-C'))
         op = sum(o.get('open_interest', 0) or 0 for o in jo if o.get('instrument_name', '').endswith('-P'))
         if oc > 0: series['deribit_putcall_oi_ratio'] = [[NOW[:10], round(op / oc, 4)]]
     except Exception as e: errs.append(f'putcall: {e}')
+    try:  # 25-delta risk reversal and butterfly on the listed expiry nearest 30 days, from the same option chain (no extra call).
+        # Deribit publishes mark_iv per instrument but no delta, so delta is computed Black-Scholes on the forward with r=0,
+        # which is the market convention for crypto options and is exact enough to locate the 25-delta wings by interpolation.
+        if jo:
+            sk = options_skew(jo)
+            if sk:
+                series['deribit_atm_iv_30d'] = [[NOW[:10], sk['atm_iv']]]
+                series['deribit_skew_25d_pts'] = [[NOW[:10], sk['skew_25d']]]
+                series['deribit_butterfly_25d_pts'] = [[NOW[:10], sk['fly_25d']]]
+    except Exception as e: errs.append(f'skew: {e}')
     try:  # CME bitcoin futures open interest via CFTC commitments of traders (weekly, public CSV)
         txt = get('https://www.cftc.gov/dea/newcot/FinFutWk.txt').text; rd = csv.reader(io.StringIO(txt)); pts = []
         for row in rd:
