@@ -151,14 +151,18 @@ def src_fng():
     j = get(url).json(); series = {'index': [[day(p['timestamp']), float(p['value'])] for p in j.get('data', [])]}
     save(name, url, series)
 
-# ---------------------------------------------------------------- Binance daily close (UNTESTED stub: verify on first run)
-def src_binance():
-    """BTCUSDT daily closes; the Binance leg of the Coinbase premium in kpis.py. USDT quote, so the USDT
-    peg deviation is inside the premium; that caveat is printed with the metric."""
-    name = 'binance'; url = 'https://api.binance.com/api/v3/klines'
-    j = get(url, params={'symbol': 'BTCUSDT', 'interval': '1d', 'limit': 1000}).json()
-    series = {'close_usdt': [[day(k[0] / 1000), float(k[4])] for k in j]}
-    save(name, url, series, note='daily kline close; merged history accumulates')
+# ---------------------------------------------------------------- Offshore spot via OKX (Binance blocks US runner IPs with HTTP 451)
+def src_offshore_spot():
+    """BTC-USDT daily closes from OKX; the offshore leg of the Coinbase premium in kpis.py. OKX is already
+    a trusted source here (open interest) and serves US-based CI runners. USDT quote, so the USDT peg
+    deviation is inside the premium; that caveat is printed with the metric. 300 daily candles per call;
+    history accumulates via the merge."""
+    name = 'offshore_spot'; url = 'https://www.okx.com/api/v5/market/candles'
+    j = get(url, params={'instId': 'BTC-USDT', 'bar': '1D', 'limit': '300'}).json()
+    rows = j.get('data') or []
+    series = {'close_usdt': sorted([[day(int(r[0]) / 1000), float(r[4])] for r in rows])}
+    if not series['close_usdt']: raise RuntimeError('okx candles empty: ' + str(j)[:150])
+    save(name, url, series, note='OKX BTC-USDT daily close; offshore leg of the Coinbase premium')
 
 # ---------------------------------------------------------------- CoinGecko global (UNTESTED stub: verify on first run)
 def src_coingecko_global():
@@ -236,7 +240,7 @@ def src_etf():
     manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures'}
     print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
-SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('binance', src_binance), ('mempool', src_mempool),
+SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('offshore_spot', src_offshore_spot), ('mempool', src_mempool),
            ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('etf_flows', src_etf)]
 
 def main():

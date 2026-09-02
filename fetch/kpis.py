@@ -179,7 +179,7 @@ def kpi_extended(bc, cm, dv, fr=None, cb=None, bn=None, cg=None):
         ok = np.isfinite(prem)
         extras['coinbase_premium'] = {'pct': round(float(prem[i]), 3) if np.isfinite(prem[i]) else None,
                                       'pct_rank': pct(prem, prem[i], win=ok) if ok.sum() > 100 else None,
-                                      'note': 'Coinbase USD spot vs Binance USDT close; USDT peg deviation is inside this number'}
+                                      'note': 'Coinbase USD spot vs offshore USDT close (OKX); USDT peg deviation is inside this number'}
     if dv.get('deribit_basis_90d_ann_pct'):
         bas = ffill(dv['deribit_basis_90d_ann_pct']); ok = np.isfinite(bas)
         extras['futures_basis'] = {'ann_pct': round(float(bas[i]), 2) if np.isfinite(bas[i]) else None,
@@ -324,7 +324,7 @@ def main():
     r, _, _, _ = kpi_realised(cm); kp['realised'] = r
     kp['positioning'] = kpi_positioning(bc, dv, st, fg, fr, cm)
     try:
-        kp['extended'] = kpi_extended(bc, cm, dv, fr=fr, cb=load('coinbase'), bn=load('binance'), cg=load('coingecko_global'))
+        kp['extended'] = kpi_extended(bc, cm, dv, fr=fr, cb=load('coinbase'), bn=load('offshore_spot') or load('binance'), cg=load('coingecko_global'))
     except Exception as e:
         kp['extended'] = {'error': str(e)[:200]}
     # (4) self-test: recompute each headline a second, independent way and fail loudly on drift
