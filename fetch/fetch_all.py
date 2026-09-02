@@ -361,8 +361,14 @@ def _fred_daily(sid, since='2009-01-01'):
 
 def _worldbank_pinksheet():
     """World Bank Commodity Markets 'Pink Sheet', monthly, public domain. Returns {'gold':[[YYYY-MM-01,usd]], 'silver':[...]}."""
-    url = 'https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx'
-    import openpyxl
+    # The document URL changes with every release, so the link is resolved from the commodity-markets
+    # page each run, exactly as the World Bank's own mirrors do; a fixed URL served a file that was
+    # twenty months stale on first deployment.
+    import re as _re, openpyxl
+    page = get('https://www.worldbank.org/en/research/commodity-markets').text
+    m = _re.search(r'href="([^"]+)"[^>]*>[^<]*[Mm]onthly [Pp]rices', page) or _re.search(r'href="([^"]*CMO-Historical-Data-Monthly[^"]*)"', page)
+    if not m: raise RuntimeError('monthly prices link not found on the World Bank page')
+    url = m.group(1); url = url if url.startswith('http') else 'https://www.worldbank.org' + url
     wb = openpyxl.load_workbook(io.BytesIO(get(url).content), read_only=True, data_only=True)
     ws = wb['Monthly Prices']; rows = list(ws.iter_rows(values_only=True))
     hdr_i = next(i for i, r in enumerate(rows) if r and any(isinstance(c, str) and 'Gold' in c for c in r))
@@ -398,14 +404,21 @@ def src_relative():
     for key, sid in [('sp500_daily', 'SP500'), ('nasdaq_daily', 'NASDAQCOM')]:
         try: series[key] = _fred_daily(sid); prov[key] = f'FRED {sid}'
         except Exception as e: errs.append(f'{key}: {e}')
+    wbk = None
     try:
         wbk = _worldbank_pinksheet()
         series['gold_usd_monthly'] = wbk['gold']; series['silver_usd_monthly'] = wbk['silver']
         prov['gold_usd_monthly'] = prov['silver_usd_monthly'] = 'World Bank Commodity Markets (Pink Sheet), monthly average, public domain'
     except Exception as e:
         errs.append(f'worldbank: {e}')
-        try: series['gold_usd_monthly'] = _datahub_gold_monthly(); prov['gold_usd_monthly'] = 'World Bank Pink Sheet via datahub.io mirror on GitHub'
-        except Exception as e2: errs.append(f'gold fallback: {e2}')
+    try:
+        mirror = _datahub_gold_monthly()
+        # the mirror tracks the same series; if it is fresher than what we parsed, the World Bank link resolved to an old file
+        if not wbk or (mirror and wbk['gold'] and mirror[-1][0] > wbk['gold'][-1][0]):
+            series['gold_usd_monthly'] = mirror; prov['gold_usd_monthly'] = 'World Bank Pink Sheet via datahub.io mirror on GitHub (fresher than the file resolved from worldbank.org)'
+            if wbk: errs.append(f"worldbank file stale: gold ends {wbk['gold'][-1][0]}, mirror ends {mirror[-1][0]}; silver kept from the World Bank file and may lag")
+    except Exception as e2:
+        errs.append(f'gold mirror: {e2}')
     if not series: raise RuntimeError('; '.join(errs))
     save(name, 'Coinbase Exchange, FRED, World Bank', series,
          note=('Denominators for bitcoin priced in other assets. ' + ('; '.join(errs) if errs else 'all legs ok')))
