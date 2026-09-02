@@ -268,7 +268,11 @@ def kpi_metcalfe(bc):
     wf = np.array([d >= dt.date(2011, 1, 1) for d in dates]); k_full = np.mean(lnP[wf] - X[wf]); met_full = float(np.exp(k_full + X[-1])); prem_full = 100 * (lnP - k_full - X); pfs = np.sort(prem_full[wf])
     rf = lnP[wf] - k_full - X[wf]; sig_full = 100 * math.sqrt((rf ** 2).sum() / (wf.sum() - 1))
     oos_v = oos_rmse(dates, lnP, X, dt.date(2017, 1, 1)); oos_f = oos_rmse(dates, lnP, X, dt.date(2011, 1, 1))
-    return {'value': round(float(met[-1]), 2), 'value_full_history': round(met_full, 2), 'full_history_fit_from': '2011-01-01', 'sigma_pts_full_history': round(sig_full, 1),
+    return {'value': round(float(met[-1]), 2),
+            # reference calibration (fit from 2011-01-01, comparable with published figures). The *_full_history keys are the legacy names for the same
+            # numbers and are kept for one release; 'full history' is a misnomer, since the true full-history fit from 2010 is the one the site rejects.
+            'value_reference': round(met_full, 2), 'reference_fit_from': '2011-01-01', 'sigma_pts_reference': round(sig_full, 1), 'oos_rmse_pts_reference': oos_f,
+            'value_full_history': round(met_full, 2), 'full_history_fit_from': '2011-01-01', 'sigma_pts_full_history': round(sig_full, 1),
             'prem_sorted_full_history': [round(float(v), 2) for v in pfs[::10]], 'prem_full_p10_p50_p90': [round(float(np.quantile(pfs, q)), 1) for q in (0.1, 0.5, 0.9)], 'k': float(np.exp(k)), 'sigma_pts': round(sig, 1), 'r2_window': round(float(r2), 3), 'premium_pct_close': round(float(prem[-1]), 1),
             'percentile_close': round(pct_of(ps, prem[-1]), 0), 'prem_sorted_p10_p50_p90': [round(float(np.quantile(ps, q)), 1) for q in (0.1, 0.5, 0.9)],
             'users': float(n[-1]), 'effective_supply': float(seff[-1]), 'fit_from': '2017-01-01', 'spec': 'cumulative addresses, n², no lost-coin adjustment, fit 2017 onward',
@@ -319,7 +323,8 @@ def kpi_positioning(bc, dv, st, fg, fr, cm):
     hi90, lo90 = float(P[i-89:i+1].max()), float(P[i-89:i+1].min()); out['high_90d'] = round(hi90, 2); out['low_90d'] = round(lo90, 2); out['position_in_90d_range_pct'] = round(100 * (P[i] - lo90) / (hi90 - lo90), 1) if hi90 > lo90 else None
     out['price_30d_change_pct'] = round(float(100 * (P[i] / P[i-30] - 1)), 2)
     comps = [out.get(k) for k in ('funding_percentile', 'oi_share_percentile', 'fear_greed_percentile') if out.get(k) is not None]
-    out['composite_percentile'] = round(sum(comps) / len(comps), 0) if len(comps) >= 2 else None
+    out['composite_percentile'] = round(sum(comps) / len(comps), 0) if len(comps) >= 3 else None  # all three components or nothing: a two-component average is a different series
+    out['composite_components_present'] = len(comps)
     # composite series over the window (same rule as the Flows page) and its sorted distribution, so the hub can rank today's value against it
     ser2 = {'f': a['funding'] * 1095 * 100 if 'funding' in a else None, 'o': (100 * a['oi'] / a['mkt']) if ('oi' in a and 'mkt' in a) else None, 'g': a['fng'] if 'fng' in a else None}
     srt = {k: np.sort(v[w & np.isfinite(v)]) for k, v in ser2.items() if v is not None}
@@ -327,7 +332,7 @@ def kpi_positioning(bc, dv, st, fg, fr, cm):
     for i in range(len(pd_)):
         if not w[i]: continue
         ps = [pct_of(srt[k], ser2[k][i]) for k in srt if np.isfinite(ser2[k][i]) and len(srt[k]) > 30]
-        if len(ps) >= 2: comp_series.append(sum(ps) / len(ps))
+        if len(ps) >= 3: comp_series.append(sum(ps) / len(ps))
     out['composite_sorted'] = [round(float(v), 1) for v in np.sort(comp_series)[::5]] if comp_series else None
     out['spark'] = spark(pd_, pv, a['stable'] if 'stable' in a else np.full(len(pv), np.nan))
     return out

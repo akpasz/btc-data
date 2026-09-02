@@ -19,11 +19,11 @@ rate limits beyond GitHub's own, no tracking.
 
 | File | Contents | Primary source |
 | --- | --- | --- |
-| `manifest.json` | Run health: per-source status (`ok` / `partial` / `error`), fetch times, last dates, error strings. **Read this first** if you build on the data. | pipeline |
-| `kpis.json` | Every headline reading the dashboard shows, precomputed: Metcalfe value (both calibrations, out-of-sample RMSE), power-law trend, realised price / MVRV / Z-score, positioning composite, self-test results, and the `extended` block (see below). | derived |
+| `manifest.json` | Run health: per-source status (`ok` / `partial` / `error`), fetch times, last dates, error strings, and per-source **freshness** (`current` / `stale` / `unknown`, with `age_days` and `expected_max_age_days`; a top-level `stale` list sits beside `errors`). A fetch can succeed and still be stale. **Read this first** if you build on the data. | pipeline |
+| `kpis.json` | Every headline reading the dashboard shows, precomputed: Metcalfe value (validated 2017 calibration under `value`; the 2011 reference calibration under `value_reference` / `reference_fit_from` — the legacy `*_full_history` keys carry the same numbers and are kept for one release), power-law trend, realised price / MVRV / Z-score, positioning composite (only on days when all three components are present; `composite_components_present` says how many), self-test results, and the `extended` block (see below). | derived |
 | `kpis_history.json` | One row per day of what `kpis.json` published — the dashboard's own audit trail. | derived |
 | `blockchain.json` | Daily price, unique addresses, supply, hash rate (TH/s), fees USD, estimated tx volume USD. | Blockchain.com Charts API |
-| `coinmetrics.json` | PriceUSD, CapMrktCurUSD, CapRealUSD, CapMVRVCur, SplyCur, supply-activity bands, IssTotUSD, AdrActCnt, AdrBalCnt. | Coin Metrics community API |
+| `coinmetrics.json` | Whatever subset of 25 requested metrics the community tier returns (10 at the last run): PriceUSD, CapMrktCurUSD, CapMVRVCur, SplyCur, IssTotUSD, AdrActCnt, AdrBalCnt and others. **Not** included by the community tier: realised cap (`CapRealUSD`, recover it as CapMrktCurUSD / CapMVRVCur) and the supply-age bands (`SplyAct*`). The file's `note` states the count. | Coin Metrics community API |
 | `coinbase.json` | Daily Coinbase USD spot (accumulating). | Coinbase API |
 | `offshore_spot.json` | OKX BTC-USDT daily closes — the offshore leg of the Coinbase premium. | OKX API |
 | `derivatives.json` | Deribit DVOL, perpetual funding (8h daily mean), dated-future ~90d annualised basis, options put/call OI ratio; OKX open interest; CME OI from the CFTC report. | Deribit / OKX / CFTC |
@@ -31,8 +31,9 @@ rate limits beyond GitHub's own, no tracking.
 | `fred.json` | Broad dollar index, fed funds, 10y nominal and real yields, M2, and the net-liquidity trio WALCL / WTREGEN (TGA) / RRPONTSYD. Note FRED units: WALCL and TGA in $ millions, RRP in $ billions. | FRED |
 | `fear_greed.json` | Alternative.me Fear & Greed index. | Alternative.me |
 | `coingecko_global.json` | Bitcoin dominance %, one point per day (accumulating). | CoinGecko |
-| `etf_flows.json`, `etf_holdings.json` | Spot-ETF holdings parsed from issuer disclosures; flows derived from daily differences. Currently `partial` — the manifest lists which issuers parse. | issuer sites |
+| `etf_flows.json`, `etf_holdings.json` | Spot-ETF holdings parsed from four issuers' own disclosures (IBIT, ARKB, BITB, HODL); flows derived from daily differences. The seven products with no machine-readable daily coin count are listed in the file with the reason. Status is `ok` when every attempted issuer parses; the `coverage` block says what share of ETF holdings that is — it is not total spot-ETF holdings. | issuer sites |
 | `mempool.json` | Fee estimates and mempool stats. | mempool.space |
+| `relative.json` | Denominators for bitcoin priced in other assets: Coinbase daily closes (BTC, ETH, SOL, PAXG), FRED daily S&P 500 and Nasdaq, Shiller monthly S&P 500, World Bank Pink Sheet monthly gold and silver. Each leg isolated; provenance per series in the manifest. | Coinbase / FRED / World Bank / Shiller |
 | `references.json` | **Hand-maintained** external reference figures (e.g. Cane Island MET/MAC), dated. Never written by the pipeline; edit and commit to update. | manual |
 
 ### Series format
@@ -66,9 +67,9 @@ are documented on the [methods page](https://cryptoexponentials.com/tools/method
   error and touches nothing else.
 - **Honest status.** `partial` means partial. Known gaps (entity-adjusted on-chain metrics such as
   SOPR, holder cost bases, exchange netflows) are documented rather than approximated; they require
-  UTXO-level or clustered-entity data no free source provides. The roadmap for computing them
-  first-party from a full node (`dumptxoutset` bootstrap + per-block prevout processing) is the
-  planned Tier 3 of this pipeline.
+  UTXO-level or clustered-entity data no free source provides. The pipeline for computing them
+  first-party from a full node is written and tested under `node/` (see its README) and awaits
+  hardware; until it runs, the gap is stated rather than approximated.
 - **Self-tested.** `kpis.json → selftest` re-derives the headline numbers by an independent
   implementation on every run and fails the run on disagreement; `kpis_history.json` preserves what
   was published each day.

@@ -46,7 +46,18 @@ def save(name, source_url, series: Dict[str, List], note=''):
     with open(os.path.join(OUT, name + '.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
     last = max((s[-1][0] for s in merged.values() if s), default=None)
     manifest[name] = {'status': 'ok', 'fetched_at': NOW, 'metrics': {k: len(v) for k, v in merged.items()}, 'last_date': last, 'source_url': source_url}
+    manifest[name].update(freshness(name, last))
     print(f'  ok  {name}: {sum(len(v) for v in merged.values())} points, last {last}')
+
+# HTTP 200 is not freshness: a source can answer with yesterday's data. Each source has an expected maximum age in days;
+# beyond it the run is still 'ok' (the fetch worked) but freshness is 'stale', and the dashboard can say so.
+EXPECTED_MAX_AGE_DAYS = {'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2}
+def freshness(name, last_date):
+    if not last_date: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
+    try: age = (dt.datetime.fromisoformat(NOW).date() - dt.date.fromisoformat(last_date[:10])).days
+    except Exception: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
+    thr = EXPECTED_MAX_AGE_DAYS.get(name, 2)
+    return {'freshness': 'current' if age <= thr else 'stale', 'age_days': age, 'expected_max_age_days': thr}
 
 def fail(name, e, source_url=''):
     old = load_existing(name)
@@ -452,7 +463,8 @@ def main():
         except Exception as e: fail(name, e)
     manifest_doc = {'generated_at': NOW, 'sources': manifest,
                     'ok': sorted(k for k, v in manifest.items() if v['status'] == 'ok'),
-                    'errors': sorted(k for k, v in manifest.items() if v['status'] == 'error')}
+                    'errors': sorted(k for k, v in manifest.items() if v['status'] == 'error'),
+                    'stale': sorted(k for k, v in manifest.items() if v.get('freshness') == 'stale')}
     try:
         import kpis; kpis.OUT = OUT; kpis.main(); manifest_doc['kpis'] = 'ok'
     except Exception as e:

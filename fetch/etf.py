@@ -141,7 +141,11 @@ NO_PRIMARY_SOURCE = {
     'BRRR': 'CoinShares Bitcoin ETF: same, no machine-readable daily holdings file found',
     'BTCW': 'WisdomTree Bitcoin Fund: page publishes weights, NAV and shares outstanding but no coin quantity; '
             'deriving coins from assets divided by price would be an estimate, not a disclosure, so it is not done here',
+    # products listed after the original January 2024 cohort; not yet assessed for a machine-readable holdings file
+    'MSBT': 'Morgan Stanley Bitcoin Trust (NYSE Arca, trading since April 2026): not yet assessed for a primary daily holdings file',
+    'OBTC': 'Osprey Bitcoin Trust (REX; ETF since December 2025): not yet assessed for a primary daily holdings file',
 }
+UNIVERSE_CHECKED = '2026-09-02'  # date the list of US spot bitcoin ETPs above was last compared against what is listed
 # FBTC: no machine-readable primary file (JS-only pages; aggregators rejected as secondary). BTCO, EZBC, BRRR, BTCW: pending parsers; their pages are JS-rendered or PDF-only and need per-issuer work after the first run.
 
 def run(out_dir, price_by_date):
@@ -170,7 +174,8 @@ def run(out_dir, price_by_date):
     for tk, ser in hold.items():
         if ser: total_btc[ser[-1][0]] = total_btc.get(ser[-1][0], 0) + ser[-1][1]
     doc = {'source': 'etf_flows', 'source_url': 'issuer daily holdings (see status)', 'fetched_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
-           'note': 'net flow = change in BTC held x price; accumulates from first successful run. Every US spot issuer has been checked; those absent publish no primary machine-readable daily coin count and the reason is recorded per ticker',
+           'note': 'net flow = change in BTC held x price; accumulates from first successful run. Coverage is the four issuers with a primary machine-readable daily coin count; every other product in the universe as of UNIVERSE_CHECKED is recorded with the reason it is absent. Not total spot-ETF flow',
+           'universe_checked': UNIVERSE_CHECKED,
            'issuers': status, 'pending': [], 'no_primary_source': NO_PRIMARY_SOURCE,
            'coverage': coverage,
            'series': {'net_flow_usd': sorted([[d, v] for d, v in flows.items()]), 'btc_held_by_issuer': {tk: ser[-1] for tk, ser in hold.items() if ser}}}
