@@ -42,16 +42,39 @@ def _csv_text(r):
     return t
 
 # --- parsers: each returns (date_iso, btc_held) for the latest disclosure ------------------------------------------
+def _ibit_parse_xls(txt):
+    """iShares 'fund' download is SpreadsheetML whose XML is invalid (unescaped & in disclaimer links),
+    so this is a regex parse, verified against a real downloaded file (2026-08-31: 779,839.6606 BTC).
+    The BTC row's Quantity is the last numeric column."""
+    date = None
+    m = re.search(r'Fund Holdings as of</ss:Data>.*?<ss:Data[^>]*>([A-Za-z]{3} \d{1,2}, \d{4})</ss:Data>', txt, re.S)
+    if m: date = dt.datetime.strptime(m.group(1), '%b %d, %Y').date().isoformat()
+    btc = None
+    for rm in re.finditer(r'<ss:Row[^>]*>\s*<ss:Cell[^>]*>\s*<ss:Data[^>]*>BTC</ss:Data>\s*</ss:Cell>(.*?)</ss:Row>', txt, re.S):
+        nums = []
+        for c in re.findall(r'<ss:Data[^>]*>(.*?)</ss:Data>', rm.group(1), re.S):
+            c2 = c.replace(',', '').replace('&amp;', '&').strip()
+            try: nums.append(float(c2))
+            except ValueError: pass
+        if nums and 1e4 <= nums[-1] <= 5e6: btc = nums[-1]; break
+    return date, btc
+
 def ibit():
-    # iShares publishes a holdings CSV; the BTC row carries the quantity. Endpoint pattern used by their product pages.
-    url = 'https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax?fileType=csv&fileName=IBIT_holdings&dataType=fund'
-    txt = _csv_text(_get(url)); date = None; btc = None
+    # Primary: the SpreadsheetML 'fund' file (same .ajax endpoint the site's own download button uses).
+    base = 'https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax'
+    try:
+        txt = _get(base + '?fileType=xls&fileName=iShares-Bitcoin-Trust-ETF_fund&dataType=fund').text
+        if '<ss:Workbook' in txt[:2000]:
+            date, btc = _ibit_parse_xls(txt)
+            if date and btc: return date, btc
+    except Exception: pass
+    # Fallback: the CSV variant (historically returned an HTML page; kept in case iShares restores it)
+    txt = _csv_text(_get(base + '?fileType=csv&fileName=IBIT_holdings&dataType=fund')); date = None; btc = None
     m = re.search(r'Fund Holdings as of,"?([A-Za-z]{3} \d{1,2}, \d{4})', txt)
     if m: date = dt.datetime.strptime(m.group(1), '%b %d, %Y').date().isoformat()
     for row in csv.reader(io.StringIO(txt)):
-        head = ' '.join(row[:2]).upper()   # ticker and name cells only; the asset-class cell says "Cash and/or Derivatives" for the coin itself
+        head = ' '.join(row[:2]).upper()
         if row and (row[0].strip().upper() == 'BTC' or 'BITCOIN' in head) and 'USD CASH' not in head and 'TREASURY' not in head:
-            # the coin quantity is the largest number in the row that is a plausible BTC count (dollar notional is far larger)
             cands = [v for v in (_num(c) for c in row) if v and 1e4 <= v <= 5e6]
             if cands: btc = max(cands); break
     return date or TODAY, btc
