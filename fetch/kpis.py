@@ -273,7 +273,7 @@ def kpi_metcalfe(bc):
             # numbers and are kept for one release; 'full history' is a misnomer, since the true full-history fit from 2010 is the one the site rejects.
             'value_reference': round(met_full, 2), 'reference_fit_from': '2011-01-01', 'sigma_pts_reference': round(sig_full, 1), 'oos_rmse_pts_reference': oos_f,
             'value_full_history': round(met_full, 2), 'full_history_fit_from': '2011-01-01', 'sigma_pts_full_history': round(sig_full, 1),
-            'prem_sorted_full_history': [round(float(v), 2) for v in pfs[::10]], 'prem_full_p10_p50_p90': [round(float(np.quantile(pfs, q)), 1) for q in (0.1, 0.5, 0.9)], 'k': float(np.exp(k)), 'sigma_pts': round(sig, 1), 'r2_window': round(float(r2), 3), 'premium_pct_close': round(float(prem[-1]), 1),
+            'prem_sorted_full_history': [round(float(v), 2) for v in pfs[::10]], 'prem_full_p10_p50_p90': [round(float(np.quantile(pfs, q)), 1) for q in (0.1, 0.5, 0.9)], 'prem_sorted_reference': [round(float(v), 2) for v in pfs[::10]], 'prem_reference_p10_p50_p90': [round(float(np.quantile(pfs, q)), 1) for q in (0.1, 0.5, 0.9)], 'k': float(np.exp(k)), 'sigma_pts': round(sig, 1), 'r2_window': round(float(r2), 3), 'premium_pct_close': round(float(prem[-1]), 1),
             'percentile_close': round(pct_of(ps, prem[-1]), 0), 'prem_sorted_p10_p50_p90': [round(float(np.quantile(ps, q)), 1) for q in (0.1, 0.5, 0.9)],
             'users': float(n[-1]), 'effective_supply': float(seff[-1]), 'fit_from': '2017-01-01', 'spec': 'cumulative addresses, n², no lost-coin adjustment, fit 2017 onward',
             'prem_sorted': [round(float(v), 2) for v in ps[::10]], 'oos_rmse_pts': oos_v, 'oos_rmse_pts_full_history': oos_f, 'spark': spark(dates, price, met)}, dates, price, met

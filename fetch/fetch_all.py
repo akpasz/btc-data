@@ -344,7 +344,7 @@ def src_etf():
         if bc: price = {d: v for d, v in bc['series'].get('price', [])}
     except Exception: pass
     res = etf.run(OUT, price)
-    manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures'}
+    manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures', **freshness('etf_flows', res.get('last_date'))}
     print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
 # ---------------------------------------------------------------- Relative value: what one bitcoin buys of other assets
