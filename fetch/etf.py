@@ -127,8 +127,17 @@ def hodl():
         raise RuntimeError('HODL holdings dataset did not yield the Bitcoin row; endpoint or block id may have changed')
     return date, btc
 
-ISSUERS = [('IBIT', 'iShares Bitcoin Trust', ibit), ('GBTC', 'Grayscale Bitcoin Trust', lambda: grayscale('GBTC')), ('BTC', 'Grayscale Bitcoin Mini Trust', lambda: grayscale('BTC')),
-           ('ARKB', 'ARK 21Shares Bitcoin ETF', arkb), ('BITB', 'Bitwise Bitcoin ETF', bitwise), ('HODL', 'VanEck Bitcoin ETF', hodl)]
+ISSUERS = [('IBIT', 'iShares Bitcoin Trust', ibit), ('ARKB', 'ARK 21Shares Bitcoin ETF', arkb),
+           ('BITB', 'Bitwise Bitcoin ETF', bitwise), ('HODL', 'VanEck Bitcoin ETF', hodl)]
+# Issuers with no primary machine-readable daily disclosure this pipeline can read. Each was investigated;
+# the reason is published in etf_flows.json so readers can judge the coverage gap rather than guess at it.
+# grayscale() above is retained unused: if Grayscale ever server-renders those figures again it is a one-line re-add.
+NO_PRIMARY_SOURCE = {
+    'GBTC': 'Grayscale Bitcoin Trust ETF: product page is script-rendered and rate-limits automated requests; no public data endpoint found',
+    'BTC':  'Grayscale Bitcoin Mini Trust: same page technology and limits as GBTC',
+    'FBTC': 'Fidelity Wise Origin Bitcoin Fund: no machine-readable daily holdings file published; product pages are script-rendered',
+    'BTCO': 'Invesco Galaxy Bitcoin ETF: quarterly PDF fact sheet only; no daily quantity endpoint',
+}
 # FBTC: no machine-readable primary file (JS-only pages; aggregators rejected as secondary). BTCO, EZBC, BRRR, BTCW: pending parsers; their pages are JS-rendered or PDF-only and need per-issuer work after the first run.
 
 def run(out_dir, price_by_date):
@@ -149,14 +158,17 @@ def run(out_dir, price_by_date):
         for (d0, b0), (d1, b1) in zip(ser, ser[1:]):
             px = price_by_date.get(d1); 
             if px: flows.setdefault(d1, 0.0); flows[d1] += (b1 - b0) * px
+    latest = {tk: ser[-1] for tk, ser in hold.items() if ser}
+    coverage = {'issuers_covered': sorted(latest), 'btc_covered': round(sum(v[1] for v in latest.values()), 4),
+                'issuers_not_covered': sorted(list(NO_PRIMARY_SOURCE) + ['EZBC', 'BRRR', 'BTCW']),
+                'note': 'coverage is the sum of the latest disclosure from each covered issuer; it is not total spot-ETF holdings'}
     total_btc = {}
     for tk, ser in hold.items():
         if ser: total_btc[ser[-1][0]] = total_btc.get(ser[-1][0], 0) + ser[-1][1]
     doc = {'source': 'etf_flows', 'source_url': 'issuer daily holdings (see status)', 'fetched_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
            'note': 'net flow = change in BTC held x price; accumulates from first successful run; issuers without a parser are listed as pending',
-           'issuers': status, 'pending': ['EZBC', 'BRRR', 'BTCW'],
-           'no_primary_source': {'FBTC': 'Fidelity publishes no machine-readable daily holdings file; product pages are script-rendered',
-                                 'BTCO': 'Invesco publishes a quarterly PDF fact sheet only; no daily quantity endpoint'},
+           'issuers': status, 'pending': ['EZBC', 'BRRR', 'BTCW'], 'no_primary_source': NO_PRIMARY_SOURCE,
+           'coverage': coverage,
            'series': {'net_flow_usd': sorted([[d, v] for d, v in flows.items()]), 'btc_held_by_issuer': {tk: ser[-1] for tk, ser in hold.items() if ser}}}
     with open(os.path.join(out_dir, 'etf_flows.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
     ok = [k for k, v in status.items() if v['status'] == 'ok']
