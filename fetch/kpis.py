@@ -57,6 +57,37 @@ def oos_rmse(dates, lnP, X, start):
 # ------------------------------------------------------------ Extended KPIs (Tier 1: computed from series already in the snapshot;
 # Tier 2 blocks activate automatically once their fetchers are deployed). Everything here is additive: the existing
 # sections and self-test are untouched, and any failure is caught in main() so it can never break the pipeline.
+def technical_state(prices):
+    """Compact technical readings for the dashboard: relative strength, the 50/200 relationship,
+    price against the 200-day average and 30-day realised volatility. Definitions match the
+    technical-signals page exactly so the two surfaces cannot disagree; that page carries the
+    historical record of these rules, this publishes only the current state."""
+    import math as _m
+    p = [float(x) for x in prices if x and float(x) > 0]
+    if len(p) < 260:
+        return None
+    w = 14
+    au = sum(max(p[i] - p[i - 1], 0.0) for i in range(1, w + 1)) / w
+    ad = sum(max(p[i - 1] - p[i], 0.0) for i in range(1, w + 1)) / w
+    for i in range(w + 1, len(p)):
+        d = p[i] - p[i - 1]
+        au = (au * (w - 1) + max(d, 0.0)) / w
+        ad = (ad * (w - 1) + max(-d, 0.0)) / w
+    rsi = 100 - 100 / (1 + au / ad) if ad > 0 else 100.0
+    ma50 = sum(p[-50:]) / 50.0
+    ma200 = sum(p[-200:]) / 200.0
+    lr = [_m.log(p[i] / p[i - 1]) for i in range(len(p) - 30, len(p))]
+    mu = sum(lr) / len(lr)
+    rv = (sum((x - mu) ** 2 for x in lr) / len(lr)) ** 0.5 * (365 ** 0.5) * 100
+    return {'rsi_14': round(rsi, 1),
+            'rsi_state': 'stretched upward' if rsi > 70 else ('stretched downward' if rsi < 30 else 'neither extreme'),
+            'ma50': round(ma50, 2), 'ma200': round(ma200, 2),
+            'trend': '50-day above the 200-day' if ma50 > ma200 else '50-day below the 200-day',
+            'price_vs_ma200_pct': round(100 * (p[-1] / ma200 - 1), 1),
+            'realised_vol_30d': round(rv, 1),
+            'note': 'current readings only; the historical record of these rules is on the technical-signals page'}
+
+
 def kpi_extended(bc, cm, dv, fr=None, cb=None, bn=None, cg=None):
     fr = fr or {}; cb = cb or {}; bn = bn or {}; cg = cg or {}
     pd_, pv = to_daily(bc['price']); keep = pv > 0
@@ -199,6 +230,8 @@ def kpi_extended(bc, cm, dv, fr=None, cb=None, bn=None, cg=None):
         cur = last_of(dv['deribit_putcall_oi_ratio'])
         extras['putcall_oi'] = {'ratio': round(cur, 3) if cur is not None else None}
     if extras: out['flows_extras'] = extras
+    tech = technical_state(list(price[-400:]))
+    if tech: out['technical'] = tech
     return out
 
 def spark(dates, *arrays, weeks=104):
