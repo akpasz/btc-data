@@ -113,16 +113,18 @@ def bitwise():
     return TODAY, float(m.group(1).replace(',', ''))
 
 def hodl():
-    # VanEck server-renders the exact custody figure on the product page: "Bitcoin in Trust" in the ETF Statistics table,
-    # with its as-of date. Read verbatim off https://www.vaneck.com/us/en/investments/bitcoin-etf-hodl/ (2026-08-31: 15,347.858 BTC).
-    txt = _get('https://www.vaneck.com/us/en/investments/bitcoin-etf-hodl/').text
-    d = re.search(r'ETF Statistics as of\s*(\d{2}/\d{2}/\d{4})', txt)
-    date = dt.datetime.strptime(d.group(1), '%m/%d/%Y').date().isoformat() if d else None
-    m = re.search(r'Bitcoin in Trust[^0-9]{0,400}?([0-9][0-9,]*(?:\.[0-9]+)?)', txt, re.S)
-    btc = float(m.group(1).replace(',', '')) if m else None
+    """VanEck exposes a plain JSON holdings dataset (the product page's "Get holdings" link).
+    The Bitcoin row's Shares field is the coin count; AsOfDate is the disclosure date.
+    Note: this is the rounded custody figure VanEck publishes in the holdings table (15,350 on 2026-08-31);
+    their ETF Statistics table shows an unrounded 15,347.858 but is script-rendered and unavailable to a plain fetch."""
+    js = _get('https://www.vaneck.com/Main/HoldingsBlock/GetDataset/?blockId=348327&pageId=243755&ticker=HODL').json()
+    date = (js.get('AsOfDate') or '')[:10] or None
+    btc = None
+    for h in js.get('Holdings', []):
+        if str(h.get('HoldingName', '')).strip().lower() == 'bitcoin':
+            btc = _num(h.get('Shares')); break
     if not (date and btc and 1e3 <= btc <= 5e6):
-        raise RuntimeError('HODL product page did not yield the Bitcoin-in-Trust figure; layout may have changed '
-                           '(fallback file endpoint: /us/en/investments/bitcoin-etf-hodl/downloads/holdings/)')
+        raise RuntimeError('HODL holdings dataset did not yield the Bitcoin row; endpoint or block id may have changed')
     return date, btc
 
 ISSUERS = [('IBIT', 'iShares Bitcoin Trust', ibit), ('GBTC', 'Grayscale Bitcoin Trust', lambda: grayscale('GBTC')), ('BTC', 'Grayscale Bitcoin Mini Trust', lambda: grayscale('BTC')),
@@ -152,10 +154,13 @@ def run(out_dir, price_by_date):
         if ser: total_btc[ser[-1][0]] = total_btc.get(ser[-1][0], 0) + ser[-1][1]
     doc = {'source': 'etf_flows', 'source_url': 'issuer daily holdings (see status)', 'fetched_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
            'note': 'net flow = change in BTC held x price; accumulates from first successful run; issuers without a parser are listed as pending',
-           'issuers': status, 'pending': ['FBTC', 'HODL', 'BTCO', 'EZBC', 'BRRR', 'BTCW'],
+           'issuers': status, 'pending': ['EZBC', 'BRRR', 'BTCW'],
+           'no_primary_source': {'FBTC': 'Fidelity publishes no machine-readable daily holdings file; product pages are script-rendered',
+                                 'BTCO': 'Invesco publishes a quarterly PDF fact sheet only; no daily quantity endpoint'},
            'series': {'net_flow_usd': sorted([[d, v] for d, v in flows.items()]), 'btc_held_by_issuer': {tk: ser[-1] for tk, ser in hold.items() if ser}}}
     with open(os.path.join(out_dir, 'etf_flows.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
     ok = [k for k, v in status.items() if v['status'] == 'ok']
     bad = [k for k, v in status.items() if v['status'] != 'ok']
     # 'partial' when some issuers fail, so the hub does not show a green 'ok' over a mostly-failing source
-    return {'status': ('ok' if not bad else 'partial') if ok else 'error', 'issuers_ok': ok, 'issuers_error': bad, 'pending': doc['pending'], 'note': 'flows derive from daily differences and start accumulating from the first successful run'}
+    last_dates = [v['date'] for v in status.values() if v.get('date')]
+    return {'status': ('ok' if not bad else 'partial') if ok else 'error', 'last_date': max(last_dates) if last_dates else None, 'issuers_ok': ok, 'issuers_error': bad, 'pending': doc['pending'], 'note': 'flows derive from daily differences and start accumulating from the first successful run'}
