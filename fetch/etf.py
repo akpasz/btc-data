@@ -43,9 +43,8 @@ def _csv_text(r):
 
 # --- parsers: each returns (date_iso, btc_held) for the latest disclosure ------------------------------------------
 def _ibit_parse_xls(txt):
-    """iShares 'fund' download is SpreadsheetML whose XML is invalid (unescaped & in disclaimer links),
-    so this is a regex parse, verified against a real downloaded file (2026-08-31: 779,839.6606 BTC).
-    The BTC row's Quantity is the last numeric column."""
+    """iShares SpreadsheetML fund download; the XML is invalid (unescaped & in disclaimer links), so regex parse.
+    Verified against a real downloaded file (2026-08-31: 779,839.6606 BTC). Quantity is the last numeric column of the BTC row."""
     date = None
     m = re.search(r'Fund Holdings as of</ss:Data>.*?<ss:Data[^>]*>([A-Za-z]{3} \d{1,2}, \d{4})</ss:Data>', txt, re.S)
     if m: date = dt.datetime.strptime(m.group(1), '%b %d, %Y').date().isoformat()
@@ -53,31 +52,39 @@ def _ibit_parse_xls(txt):
     for rm in re.finditer(r'<ss:Row[^>]*>\s*<ss:Cell[^>]*>\s*<ss:Data[^>]*>BTC</ss:Data>\s*</ss:Cell>(.*?)</ss:Row>', txt, re.S):
         nums = []
         for c in re.findall(r'<ss:Data[^>]*>(.*?)</ss:Data>', rm.group(1), re.S):
-            c2 = c.replace(',', '').replace('&amp;', '&').strip()
-            try: nums.append(float(c2))
+            try: nums.append(float(c.replace(',', '').strip()))
             except ValueError: pass
         if nums and 1e4 <= nums[-1] <= 5e6: btc = nums[-1]; break
     return date, btc
 
-def ibit():
-    # Primary: the SpreadsheetML 'fund' file (same .ajax endpoint the site's own download button uses).
-    base = 'https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf/1467271812596.ajax'
-    try:
-        txt = _get(base + '?fileType=xls&fileName=iShares-Bitcoin-Trust-ETF_fund&dataType=fund').text
-        if '<ss:Workbook' in txt[:2000]:
-            date, btc = _ibit_parse_xls(txt)
-            if date and btc: return date, btc
-    except Exception: pass
-    # Fallback: the CSV variant (historically returned an HTML page; kept in case iShares restores it)
-    txt = _csv_text(_get(base + '?fileType=csv&fileName=IBIT_holdings&dataType=fund')); date = None; btc = None
+def _ibit_parse_csv(txt):
+    """The product page's direct latest-holdings.csv: header block, then a quoted CSV table whose BTC row carries Quantity."""
+    date = None; btc = None
     m = re.search(r'Fund Holdings as of,"?([A-Za-z]{3} \d{1,2}, \d{4})', txt)
     if m: date = dt.datetime.strptime(m.group(1), '%b %d, %Y').date().isoformat()
     for row in csv.reader(io.StringIO(txt)):
-        head = ' '.join(row[:2]).upper()
-        if row and (row[0].strip().upper() == 'BTC' or 'BITCOIN' in head) and 'USD CASH' not in head and 'TREASURY' not in head:
+        if row and row[0].strip().upper() == 'BTC':
             cands = [v for v in (_num(c) for c in row) if v and 1e4 <= v <= 5e6]
             if cands: btc = max(cands); break
-    return date or TODAY, btc
+    return date, btc
+
+def ibit():
+    # Primary: the static CSV the product page links directly ("Download Holdings CSV").
+    try:
+        txt = _get('https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf/latest-holdings.csv').text
+        if '<html' not in txt[:2000].lower():
+            date, btc = _ibit_parse_csv(txt)
+            if date and btc: return date, btc
+    except Exception: pass
+    # Secondary: the "Data Download" Excel endpoint behind the product page's button (SpreadsheetML).
+    txt = _get('https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document'
+               '?appType=PRODUCT_PAGE&appSubType=ISHARES&targetSite=us-ishares&locale=en_US&portfolioId=333011'
+               '&component=fundDownload&userType=individual').text
+    if '<ss:Workbook' not in txt[:2000]:
+        raise RuntimeError('both IBIT endpoints returned pages, not data files; source needs a new address')
+    date, btc = _ibit_parse_xls(txt)
+    if not (date and btc): raise RuntimeError('IBIT file fetched but the BTC row was not found')
+    return date, btc
 
 def grayscale(ticker):
     # Grayscale product pages expose "Bitcoin per Share" and "Shares Outstanding"; holdings = product of the two
