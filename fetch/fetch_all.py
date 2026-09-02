@@ -308,7 +308,8 @@ def src_derivatives():
             if len(row) > 23 and 'BITCOIN' in row[0].upper() and 'MICRO' not in row[0].upper() and 'CHICAGO MERCANTILE' in row[0].upper():
                 try:
                     d = dt.datetime.strptime(row[2].strip(), '%Y-%m-%d').strftime('%Y-%m-%d')
-                    v = [float(row[i].strip() or 0) for i in range(24)]
+                    # fields 0-6 are text (contract name, report date, code, exchange); only 7 onward are numeric
+                    v = [0.0] * 7 + [float(row[i].strip() or 0) for i in range(7, 24)]
                 except Exception: continue
                 checked += 1
                 if not cot_columns_ok(v): bad += 1; continue      # layout changed: skip rather than publish a wrong column
