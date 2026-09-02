@@ -130,7 +130,8 @@ def src_stablecoins():
 # ---------------------------------------------------------------- FRED macro (CSV, no key)
 def src_fred():
     name = 'fred'; base = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id='
-    ids = {'dollar_index_broad': 'DTWEXBGS', 'fed_funds_effective': 'DFF', 'treasury_10y': 'DGS10', 'real_yield_10y': 'DFII10', 'm2': 'M2SL'}
+    ids = {'dollar_index_broad': 'DTWEXBGS', 'fed_funds_effective': 'DFF', 'treasury_10y': 'DGS10', 'real_yield_10y': 'DFII10', 'm2': 'M2SL',
+           'walcl': 'WALCL', 'tga': 'WTREGEN', 'rrp_on': 'RRPONTSYD'}  # net liquidity trio: WALCL/TGA in $M, RRP in $B (kpis.py handles units)
     series = {}; errs = []
     for key, sid in ids.items():
         try:
@@ -149,6 +150,22 @@ def src_fng():
     name = 'fear_greed'; url = 'https://api.alternative.me/fng/?limit=0&format=json'
     j = get(url).json(); series = {'index': [[day(p['timestamp']), float(p['value'])] for p in j.get('data', [])]}
     save(name, url, series)
+
+# ---------------------------------------------------------------- Binance daily close (UNTESTED stub: verify on first run)
+def src_binance():
+    """BTCUSDT daily closes; the Binance leg of the Coinbase premium in kpis.py. USDT quote, so the USDT
+    peg deviation is inside the premium; that caveat is printed with the metric."""
+    name = 'binance'; url = 'https://api.binance.com/api/v3/klines'
+    j = get(url, params={'symbol': 'BTCUSDT', 'interval': '1d', 'limit': 1000}).json()
+    series = {'close_usdt': [[day(k[0] / 1000), float(k[4])] for k in j]}
+    save(name, url, series, note='daily kline close; merged history accumulates')
+
+# ---------------------------------------------------------------- CoinGecko global (UNTESTED stub: verify on first run)
+def src_coingecko_global():
+    name = 'coingecko_global'; url = 'https://api.coingecko.com/api/v3/global'
+    j = get(url).json()
+    d = float(j['data']['market_cap_percentage']['btc'])
+    save(name, url, {'btc_dominance_pct': [[NOW[:10], d]]}, note='one point per day; history accumulates via merge')
 
 # ---------------------------------------------------------------- Derivatives (Deribit and OKX public)
 def src_derivatives():
@@ -173,6 +190,28 @@ def src_derivatives():
         j = get('https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-volume', params={'ccy': 'BTC', 'period': '1D'}).json()
         series['okx_open_interest_usd'] = sorted([[day(int(p[0]) / 1000), float(p[1])] for p in j.get('data', [])])
     except Exception as e: errs.append(f'okx_oi: {e}')
+    try:  # Deribit dated-futures basis, annualised, instrument nearest 90 days to expiry (UNTESTED stub: verify on first run)
+        idx = float(get('https://www.deribit.com/api/v2/public/get_index_price', params={'index_name': 'btc_usd'}).json()['result']['index_price'])
+        js = get('https://www.deribit.com/api/v2/public/get_book_summary_by_currency', params={'currency': 'BTC', 'kind': 'future'}).json()['result']
+        best = None
+        for f in js:
+            nm = f.get('instrument_name', '')
+            if 'PERPETUAL' in nm or not f.get('mark_price'): continue
+            try: exp = dt.datetime.strptime(nm.split('-')[1], '%d%b%y').replace(tzinfo=dt.timezone.utc)
+            except Exception: continue
+            days = (exp - dt.datetime.now(dt.timezone.utc)).days
+            if days < 30: continue
+            if best is None or abs(days - 90) < abs(best[0] - 90): best = (days, float(f['mark_price']))
+        if best and idx > 0:
+            basis = ((best[1] / idx) - 1) * 365 / best[0] * 100
+            series['deribit_basis_90d_ann_pct'] = [[NOW[:10], round(basis, 3)]]
+    except Exception as e: errs.append(f'basis: {e}')
+    try:  # Deribit options put/call open-interest ratio (UNTESTED stub: verify on first run; OI is in BTC, ratio is unitless)
+        jo = get('https://www.deribit.com/api/v2/public/get_book_summary_by_currency', params={'currency': 'BTC', 'kind': 'option'}).json()['result']
+        oc = sum(o.get('open_interest', 0) or 0 for o in jo if o.get('instrument_name', '').endswith('-C'))
+        op = sum(o.get('open_interest', 0) or 0 for o in jo if o.get('instrument_name', '').endswith('-P'))
+        if oc > 0: series['deribit_putcall_oi_ratio'] = [[NOW[:10], round(op / oc, 4)]]
+    except Exception as e: errs.append(f'putcall: {e}')
     try:  # CME bitcoin futures open interest via CFTC commitments of traders (weekly, public CSV)
         txt = get('https://www.cftc.gov/dea/newcot/FinFutWk.txt').text; rd = csv.reader(io.StringIO(txt)); pts = []
         for row in rd:
@@ -197,8 +236,8 @@ def src_etf():
     manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures'}
     print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
-SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('mempool', src_mempool),
-           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('derivatives', src_derivatives), ('etf_flows', src_etf)]
+SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('binance', src_binance), ('mempool', src_mempool),
+           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('etf_flows', src_etf)]
 
 def main():
     os.makedirs(OUT, exist_ok=True); print('Snapshot at', NOW)

@@ -54,6 +54,142 @@ def oos_rmse(dates, lnP, X, start):
         errs += [float(lnP[i] - k - X[i]) for i, d in enumerate(dates) if cut <= d < end]
     return round(100 * math.sqrt(sum(e * e for e in errs) / len(errs)), 1) if errs else None
 
+# ------------------------------------------------------------ Extended KPIs (Tier 1: computed from series already in the snapshot;
+# Tier 2 blocks activate automatically once their fetchers are deployed). Everything here is additive: the existing
+# sections and self-test are untouched, and any failure is caught in main() so it can never break the pipeline.
+def kpi_extended(bc, cm, dv, fr=None, cb=None, bn=None, cg=None):
+    fr = fr or {}; cb = cb or {}; bn = bn or {}; cg = cg or {}
+    pd_, pv = to_daily(bc['price']); keep = pv > 0
+    dates = [d for d, k in zip(pd_, keep) if k]; price = pv[keep]
+    n = len(dates); W = dt.date(2017, 1, 1); w = np.array([d >= W for d in dates])
+
+    def ffill(series):
+        if not series: return np.full(n, np.nan)
+        ds, vs = to_daily(series); m = dict(zip(ds, vs)); arr = np.full(n, np.nan); cur = np.nan
+        for i, d in enumerate(dates):
+            if d in m: cur = m[d]
+            arr[i] = cur
+        return arr
+    def sma(a, wdw):
+        out = np.full(n, np.nan); c = np.nancumsum(np.where(np.isfinite(a), a, 0)); k = np.cumsum(np.isfinite(a))
+        for i in range(wdw - 1, n):
+            cnt = k[i] - (k[i - wdw] if i >= wdw else 0)
+            if cnt >= wdw * 0.8: out[i] = (c[i] - (c[i - wdw] if i >= wdw else 0)) / cnt
+        return out
+    def pct(arr, v, win=None):
+        win = w if win is None else win
+        srt = np.sort(arr[win & np.isfinite(arr)])
+        return round(pct_of(srt, v), 0) if len(srt) > 100 and np.isfinite(v) else None
+    def fwd365(signal, buckets, cur):
+        rows = []
+        for lo, hi, lab in buckets:
+            rets = [100 * (price[i + 365] / price[i] - 1) for i in range(n - 365)
+                    if w[i] and np.isfinite(signal[i]) and lo <= signal[i] < hi]
+            med = round(float(np.median(rets)), 0) if rets else None
+            rows.append({'bucket': lab, 'median_365d_pct': med, 'days': len(rets), 'current': bool(np.isfinite(cur) and lo <= cur < hi)})
+        return rows
+
+    iss = ffill(cm.get('IssTotUSD')); fees = ffill(bc.get('fees_usd')); hr = ffill(bc.get('hash_rate'))
+    txv = ffill(bc.get('tx_volume_usd')); mkt = ffill(cm.get('CapMrktCurUSD')); mvrv = ffill(cm.get('CapMVRVCur'))
+    adract = ffill(cm.get('AdrActCnt')); adrbal = ffill(cm.get('AdrBalCnt')); dvol = ffill(dv.get('deribit_dvol_close'))
+    i = n - 1; out = {'as_of': dates[i].isoformat(), 'window': W.isoformat(),
+                      'note': 'Tier 1 metrics from series already in the snapshot; percentiles over the stated window at daily close. Descriptive, not signals; forward-return rows are in-sample with overlapping windows.'}
+
+    ma200 = sma(price, 200); mayer = price / ma200; mv_ = float(mayer[i]) if np.isfinite(mayer[i]) else None
+    out['mayer'] = {'value': round(mv_, 3) if mv_ else None, 'pct': pct(mayer, mayer[i]),
+                    'ma200': round(float(ma200[i]), 2) if np.isfinite(ma200[i]) else None}
+    iss365 = sma(iss, 365); puell = iss / iss365; pu = float(puell[i]) if np.isfinite(puell[i]) else None
+    out['puell'] = {'value': round(pu, 3) if pu else None, 'pct': pct(puell, puell[i])}
+    nupl = np.where(mvrv > 0, 1 - 1 / mvrv, np.nan); nu = float(nupl[i]) if np.isfinite(nupl[i]) else None
+    out['nupl'] = {'value': round(nu, 3) if nu is not None else None, 'pct': pct(nupl, nupl[i]),
+                   'zone': None if nu is None else ('capitulation' if nu < 0 else 'hope' if nu < .25 else 'optimism' if nu < .5 else 'belief' if nu < .75 else 'euphoria')}
+    thermo = np.nancumsum(np.where(np.isfinite(iss), iss, 0)); tratio = np.where(thermo > 0, mkt / thermo, np.nan)
+    out['thermocap'] = {'usd': round(float(thermo[i]), 0), 'multiple': round(float(tratio[i]), 2) if np.isfinite(tratio[i]) else None, 'pct': pct(tratio, tratio[i])}
+    txv90 = sma(txv, 90); nvtc = np.where(txv > 0, mkt / txv, np.nan); nvts = np.where(txv90 > 0, mkt / txv90, np.nan)
+    out['nvt'] = {'classic': round(float(nvtc[i]), 1) if np.isfinite(nvtc[i]) else None,
+                  'signal_90d': round(float(nvts[i]), 1) if np.isfinite(nvts[i]) else None, 'pct_signal': pct(nvts, nvts[i]),
+                  'volume_source': 'blockchain.com estimated tx volume, not entity adjusted'}
+    hr30 = sma(hr, 30); hr60 = sma(hr, 60); cap = hr30 < hr60
+    state = bool(cap[i]) if np.isfinite(hr30[i]) and np.isfinite(hr60[i]) else None
+    streak = 0
+    for k in range(i, -1, -1):
+        if not (np.isfinite(hr30[k]) and np.isfinite(hr60[k])) or bool(cap[k]) != state: break
+        streak += 1
+    last_recovery = None
+    for k in range(i, 0, -1):
+        if np.isfinite(hr30[k]) and np.isfinite(hr60[k]) and (not cap[k]) and cap[k - 1]: last_recovery = dates[k].isoformat(); break
+    out['hash_ribbons'] = {'state': None if state is None else ('capitulation' if state else 'expansion'), 'days_in_state': streak,
+                           'last_recovery_signal': last_recovery, 'hr30_ehs': round(float(hr30[i]) / 1e6, 1) if np.isfinite(hr30[i]) else None,
+                           'hr60_ehs': round(float(hr60[i]) / 1e6, 1) if np.isfinite(hr60[i]) else None}
+    hp = np.where(hr > 0, (iss + fees) / hr, np.nan); hp30 = sma(hp, 30)
+    j = i - 30
+    out['hashprice'] = {'usd_per_th_day': round(float(hp[i]), 4) if np.isfinite(hp[i]) else None, 'pct': pct(hp, hp[i]),
+                        'change_30d_pct': round(float(100 * (hp30[i] / hp30[j] - 1)), 1) if j >= 0 and np.isfinite(hp30[i]) and np.isfinite(hp30[j]) else None}
+    fshare = np.where((fees + iss) > 0, 100 * fees / (fees + iss), np.nan); fs90 = sma(fshare, 90)
+    out['fee_share'] = {'pct_90d': round(float(fs90[i]), 2) if np.isfinite(fs90[i]) else None,
+                        'note': 'fees as a share of miner revenue; the long-run security-budget question'}
+    lr = np.diff(np.log(price)); rv = np.full(n, np.nan)
+    for k in range(30, n): rv[k] = float(np.std(lr[k - 30:k], ddof=1)) * math.sqrt(365) * 100
+    vrp = dvol - rv; wd = np.isfinite(dvol)
+    out['volatility'] = {'realized_30d_pct': round(float(rv[i]), 1) if np.isfinite(rv[i]) else None,
+                         'dvol_pct': round(float(dvol[i]), 1) if np.isfinite(dvol[i]) else None,
+                         'vrp_pts': round(float(vrp[i]), 1) if np.isfinite(vrp[i]) else None,
+                         'vrp_pct': pct(vrp, vrp[i], win=wd),
+                         'note': 'VRP = implied (DVOL) minus realized; persistently positive is normal, negative marks stress'}
+    halvings = [dt.date(2012, 11, 28), dt.date(2016, 7, 9), dt.date(2020, 5, 11), dt.date(2024, 4, 20)]
+    dmap = {d: k for k, d in enumerate(dates)}
+    def px_on(d0):
+        for back in range(6):
+            k = dmap.get(d0 - dt.timedelta(back))
+            if k is not None: return float(price[k]), k
+        return None, None
+    hlast = max(h for h in halvings if h <= dates[i]); days_in = (dates[i] - hlast).days
+    p0, _ = px_on(hlast); comp = {'halving': hlast.isoformat(), 'days_since_halving': days_in,
+                                  'multiple_this_cycle': round(float(price[i]) / p0, 2) if p0 else None, 'prior_cycles_at_same_day': {}}
+    for h in halvings:
+        if h >= hlast: continue
+        ph, kh = px_on(h); pt_, _ = px_on(h + dt.timedelta(days_in))
+        if ph and pt_: comp['prior_cycles_at_same_day'][h.isoformat()[:4]] = round(pt_ / ph, 2)
+    out['cycle'] = comp
+    a30 = sma(adract, 30); j = i - 365
+    out['network'] = {'active_addresses_30d': round(float(a30[i]), 0) if np.isfinite(a30[i]) else None,
+                      'active_addresses_yoy_pct': round(float(100 * (a30[i] / a30[j] - 1)), 1) if j >= 0 and np.isfinite(a30[i]) and np.isfinite(a30[j]) else None,
+                      'addresses_with_balance_yoy_pct': round(float(100 * (adrbal[i] / adrbal[j] - 1)), 1) if j >= 0 and np.isfinite(adrbal[i]) and np.isfinite(adrbal[j]) else None}
+    out['fwd'] = {
+        'mayer': fwd365(mayer, [(-9, .8, 'below 0.8'), (.8, 1, '0.8 to 1.0'), (1, 1.5, '1.0 to 1.5'), (1.5, 2.4, '1.5 to 2.4'), (2.4, 99, 'above 2.4')], mayer[i]),
+        'puell': fwd365(puell, [(-9, .5, 'below 0.5'), (.5, 1, '0.5 to 1.0'), (1, 2, '1.0 to 2.0'), (2, 4, '2.0 to 4.0'), (4, 99, 'above 4.0')], puell[i]),
+        'nupl':  fwd365(nupl, [(-9, 0, 'below 0'), (0, .25, '0 to 0.25'), (.25, .5, '0.25 to 0.50'), (.5, .75, '0.50 to 0.75'), (.75, 9, 'above 0.75')], nupl[i])}
+    out['spark_mayer'] = spark(dates, price, ma200)
+    out['spark_ribbons'] = spark(dates, hr30 / 1e6, hr60 / 1e6)
+
+    extras = {}
+    if fr.get('walcl') and fr.get('tga') and fr.get('rrp_on'):
+        # FRED units: WALCL and WTREGEN in $ millions, RRPONTSYD in $ billions
+        nl = ffill([[d, v * 1e6] for d, v in fr['walcl']]) - ffill([[d, v * 1e6] for d, v in fr['tga']]) - ffill([[d, v * 1e9] for d, v in fr['rrp_on']])
+        j = i - 90
+        extras['fed_net_liquidity'] = {'usd_t': round(float(nl[i]) / 1e12, 3) if np.isfinite(nl[i]) else None,
+                                       'change_90d_pct': round(float(100 * (nl[i] / nl[j] - 1)), 2) if j >= 0 and np.isfinite(nl[j]) else None,
+                                       'spec': 'WALCL - TGA (WTREGEN) - ON RRP (RRPONTSYD)'}
+    if cg.get('btc_dominance_pct'):
+        dom = ffill(cg['btc_dominance_pct']); j = i - 30
+        extras['btc_dominance'] = {'pct': round(float(dom[i]), 2) if np.isfinite(dom[i]) else None,
+                                   'change_30d_pts': round(float(dom[i] - dom[j]), 2) if j >= 0 and np.isfinite(dom[j]) else None}
+    if cb.get('spot') and bn.get('close_usdt'):
+        cbs = ffill(cb['spot']); bns = ffill(bn['close_usdt']); prem = np.where(bns > 0, 100 * (cbs / bns - 1), np.nan)
+        ok = np.isfinite(prem)
+        extras['coinbase_premium'] = {'pct': round(float(prem[i]), 3) if np.isfinite(prem[i]) else None,
+                                      'pct_rank': pct(prem, prem[i], win=ok) if ok.sum() > 100 else None,
+                                      'note': 'Coinbase USD spot vs Binance USDT close; USDT peg deviation is inside this number'}
+    if dv.get('deribit_basis_90d_ann_pct'):
+        bas = ffill(dv['deribit_basis_90d_ann_pct']); ok = np.isfinite(bas)
+        extras['futures_basis'] = {'ann_pct': round(float(bas[i]), 2) if np.isfinite(bas[i]) else None,
+                                   'pct_rank': pct(bas, bas[i], win=ok) if ok.sum() > 100 else None}
+    if dv.get('deribit_putcall_oi_ratio'):
+        pc = ffill(dv['deribit_putcall_oi_ratio'])
+        extras['putcall_oi'] = {'ratio': round(float(pc[i]), 3) if np.isfinite(pc[i]) else None}
+    if extras: out['flows_extras'] = extras
+    return out
+
 def spark(dates, *arrays, weeks=104):
     idx = list(range(len(dates) - 1, -1, -7))[:weeks][::-1]
     return [[dates[i].isoformat()] + [None if not np.isfinite(a[i]) else round(float(a[i]), 4) for a in arrays] for i in idx]
@@ -187,6 +323,10 @@ def main():
     p, _, _, _ = kpi_powerlaw(bc); kp['powerlaw'] = p
     r, _, _, _ = kpi_realised(cm); kp['realised'] = r
     kp['positioning'] = kpi_positioning(bc, dv, st, fg, fr, cm)
+    try:
+        kp['extended'] = kpi_extended(bc, cm, dv, fr=fr, cb=load('coinbase'), bn=load('binance'), cg=load('coingecko_global'))
+    except Exception as e:
+        kp['extended'] = {'error': str(e)[:200]}
     # (4) self-test: recompute each headline a second, independent way and fail loudly on drift
     sf = selftest(kp, bc, cm); kp['selftest'] = sf
     # (2) daily history of the readings (one row per snapshot date, overwritten if the job runs twice in a day)
