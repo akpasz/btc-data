@@ -1,88 +1,81 @@
-# Crypto Exponentials Bitcoin research tools: data layer
+# btc-data — free, keyless Bitcoin research data, updated daily
 
-A free, keyless daily data layer and KPI computation behind the Bitcoin research tools at https://cryptoexponentials.com/tools/.
+Daily snapshot pipeline behind the [Crypto Exponentials Bitcoin Research
+Dashboard](https://cryptoexponentials.com/tools/). Every metric is computed from free, keyless,
+primary public sources, published here as plain JSON, and re-read by the dashboard pages. Anyone may
+read these files directly — this repository is, in effect, a small public API.
 
-GitHub Actions runs `fetch/fetch_all.py` once a day (06:15 UTC), writes one JSON file per source into `data/`, computes each tool's headline readings with an independent self-test, commits the results, and GitHub Pages serves them with open CORS so the tool pages read them directly in the browser.
-
-## What the tools are
-
-| Page | Question | Data used |
-|---|---|---|
-| Dashboard | Four lenses on one price, live, with thesis status and model agreement | kpis.json, manifest.json |
-| Metcalfe Value Monitor | What is the network worth given its users? | Blockchain.com, Coin Metrics |
-| Power Law Monitor | Where is price against its long-run trend in time? | Blockchain.com, Coin Metrics |
-| Realised Value Monitor | What did holders pay, and are they in profit? | Coin Metrics |
-| Flows and Positioning Monitor | Who is buying and how levered is the market? | DefiLlama, Deribit, OKX, CFTC, FRED, Alternative.me, ETF issuers |
-| Methods, Audit and Changelog | The full record: methods, reconciliation, what was rejected, every change | this repository |
-
-Every tool is validated out of sample, states what it claims and does not, and carries a data audit with independent recomputation checks. Methods, audit record and changelog: https://cryptoexponentials.com/tools/methods
-
-## Repository layout
+**Base URLs** (identical content):
 
 ```
-fetch/fetch_all.py        daily snapshot of every source, isolated per source, merged with history
-fetch/kpis.py             headline readings of each tool at its default specification, self-test, daily history
-fetch/etf.py              spot ETF flows from issuer disclosures (partial coverage; see status in manifest)
-fetch/requirements.txt    requests, numpy
-.github/workflows/daily.yml   schedule, commit, Pages build request
-data/                     outputs (committed daily)
+https://akpasz.github.io/btc-data/data/<file>.json
+https://raw.githubusercontent.com/akpasz/btc-data/main/data/<file>.json
 ```
 
-## Files served
+Updated once daily at **06:15 UTC** by GitHub Actions (`.github/workflows/daily.yml`). No keys, no
+rate limits beyond GitHub's own, no tracking.
 
-| File | Source | Content |
-|---|---|---|
-| manifest.json | this job | status of every source, last date per metric, KPI and self-test status, errors |
-| kpis.json | this job | headline readings per tool, their distributions, sparklines, self-test result |
-| kpis_history.json | this job | one row per day: price, Metcalfe (reference and validated), power law, realised, composite |
-| blockchain.json | Blockchain.com Charts API | price, unique addresses, supply, transactions, UTXO count, hash rate, fees, volume |
-| coinmetrics.json | Coin Metrics community API | price, market cap, MVRV, supply, active addresses, addresses with balance, and others the free tier allows |
-| coinbase.json | Coinbase | spot at fetch time |
-| mempool.json | mempool.space | hash rate, difficulty, recommended fee |
-| stablecoins.json | DefiLlama | total stablecoin supply |
-| fred.json | FRED | broad dollar index, fed funds, 10y nominal and real yields, M2 |
-| fear_greed.json | Alternative.me | Fear and Greed index |
-| derivatives.json | Deribit, OKX, CFTC | DVOL, perpetual funding, open interest, CME open interest |
-| etf_flows.json, etf_holdings.json | ETF issuers | holdings by issuer and derived net flows, with per-issuer parse status |
+## Files
 
-Base URL: `https://akpasz.github.io/btc-data/data/` (fallback: `https://raw.githubusercontent.com/akpasz/btc-data/main/data/`).
+| File | Contents | Primary source |
+| --- | --- | --- |
+| `manifest.json` | Run health: per-source status (`ok` / `partial` / `error`), fetch times, last dates, error strings. **Read this first** if you build on the data. | pipeline |
+| `kpis.json` | Every headline reading the dashboard shows, precomputed: Metcalfe value (both calibrations, out-of-sample RMSE), power-law trend, realised price / MVRV / Z-score, positioning composite, self-test results, and the `extended` block (see below). | derived |
+| `kpis_history.json` | One row per day of what `kpis.json` published — the dashboard's own audit trail. | derived |
+| `blockchain.json` | Daily price, unique addresses, supply, hash rate (TH/s), fees USD, estimated tx volume USD. | Blockchain.com Charts API |
+| `coinmetrics.json` | PriceUSD, CapMrktCurUSD, CapRealUSD, CapMVRVCur, SplyCur, supply-activity bands, IssTotUSD, AdrActCnt, AdrBalCnt. | Coin Metrics community API |
+| `coinbase.json` | Daily Coinbase USD spot (accumulating). | Coinbase API |
+| `offshore_spot.json` | OKX BTC-USDT daily closes — the offshore leg of the Coinbase premium. | OKX API |
+| `derivatives.json` | Deribit DVOL, perpetual funding (8h daily mean), dated-future ~90d annualised basis, options put/call OI ratio; OKX open interest; CME OI from the CFTC report. | Deribit / OKX / CFTC |
+| `stablecoins.json` | Total stablecoin supply, all chains. | DefiLlama |
+| `fred.json` | Broad dollar index, fed funds, 10y nominal and real yields, M2, and the net-liquidity trio WALCL / WTREGEN (TGA) / RRPONTSYD. Note FRED units: WALCL and TGA in $ millions, RRP in $ billions. | FRED |
+| `fear_greed.json` | Alternative.me Fear & Greed index. | Alternative.me |
+| `coingecko_global.json` | Bitcoin dominance %, one point per day (accumulating). | CoinGecko |
+| `etf_flows.json`, `etf_holdings.json` | Spot-ETF holdings parsed from issuer disclosures; flows derived from daily differences. Currently `partial` — the manifest lists which issuers parse. | issuer sites |
+| `mempool.json` | Fee estimates and mempool stats. | mempool.space |
+| `references.json` | **Hand-maintained** external reference figures (e.g. Cane Island MET/MAC), dated. Never written by the pipeline; edit and commit to update. | manual |
 
-Each source is independent. If one fails, its previous file is kept and the manifest says so. `kpis.json` is only written if the self-test passes; a day-over-day move above 25% in any headline is recorded as a warning.
+### Series format
 
-## Running it yourself
+Raw source files share one shape:
 
-1. Fork or clone. Public repositories get free Actions minutes and free Pages.
-2. Settings → Actions → General → Workflow permissions → Read and write.
-3. Settings → Pages → Deploy from a branch → main, / (root).
-4. Actions → Daily data snapshot → Run workflow. Read `data/manifest.json`.
-
-Local run: `pip install -r fetch/requirements.txt && python fetch/fetch_all.py` from the repository root.
-
-Health check:
-
-```powershell
-Invoke-RestMethod https://akpasz.github.io/btc-data/data/manifest.json | Select-Object generated_at, kpis, errors
+```json
+{ "fetched_at": "...", "source_url": "...", "series": { "<name>": [["YYYY-MM-DD", value], ...] } }
 ```
 
-## Reproducibility
+Series are merged on write: history accumulates across runs and is deduplicated by date, so
+single-point daily sources (dominance, basis, put/call, spot) grow into full histories over time.
 
-The git history of `data/` is a dated archive of every snapshot and every KPI file the tools have shown. `kpis_history.json` is the readable version. The methods page records how every displayed number was reconciled against an independent recomputation.
+### `kpis.json → extended` (added 2 Sep 2026)
 
-## Maintainer
+Mayer multiple, Puell multiple, NUPL (with zone), thermocap multiple, NVT classic + 90-day signal,
+hash-ribbons state, hashprice, fee share of miner revenue, 30-day realized volatility, variance risk
+premium (DVOL − realized), cycle position vs prior cycles at the same day count, and address
+momentum — each with a percentile over the window from 2017. `extended.fwd` holds median 365-day
+forward returns by canonical bucket for Mayer/Puell/NUPL (in-sample, overlapping windows, labelled
+as such). `extended.flows_extras` carries Fed net liquidity, Bitcoin dominance, the Coinbase
+premium (vs OKX USDT — the caveat is in the field's note), futures basis and put/call OI; their
+30-day changes and percentile ranks populate automatically as history accrues. Formulas and caveats
+are documented on the [methods page](https://cryptoexponentials.com/tools/methods).
 
-Kishor Akshinthala, Founder and Chief Blockchain Officer, Crypto Exponentials, Princeton NJ.
-https://www.linkedin.com/in/kishorakshinthala/ · https://cryptoexponentials.com/tools/
+## Design principles
 
-## Citing
+- **Free and keyless only.** Every source can be re-fetched by anyone; nothing depends on an
+  account or a paid tier.
+- **Isolated sources.** Each fetcher runs in its own try-block; one failing API records a manifest
+  error and touches nothing else.
+- **Honest status.** `partial` means partial. Known gaps (entity-adjusted on-chain metrics such as
+  SOPR, holder cost bases, exchange netflows) are documented rather than approximated; they require
+  UTXO-level or clustered-entity data no free source provides. The roadmap for computing them
+  first-party from a full node (`dumptxoutset` bootstrap + per-block prevout processing) is the
+  planned Tier 3 of this pipeline.
+- **Self-tested.** `kpis.json → selftest` re-derives the headline numbers by an independent
+  implementation on every run and fails the run on disagreement; `kpis_history.json` preserves what
+  was published each day.
 
-Akshinthala, K. (2026). Crypto Exponentials Bitcoin research tools: data snapshot and KPI computation. Crypto Exponentials. https://github.com/akpasz/btc-data
+## Using the data
 
-## Data sources and terms
-
-Blockchain.com Charts API, Coin Metrics community API (CC BY-NC 4.0), Coinbase, mempool.space, DefiLlama, FRED, Alternative.me, Deribit, OKX, CFTC, and ETF issuer disclosures. Each source's terms apply to its data; this repository redistributes daily snapshots for the purpose of running the tools and does not claim rights over the underlying series.
-
-## Licence
-
-Code: MIT (see LICENSE). Data files under `data/` remain subject to their sources' terms.
-
-Nothing in this repository or the tools it serves is investment advice.
+Attribution appreciated: *Crypto Exponentials Research, cryptoexponentials.com/tools*. The
+underlying series remain subject to their original providers' terms (Blockchain.com, Coin Metrics
+community tier, Deribit, OKX, DefiLlama, FRED, Alternative.me, CoinGecko, CFTC, Coinbase,
+mempool.space). Nothing here is investment advice.
