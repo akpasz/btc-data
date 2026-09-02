@@ -387,6 +387,18 @@ def _worldbank_pinksheet():
             except (TypeError, ValueError): pass
     return {'gold': sorted(gold), 'silver': sorted(silver)}
 
+def _datahub_sp500_monthly():
+    """Monthly average S&P 500 level from Robert Shiller's long series, mirrored on GitHub by datahub.io.
+    FRED's free daily series carries only ten years; this gives the ratio its full history from 2010."""
+    txt = get('https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv').text
+    out = []
+    for row in csv.DictReader(io.StringIO(txt)):
+        d = row.get('Date', ''); v = row.get('SP500')
+        if d >= '2009-01-01' and v not in (None, '', '0', '0.0'):
+            try: out.append([d[:7] + '-01', float(v)])
+            except ValueError: pass
+    return sorted(out)
+
 def _datahub_gold_monthly():
     """Fallback for gold only: datahub's mirror of the same World Bank series, hosted on GitHub."""
     txt = get('https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv').text
@@ -398,9 +410,14 @@ def _datahub_gold_monthly():
 def src_relative():
     """Every leg isolated: a failure in one denominator must not remove the others."""
     name = 'relative'; series = {}; errs = []; prov = {}
-    for key, product, start in [('eth_usd', 'ETH-USD', '2016-05-18'), ('sol_usd', 'SOL-USD', '2021-06-01'), ('paxg_usd', 'PAXG-USD', '2020-02-01')]:
+    # btc_usd is a true daily CLOSE. The blockchain.com price used elsewhere is a daily average, which is
+    # right for valuation but wrong for return correlations: averaging smears each day's move across
+    # neighbours and biases correlation toward zero. Correlations must be close against close.
+    for key, product, start in [('btc_usd', 'BTC-USD', '2015-01-01'), ('eth_usd', 'ETH-USD', '2016-05-18'), ('sol_usd', 'SOL-USD', '2021-06-01'), ('paxg_usd', 'PAXG-USD', '2020-02-01')]:
         try: series[key] = _coinbase_daily(product, start); prov[key] = 'Coinbase Exchange daily candles'
         except Exception as e: errs.append(f'{key}: {e}')
+    try: series['sp500_monthly'] = _datahub_sp500_monthly(); prov['sp500_monthly'] = "Robert Shiller's monthly S&P 500 series via datahub.io mirror on GitHub"
+    except Exception as e: errs.append(f'sp500_monthly: {e}')
     for key, sid in [('sp500_daily', 'SP500'), ('nasdaq_daily', 'NASDAQCOM')]:
         try: series[key] = _fred_daily(sid); prov[key] = f'FRED {sid}'
         except Exception as e: errs.append(f'{key}: {e}')
