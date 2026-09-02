@@ -336,8 +336,84 @@ def src_etf():
     manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures'}
     print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
+# ---------------------------------------------------------------- Relative value: what one bitcoin buys of other assets
+def _coinbase_daily(product, start='2016-01-01'):
+    """Daily closes from Coinbase Exchange candles, paginated in 300-day windows. Keyless, primary exchange data."""
+    base = f'https://api.exchange.coinbase.com/products/{product}/candles'
+    end = dt.datetime.now(dt.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    cur = dt.datetime.fromisoformat(start).replace(tzinfo=dt.timezone.utc); pts = {}
+    while cur < end:
+        nxt = min(cur + dt.timedelta(days=300), end)
+        j = get(base, params={'granularity': 86400, 'start': cur.isoformat(), 'end': nxt.isoformat()}).json()
+        for row in j:                       # [time, low, high, open, close, volume]
+            pts[day(row[0])] = float(row[4])
+        cur = nxt; time.sleep(0.35)         # stay well inside the public rate limit
+    return sorted([[d, v] for d, v in pts.items()])
+
+def _fred_daily(sid, since='2009-01-01'):
+    txt = get('https://fred.stlouisfed.org/graph/fredgraph.csv?id=' + sid).text
+    rd = csv.DictReader(io.StringIO(txt)); col = [c for c in rd.fieldnames if c not in ('observation_date', 'DATE')][0]
+    out = []
+    for row in rd:
+        d = row.get('observation_date') or row.get('DATE'); v = row.get(col)
+        if v not in (None, '', '.') and d >= since: out.append([d, float(v)])
+    return out
+
+def _worldbank_pinksheet():
+    """World Bank Commodity Markets 'Pink Sheet', monthly, public domain. Returns {'gold':[[YYYY-MM-01,usd]], 'silver':[...]}."""
+    url = 'https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx'
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(get(url).content), read_only=True, data_only=True)
+    ws = wb['Monthly Prices']; rows = list(ws.iter_rows(values_only=True))
+    hdr_i = next(i for i, r in enumerate(rows) if r and any(isinstance(c, str) and 'Gold' in c for c in r))
+    hdr = [str(c or '').strip() for c in rows[hdr_i]]
+    gi = next(i for i, c in enumerate(hdr) if c.startswith('Gold')); si = next(i for i, c in enumerate(hdr) if c.startswith('Silver'))
+    gold, silver = [], []
+    for r in rows[hdr_i + 1:]:
+        if not r or not r[0]: continue
+        lab = str(r[0]).strip()                                  # e.g. 2010M01
+        if len(lab) == 7 and lab[4] == 'M':
+            d = f'{lab[:4]}-{lab[5:]}-01'
+            if d < '2009-01-01': continue
+            try:
+                if r[gi] is not None: gold.append([d, float(r[gi])])
+                if r[si] is not None: silver.append([d, float(r[si])])
+            except (TypeError, ValueError): pass
+    return {'gold': sorted(gold), 'silver': sorted(silver)}
+
+def _datahub_gold_monthly():
+    """Fallback for gold only: datahub's mirror of the same World Bank series, hosted on GitHub."""
+    txt = get('https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv').text
+    out = []
+    for row in csv.DictReader(io.StringIO(txt)):
+        if row['Date'] >= '2009-01': out.append([row['Date'] + '-01', float(row['Price'])])
+    return sorted(out)
+
+def src_relative():
+    """Every leg isolated: a failure in one denominator must not remove the others."""
+    name = 'relative'; series = {}; errs = []; prov = {}
+    for key, product, start in [('eth_usd', 'ETH-USD', '2016-05-18'), ('sol_usd', 'SOL-USD', '2021-06-01'), ('paxg_usd', 'PAXG-USD', '2020-02-01')]:
+        try: series[key] = _coinbase_daily(product, start); prov[key] = 'Coinbase Exchange daily candles'
+        except Exception as e: errs.append(f'{key}: {e}')
+    for key, sid in [('sp500_daily', 'SP500'), ('nasdaq_daily', 'NASDAQCOM')]:
+        try: series[key] = _fred_daily(sid); prov[key] = f'FRED {sid}'
+        except Exception as e: errs.append(f'{key}: {e}')
+    try:
+        wbk = _worldbank_pinksheet()
+        series['gold_usd_monthly'] = wbk['gold']; series['silver_usd_monthly'] = wbk['silver']
+        prov['gold_usd_monthly'] = prov['silver_usd_monthly'] = 'World Bank Commodity Markets (Pink Sheet), monthly average, public domain'
+    except Exception as e:
+        errs.append(f'worldbank: {e}')
+        try: series['gold_usd_monthly'] = _datahub_gold_monthly(); prov['gold_usd_monthly'] = 'World Bank Pink Sheet via datahub.io mirror on GitHub'
+        except Exception as e2: errs.append(f'gold fallback: {e2}')
+    if not series: raise RuntimeError('; '.join(errs))
+    save(name, 'Coinbase Exchange, FRED, World Bank', series,
+         note=('Denominators for bitcoin priced in other assets. ' + ('; '.join(errs) if errs else 'all legs ok')))
+    manifest[name]['provenance'] = prov
+    if errs: manifest[name]['note'] = '; '.join(errs)
+
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('offshore_spot', src_offshore_spot), ('mempool', src_mempool),
-           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('etf_flows', src_etf)]
+           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf)]
 
 def main():
     os.makedirs(OUT, exist_ok=True); print('Snapshot at', NOW)
