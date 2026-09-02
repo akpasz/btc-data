@@ -172,6 +172,20 @@ def src_coingecko_global():
     save(name, url, {'btc_dominance_pct': [[NOW[:10], d]]}, note='one point per day; history accumulates via merge')
 
 # ---------------------------------------------------------------- Derivatives (Deribit and OKX public)
+def cot_columns_ok(v, tol=1.0):
+    """Self-test for the CFTC Traders in Financial Futures column layout, using the report's own identities:
+    each side's category legs plus the spreading columns must equal total reportable, and total reportable
+    plus non-reportable must equal open interest. If the file's layout ever shifts, this returns False and
+    the caller skips the row instead of publishing a number read from the wrong column."""
+    try:
+        spreads = v[10] + v[13] + v[16] + v[19]
+        long_ok = abs((v[8] + v[11] + v[14] + v[17] + spreads) - v[20]) <= tol
+        short_ok = abs((v[9] + v[12] + v[15] + v[18] + spreads) - v[21]) <= tol
+        oi_ok = abs((v[20] + v[22]) - v[7]) <= tol
+        return long_ok and short_ok and oi_ok
+    except Exception:
+        return False
+
 # ---------------------------------------------------------------- options skew (helper for src_derivatives)
 def _norm_cdf(x):
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
@@ -284,13 +298,26 @@ def src_derivatives():
                 series['deribit_skew_25d_pts'] = [[NOW[:10], sk['skew_25d']]]
                 series['deribit_butterfly_25d_pts'] = [[NOW[:10], sk['fly_25d']]]
     except Exception as e: errs.append(f'skew: {e}')
-    try:  # CME bitcoin futures open interest via CFTC commitments of traders (weekly, public CSV)
-        txt = get('https://www.cftc.gov/dea/newcot/FinFutWk.txt').text; rd = csv.reader(io.StringIO(txt)); pts = []
+    try:  # CME bitcoin futures, CFTC Traders in Financial Futures (weekly, public comma-delimited file).
+        # Column map (verified against the file's own identities, see cot_columns_ok): 7 open interest,
+        # 8/9/10 dealer L/S/spread, 11/12/13 asset manager, 14/15/16 leveraged funds, 17/18/19 other,
+        # 20/21 total reportable L/S, 22/23 non-reportable L/S. Leveraged funds are hedge funds and CTAs.
+        txt = get('https://www.cftc.gov/dea/newcot/FinFutWk.txt').text; rd = csv.reader(io.StringIO(txt))
+        oi, lev_l, lev_s, lev_n, checked, bad = [], [], [], [], 0, 0
         for row in rd:
-            if len(row) > 8 and 'BITCOIN' in row[0].upper() and 'CHICAGO MERCANTILE' in row[0].upper():
-                try: pts.append([dt.datetime.strptime(row[2].strip(), '%Y-%m-%d').strftime('%Y-%m-%d'), float(row[7])])
-                except Exception: pass
-        if pts: series['cme_btc_open_interest_contracts'] = sorted(pts)
+            if len(row) > 23 and 'BITCOIN' in row[0].upper() and 'MICRO' not in row[0].upper() and 'CHICAGO MERCANTILE' in row[0].upper():
+                try:
+                    d = dt.datetime.strptime(row[2].strip(), '%Y-%m-%d').strftime('%Y-%m-%d')
+                    v = [float(row[i].strip() or 0) for i in range(24)]
+                except Exception: continue
+                checked += 1
+                if not cot_columns_ok(v): bad += 1; continue      # layout changed: skip rather than publish a wrong column
+                oi.append([d, v[7]]); lev_l.append([d, v[14]]); lev_s.append([d, v[15]]); lev_n.append([d, v[14] - v[15]])
+        if checked and bad == checked: raise RuntimeError('CFTC column layout no longer reconciles; leaving the series unchanged')
+        if oi:
+            series['cme_btc_open_interest_contracts'] = sorted(oi)
+            series['cme_btc_leveraged_long'] = sorted(lev_l); series['cme_btc_leveraged_short'] = sorted(lev_s)
+            series['cme_btc_leveraged_net'] = sorted(lev_n)
     except Exception as e: errs.append(f'cftc: {e}')
     if not series: raise RuntimeError('; '.join(errs))
     save(name, 'Deribit, OKX, CFTC public endpoints', series, note=('partial: ' + '; '.join(errs)) if errs else '')
