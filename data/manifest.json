@@ -1,71 +1,72 @@
 {
- "generated_at": "2026-09-02T01:58:43+00:00",
+ "generated_at": "2026-09-02T02:12:21+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
-    "utxo_count": 6431,
-    "fees_usd": 6430,
-    "tx_volume_usd": 5827,
     "price": 6451,
-    "unique_addresses": 6415,
     "supply": 6446,
     "hash_rate": 6441,
-    "transactions": 6427
+    "fees_usd": 6430,
+    "tx_volume_usd": 5827,
+    "utxo_count": 6431,
+    "transactions": 6427,
+    "unique_addresses": 6415
    },
    "last_date": "2026-09-02",
    "source_url": "https://api.blockchain.info/charts/"
   },
   "coinmetrics": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
-    "AdrBalCnt": 5890,
     "IssTotUSD": 5889,
-    "HashRate": 5891,
-    "SplyCur": 5890,
-    "CapMrktCurUSD": 5889,
     "ROI30d": 5860,
+    "SplyCur": 5890,
     "PriceUSD": 5890,
-    "AdrActCnt": 5891,
+    "AdrBalCnt": 5890,
+    "HashRate": 5891,
     "CapMVRVCur": 5889,
-    "TxCnt": 5890
+    "AdrActCnt": 5891,
+    "TxCnt": 5890,
+    "CapMrktCurUSD": 5889
    },
    "last_date": "2026-09-01",
    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
     "spot": 2
    },
    "last_date": "2026-09-02",
    "source_url": "https://api.coinbase.com/v2/prices/BTC-USD/spot"
   },
-  "binance": {
-   "status": "error",
-   "error": "451 Client Error:  for url: https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
-   "source_url": "",
-   "kept_previous": false,
-   "previous_fetched_at": null
+  "offshore_spot": {
+   "status": "ok",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
+   "metrics": {
+    "close_usdt": 300
+   },
+   "last_date": "2026-09-01",
+   "source_url": "https://www.okx.com/api/v5/market/candles"
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
-    "difficulty": 79,
+    "hash_rate_ehs": 1097,
     "fee_fastest_sat_vb": 2,
-    "hash_rate_ehs": 1097
+    "difficulty": 79
    },
    "last_date": "2026-09-02",
    "source_url": "https://mempool.space/api/v1/"
   },
   "stablecoins": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
     "total_usd": 3199
    },
@@ -74,23 +75,23 @@
   },
   "fred": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
-    "real_yield_10y": 4418,
-    "tga": 921,
-    "walcl": 921,
-    "fed_funds_effective": 6452,
-    "treasury_10y": 4418,
     "m2": 211,
+    "rrp_on": 3246,
+    "real_yield_10y": 4418,
     "dollar_index_broad": 4397,
-    "rrp_on": 3246
+    "walcl": 921,
+    "tga": 921,
+    "treasury_10y": 4418,
+    "fed_funds_effective": 6452
    },
    "last_date": "2026-09-01",
    "source_url": "https://fred.stlouisfed.org/"
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
     "index": 3132
    },
@@ -99,7 +100,7 @@
   },
   "coingecko_global": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
     "btc_dominance_pct": 1
    },
@@ -108,14 +109,14 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "metrics": {
-    "cme_btc_open_interest_contracts": 1,
-    "deribit_dvol_close": 1001,
     "deribit_funding_8h_daily_mean": 362,
-    "deribit_putcall_oi_ratio": 1,
+    "okx_open_interest_usd": 180,
     "deribit_basis_90d_ann_pct": 1,
-    "okx_open_interest_usd": 180
+    "deribit_dvol_close": 1001,
+    "cme_btc_open_interest_contracts": 1,
+    "deribit_putcall_oi_ratio": 1
    },
    "last_date": "2026-09-02",
    "source_url": "Deribit, OKX, CFTC public endpoints"
@@ -140,7 +141,7 @@
     "BTCW"
    ],
    "note": "flows derive from daily differences and start accumulating from the first successful run",
-   "fetched_at": "2026-09-02T01:58:43+00:00",
+   "fetched_at": "2026-09-02T02:12:21+00:00",
    "source_url": "issuer disclosures"
   }
  },
@@ -153,10 +154,9 @@
   "fear_greed",
   "fred",
   "mempool",
+  "offshore_spot",
   "stablecoins"
  ],
- "errors": [
-  "binance"
- ],
+ "errors": [],
  "kpis": "ok"
 }
