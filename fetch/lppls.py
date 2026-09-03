@@ -24,7 +24,9 @@ Everything is computed as of each day on data up to that day only; the history i
 
 Caveats recorded here and on the page:
   * The fit is multi-modal. The search is a fixed coarse grid (8 tc x 3 m x 3 w) followed by Nelder-Mead;
-    the result is conditional on that search, and it is not the original authors' numerical optimiser.
+    the critical time is searched over the full interval the primary filter permits, (T, T + dt], with
+    12 grid points then Nelder-Mead; the result is conditional on that search, and it is not the original
+    authors' numerical optimiser.
   * Prices are daily averages, not closes.
   * The published fit diagnostics include C/|B| so the size of the oscillatory component can be read.
 """
@@ -56,7 +58,7 @@ def fit_window(t, y, maxiter=400):
     """Best LPPLS fit on one window. t in days (monotone), y = ln price. Returns a dict or None."""
     from scipy.optimize import minimize
     T = t[-1]; span = t[-1] - t[0]; best = None
-    for tc in np.linspace(T + 2, T + 0.4 * span, 8):
+    for tc in np.linspace(T + 2, T + 1.0 * span, 12):  # full interval the primary filter permits (T, T + dt]
         for m in (0.2, 0.5, 0.8):
             for w in (6.0, 9.0, 12.0):
                 r = _lin(t, y, tc, m, w)
@@ -125,8 +127,8 @@ def reading(logp, i):
             neg += 1
         if qualifies(f, +1, FILTERS_STRICT):
             pos_s += 1
-    if tot == 0:
-        return None
+    if tot < len(WINDOWS):
+        return None  # the published reading is a share of eight windows; fewer than eight is not published
     return {'pos': pos / tot, 'neg': neg / tot, 'pos_strict': pos_s / tot, 'windows': tot,
             'tc_days': float(np.median(tcs)) if tcs else None,
             'best': {k: round(best_pos[k], 4) for k in ('m', 'w', 'B', 'C', 'c_over_b', 'damping', 'osc', 'r2', 'rel_rmse')} if best_pos else None}
@@ -159,15 +161,17 @@ def build_history(dates, prices, out_path, existing=None, log=print, baseline=No
     series = {key: sorted([[d, v.get(key)] for d, v in rows.items() if v.get(key) is not None]) for key in ('lppls_pos', 'lppls_neg', 'lppls_pos_strict', 'lppls_tc_days')}
     today = reading(logp, n - 1)
     doc = {'source': 'lppls', 'computed_at': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
-           'method': 'Filimonov-Sornette (2013) linearised LPPLS; fixed grid (8 tc x 3 m x 3 w) then Nelder-Mead; confidence = share of the 8 window lengths whose best fit passes the filters',
+           'method': 'Filimonov-Sornette (2013) linearised LPPLS; fixed grid (12 tc over the full permitted interval x 3 m x 3 w) then Nelder-Mead; confidence = share of the 8 window lengths whose best fit passes the filters',
            'windows_days': WINDOWS, 'window_convention': 'a W-day window is the last W observations, dt = t2 - t1 + 1',
            'filters_primary': FILTERS, 'filters_sensitivity': FILTERS_STRICT,
            'specification_note': 'the primary specification is the published Gerlach-Demos-Sornette (2019) rule set, fixed before evaluation; the strict set is a sensitivity analysis and is never used to select a result',
            'history_note': 'daily from 2013-01-01, computed point-in-time on daily-average prices',
            'random_baseline': baseline,
            'today': today, 'series': series}
-    with open(out_path, 'w') as f:
+    tmp = out_path + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump(doc, f, separators=(',', ':'))
+    os.replace(tmp, out_path)  # atomic on POSIX: the previous file survives any failure before this line
     return doc
 
 
