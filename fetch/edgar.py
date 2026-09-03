@@ -68,7 +68,9 @@ def find_bitcoin_quantity(facts):
             # The standard element since ASU 2023-08 is us-gaap:CryptoAssetNumberOfUnits, whose label says
             # "Crypto Asset, Number of Units" and never "bitcoin". For a single-asset bitcoin trust it IS the
             # coin count. Custom bitcoin-labelled elements from earlier filings are still accepted.
-            is_std = name == 'CryptoAssetNumberOfUnits'
+            # Three standard elements carry a single-asset trust's coin count depending on the sponsor's tagging:
+            # CryptoAssetNumberOfUnits (ASU 2023-08), InvestmentOwnedBalanceShares (Fidelity), InvestmentOwnedBalanceContracts (ARK).
+            is_std = name in ('CryptoAssetNumberOfUnits', 'InvestmentOwnedBalanceShares', 'InvestmentOwnedBalanceContracts')
             if not is_std and 'bitcoin' not in text and 'btc' not in text and 'crypto asset' not in text and 'cryptoasset' not in text: continue
             if any(w in text for w in ('per share', 'fair value', 'cost', 'usd', 'dollar', 'price', 'fee', 'expense', 'gain', 'loss', 'payable', 'proceeds', 'purchase', 'sold', 'value')):
                 # value-like labels are excluded; quantity labels are short ("Bitcoin", "Bitcoin quantity", "Bitcoin held")
@@ -77,10 +79,21 @@ def find_bitcoin_quantity(facts):
                 if unit.upper() in ('USD', 'USD/SHARES', 'USD-PER-SHARES'): continue
                 inst = [r for r in rows if r.get('end') and r.get('val') is not None and (not r.get('start') or r.get('start') == r.get('end'))
                         and COIN_RANGE[0] <= float(r['val']) <= COIN_RANGE[1] and r.get('form', '') in ('10-Q', '10-K', '10-Q/A', '10-K/A')]
-                if len(inst) >= 2: candidates.append((f'{taxonomy}:{name}:{unit}', inst, text))
-    if not candidates: return None, 'no XBRL concept labelled as a bitcoin quantity with instantaneous values in a plausible coin range'
+                if len(inst) >= 1: candidates.append((f'{taxonomy}:{name}:{unit}', inst, text))  # one instant is enough: a newly adopted element has one
+    if not candidates:
+        # self-diagnosis: record every non-dollar concept the entity has, so a failure can be read from the data file
+        seen = []
+        for taxonomy, concepts in (facts or {}).items():
+            for name, c in concepts.items():
+                units = list((c.get('units') or {}).keys())
+                if any(u.upper() not in ('USD', 'USD/SHARES', 'USD-PER-SHARES') for u in units):
+                    rows = [r for u, rs in (c.get('units') or {}).items() if u.upper() != 'USD' for r in rs]
+                    ends = sorted({r.get('end') for r in rows if r.get('end')})
+                    seen.append(f"{taxonomy}:{name} units={','.join(units)} n={len(rows)} last={ends[-1] if ends else '-'} forms={','.join(sorted({str(r.get('form')) for r in rows}))}")
+        return None, 'no XBRL concept recognised as a bitcoin quantity; non-dollar concepts present: ' + ('; '.join(seen) if seen else 'none (entity has no XBRL facts in the companyfacts API)')
     # prefer the standard element, then the concept with the most period-ends, then the shortest label
-    candidates.sort(key=lambda c: (0 if c[0].split(':')[1] == 'CryptoAssetNumberOfUnits' else 1, -len({r['end'] for r in c[1]}), len(c[2])))
+    pref = {'CryptoAssetNumberOfUnits': 0, 'InvestmentOwnedBalanceShares': 1, 'InvestmentOwnedBalanceContracts': 1}
+    candidates.sort(key=lambda c: (pref.get(c[0].split(':')[1], 2), -len({r['end'] for r in c[1]}), len(c[2])))
     key, rows, _ = candidates[0]
     # one value per period end: the latest filing wins (10-K restates the Q4 instant; amendments supersede)
     best = {}
