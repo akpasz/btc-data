@@ -18,8 +18,20 @@ NOW = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
 S = requests.Session(); S.headers.update(UA)
 manifest: Dict[str, dict] = {}
 
-def get(url, **kw):
-    r = S.get(url, timeout=60, **kw); r.raise_for_status(); return r
+def get(url, tries=3, **kw):
+    """Free endpoints rate-limit unpredictably from shared CI addresses. A 429 or a 5xx is usually gone
+    within a minute, so retry a couple of times with a growing pause before treating it as a failure."""
+    last = None
+    for k in range(tries):
+        try:
+            r = S.get(url, timeout=60, **kw)
+            if r.status_code in (429, 500, 502, 503, 504):
+                raise requests.HTTPError(f'{r.status_code} Client Error: {r.reason} for url: {url}', response=r)
+            r.raise_for_status(); return r
+        except Exception as e:
+            last = e
+            if k < tries - 1: time.sleep(4 * (k + 1))
+    raise last
 
 def load_existing(name):
     p = os.path.join(OUT, name + '.json')
@@ -60,10 +72,25 @@ def freshness(name, last_date):
     return {'freshness': 'current' if age <= thr else 'stale', 'age_days': age, 'expected_max_age_days': thr}
 
 def fail(name, e, source_url=''):
+    """A source that could not be refreshed is only an ERROR if the site would now show something wrong.
+    If the stored file still carries a value inside that source's expected max age, the honest state is
+    STALE: the figure on the page is real, just older than an hour ago. Distinguishing the two keeps the
+    red notice meaningful — it fires when a number is missing or genuinely out of date, not when a free
+    endpoint rate-limited one run out of twenty."""
     old = load_existing(name)
-    manifest[name] = {'status': 'error', 'error': str(e)[:300], 'fetched_at': NOW, 'source_url': source_url,
-                      'kept_previous': bool(old), 'previous_fetched_at': old.get('fetched_at') if old else None}
-    print(f'  ERR {name}: {str(e)[:200]}', file=sys.stderr)
+    last = None
+    if old:
+        try: last = max((v[-1][0] for v in (old.get('series') or {}).values() if v), default=None)
+        except Exception: last = None
+        if not last: last = (old.get('fetched_at') or '')[:10] or None
+    fr = freshness(name, last)
+    usable = bool(old) and fr['freshness'] == 'current'
+    manifest[name] = {'status': 'stale' if usable else 'error', 'error': str(e)[:300], 'fetched_at': NOW,
+                      'source_url': source_url, 'kept_previous': bool(old),
+                      'previous_fetched_at': old.get('fetched_at') if old else None,
+                      'serving': ('last good value, ' + str(fr['age_days']) + ' day(s) old') if usable else 'nothing',
+                      **({**fr, 'freshness': 'stale'} if usable else fr)}
+    print(f"  {'stl' if usable else 'ERR'} {name}: {str(e)[:200]}", file=sys.stderr)
 
 def day(ts): return dt.datetime.fromtimestamp(int(ts), dt.timezone.utc).strftime('%Y-%m-%d')
 
@@ -581,10 +608,20 @@ def main():
     for name, fn in SOURCES:
         try: fn()
         except Exception as e: fail(name, e)
-    manifest_doc = {'generated_at': NOW, 'sources': manifest,
-                    'ok': sorted(k for k, v in manifest.items() if v['status'] == 'ok'),
-                    'errors': sorted(k for k, v in manifest.items() if v['status'] == 'error'),
-                    'stale': sorted(k for k, v in manifest.items() if v.get('freshness') == 'stale')}
+    ok = sorted(k for k, v in manifest.items() if v['status'] in ('ok', 'partial'))
+    errs = sorted(k for k, v in manifest.items() if v['status'] == 'error')
+    stale = sorted(k for k, v in manifest.items() if v['status'] == 'stale' or (v['status'] != 'error' and v.get('freshness') == 'stale'))
+    total = len(manifest)
+    if errs:
+        health = f"{len(errs)} of {total} sources unavailable: " + ', '.join(errs) + ('; ' + ', '.join(stale) + ' serving an older value' if stale else '')
+    elif stale:
+        health = f"{total - len(stale)} of {total} sources refreshed; " + ', '.join(f"{k} is {manifest[k].get('age_days', '?')} day(s) old" for k in stale)
+    else:
+        health = f'all {total} sources refreshed'
+    manifest_doc = {'generated_at': NOW, 'sources': manifest, 'ok': ok, 'errors': errs, 'stale': stale,
+                    'health': health,
+                    'health_state': 'error' if errs else ('stale' if stale else 'ok'),
+                    'health_note': 'errors are sources with no usable value; stale are sources that did not refresh but still serve a value inside their expected age'}
     try:
         import kpis; kpis.OUT = OUT; kpis.main(); manifest_doc['kpis'] = 'ok'
     except Exception as e:
