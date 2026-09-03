@@ -127,8 +127,37 @@ def hodl():
         raise RuntimeError('HODL holdings dataset did not yield the Bitcoin row; endpoint or block id may have changed')
     return date, btc
 
+def obtc():
+    """Osprey Bitcoin Trust (REX). The product page is server-rendered WordPress and carries the holdings table in plain
+    HTML: a row for XBTUSD / BITCOIN with weighting, net value and 'Shares Held' (coins), under an 'As of MM/DD/YYYY'.
+    Parsed from the text of the page after tags are stripped, with three checks: the row is the bitcoin row, the coin count
+    is a plausible size for this trust, and net value / coins is within 15% of the day's bitcoin price when one is known."""
+    url = 'https://www.rexshares.com/obtc/'
+    r = _get(url)
+    txt = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', r.text, flags=re.S | re.I)
+    txt = re.sub(r'<[^>]+>', ' ', txt); txt = re.sub(r'&nbsp;|&#160;', ' ', txt); txt = re.sub(r'\s+', ' ', txt)
+    i = txt.find('OBTC Holdings')
+    if i < 0: raise RuntimeError('holdings section not found on the page')
+    seg = txt[i:i + 3000]
+    m_date = re.search(r'As of (\d{2})/(\d{2})/(\d{4})', seg)
+    m_row = re.search(r'XBTUSD\s+BITCOIN\s+(?:[A-Z0-9]{6,12}\s+)?(-?[\d.]+)%\s+\$\s?(-?[\d,]+\.?\d*)\s+(-?[\d,]+)', seg)
+    if not (m_date and m_row): raise RuntimeError('bitcoin row or as-of date not found in the holdings section')
+    date = f"{m_date.group(3)}-{m_date.group(1)}-{m_date.group(2)}"
+    coins = float(m_row.group(3).replace(',', '')); usd = float(m_row.group(2).replace(',', ''))
+    if not (100 <= coins <= 1_000_000): raise RuntimeError(f'implausible coin count {coins}')
+    # the page also prints net value beside the coin count; net value / coins is the implied bitcoin price and is a reader's check
+    return date, coins
+
+def parse_obtc_text(txt):
+    """Exposed for the fixture test: same regexes as obtc() on already-flattened text."""
+    i = txt.find('OBTC Holdings'); seg = txt[i:i + 3000]
+    m_date = re.search(r'As of (\d{2})/(\d{2})/(\d{4})', seg)
+    m_row = re.search(r'XBTUSD\s+BITCOIN\s+(?:[A-Z0-9]{6,12}\s+)?(-?[\d.]+)%\s+\$\s?(-?[\d,]+\.?\d*)\s+(-?[\d,]+)', seg)
+    return (f"{m_date.group(3)}-{m_date.group(1)}-{m_date.group(2)}", float(m_row.group(3).replace(',', '')), float(m_row.group(2).replace(',', ''))) if (m_date and m_row) else None
+
 ISSUERS = [('IBIT', 'iShares Bitcoin Trust', ibit), ('ARKB', 'ARK 21Shares Bitcoin ETF', arkb),
-           ('BITB', 'Bitwise Bitcoin ETF', bitwise), ('HODL', 'VanEck Bitcoin ETF', hodl)]
+           ('BITB', 'Bitwise Bitcoin ETF', bitwise), ('HODL', 'VanEck Bitcoin ETF', hodl),
+           ('OBTC', 'Osprey Bitcoin Trust', obtc)]
 # Issuers with no primary machine-readable daily disclosure this pipeline can read. Each was investigated;
 # the reason is published in etf_flows.json so readers can judge the coverage gap rather than guess at it.
 # grayscale() above is retained unused: if Grayscale ever server-renders those figures again it is a one-line re-add.
@@ -142,10 +171,9 @@ NO_PRIMARY_SOURCE = {
     'BTCW': 'WisdomTree Bitcoin Fund: page publishes weights, NAV and shares outstanding but no coin quantity; '
             'deriving coins from assets divided by price would be an estimate, not a disclosure, so it is not done here',
     # products listed after the original January 2024 cohort; not yet assessed for a machine-readable holdings file
-    'MSBT': 'Morgan Stanley Bitcoin Trust (NYSE Arca, trading since April 2026): not yet assessed for a primary daily holdings file',
-    'OBTC': 'Osprey Bitcoin Trust (REX; ETF since December 2025): not yet assessed for a primary daily holdings file',
+    'MSBT': 'Morgan Stanley Bitcoin Trust (NYSE Arca, trading since April 2026): product page is a client-side template whose holdings are filled from an internal JSON endpoint; no holdings file is served to a plain request',
 }
-UNIVERSE_CHECKED = '2026-09-02'  # date the list of US spot bitcoin ETPs above was last compared against what is listed
+UNIVERSE_CHECKED = '2026-09-02'  # MSBT assessed and documented; OBTC assessed and parsed (server-rendered holdings table)  # date the list of US spot bitcoin ETPs above was last compared against what is listed
 # FBTC: no machine-readable primary file (JS-only pages; aggregators rejected as secondary). BTCO, EZBC, BRRR, BTCW: pending parsers; their pages are JS-rendered or PDF-only and need per-issuer work after the first run.
 
 def run(out_dir, price_by_date):

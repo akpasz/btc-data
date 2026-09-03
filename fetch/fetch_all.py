@@ -51,7 +51,7 @@ def save(name, source_url, series: Dict[str, List], note=''):
 
 # HTTP 200 is not freshness: a source can answer with yesterday's data. Each source has an expected maximum age in days;
 # beyond it the run is still 'ok' (the fetch worked) but freshness is 'stale', and the dashboard can say so.
-EXPECTED_MAX_AGE_DAYS = {'lppls': 3, 'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2}
+EXPECTED_MAX_AGE_DAYS = {'lppls': 3, 'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2, 'etf_quarterly': 135}
 def freshness(name, last_date):
     if not last_date: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
     try: age = (dt.datetime.fromisoformat(NOW).date() - dt.date.fromisoformat(last_date[:10])).days
@@ -254,6 +254,47 @@ def options_skew(chain, target_days=30, min_days=7):
     return {'expiry': exp.date().isoformat(), 'days_to_expiry': round(days, 1), 'atm_iv': round(atm, 2),
             'skew_25d': round(p25 - c25, 2), 'fly_25d': round((c25 + p25) / 2.0 - atm, 2)}
 
+def options_term_structure(chain, min_days=2, tenors=(7, 30, 90, 180)):
+    """At-the-money implied volatility on every listed expiry, and the values at fixed tenors by linear interpolation
+    in days to expiry (only where a tenor is bracketed by listed expiries; nothing is extrapolated). ATM is the mean of
+    the 50-delta call and put IV located by delta interpolation, the same construction the skew uses. Returns None if
+    fewer than two expiries yield an ATM level."""
+    now = dt.datetime.now(dt.timezone.utc); byexp = {}
+    for o in chain:
+        p = _parse_option(o.get('instrument_name', '') or '')
+        iv = o.get('mark_iv'); und = o.get('underlying_price')
+        if not p or not iv or not und or iv <= 0 or und <= 0: continue
+        exp, strike, cp = p; days = (exp - now).total_seconds() / 86400.0
+        if days < min_days: continue
+        byexp.setdefault(exp, []).append((strike, cp, float(iv) / 100.0, float(und), days))
+    curve = []
+    for exp, rows in sorted(byexp.items()):
+        days = rows[0][4]; T = days / 365.0; calls, puts = [], []
+        for strike, cp, sig, und, _ in rows:
+            if sig <= 0 or T <= 0 or strike <= 0: continue
+            d1 = (math.log(und / strike) + 0.5 * sig * sig * T) / (sig * math.sqrt(T))
+            delta = _norm_cdf(d1) if cp == 'C' else _norm_cdf(d1) - 1.0
+            (calls if cp == 'C' else puts).append((delta, sig * 100.0))
+        def interp(points, target):
+            pts = sorted(points)
+            if len(pts) < 2 or not (pts[0][0] <= target <= pts[-1][0]): return None
+            for (d0, v0), (d1_, v1) in zip(pts, pts[1:]):
+                if d0 <= target <= d1_: return v0 if d1_ == d0 else v0 + (target - d0) / (d1_ - d0) * (v1 - v0)
+            return None
+        ac, ap = interp(calls, 0.50), interp(puts, -0.50)
+        atm = (ac + ap) / 2.0 if (ac is not None and ap is not None) else (ac if ac is not None else ap)
+        if atm is not None: curve.append({'expiry': exp.date().isoformat(), 'days': round(days, 1), 'atm_iv': round(atm, 2), 'n_strikes': len(rows)})
+    if len(curve) < 2: return None
+    xs = [c['days'] for c in curve]; ys = [c['atm_iv'] for c in curve]; at = {}
+    for t in tenors:
+        if xs[0] <= t <= xs[-1]:
+            for x0, y0, x1, y1 in zip(xs, ys, xs[1:], ys[1:]):
+                if x0 <= t <= x1: at[t] = round(y0 if x1 == x0 else y0 + (t - x0) / (x1 - x0) * (y1 - y0), 2); break
+    slope = round(at[180] - at[30], 2) if (30 in at and 180 in at) else None
+    return {'curve': curve, 'at_tenor': at, 'slope_30_180_pts': slope,
+            'note': 'ATM IV per listed expiry (50-delta by interpolation, r=0); tenor values interpolated in days, never extrapolated. '
+                    'Slope is 180-day minus 30-day ATM IV in vol points: positive is the normal contango of a calm surface, negative (inverted) marks stress.'}
+
 def src_derivatives():
     name = 'derivatives'; series = {}; errs = []
     try:  # Deribit DVOL (BTC implied volatility index), last 3 years daily
@@ -309,6 +350,15 @@ def src_derivatives():
                 series['deribit_skew_25d_pts'] = [[NOW[:10], sk['skew_25d']]]
                 series['deribit_butterfly_25d_pts'] = [[NOW[:10], sk['fly_25d']]]
     except Exception as e: errs.append(f'skew: {e}')
+    try:  # term structure from the same chain: ATM IV at 7/30/90/180 days and the 30-180 slope; the full curve goes to the manifest
+        if jo:
+            ts = options_term_structure(jo)
+            if ts:
+                for t, v in ts['at_tenor'].items():
+                    if t != 30: series[f'deribit_atm_iv_{t}d'] = [[NOW[:10], v]]
+                if ts['slope_30_180_pts'] is not None: series['deribit_term_slope_30_180_pts'] = [[NOW[:10], ts['slope_30_180_pts']]]
+                manifest.setdefault('_derivatives_extra', {})['term_structure'] = {'as_of': NOW, 'curve': ts['curve'], 'at_tenor': ts['at_tenor'], 'note': ts['note']}
+    except Exception as e: errs.append(f'term: {e}')
     try:  # CME bitcoin futures, CFTC Traders in Financial Futures (weekly, public comma-delimited file).
         # Column map (verified against the file's own identities, see cot_columns_ok): 7 open interest,
         # 8/9/10 dealer L/S/spread, 11/12/13 asset manager, 14/15/16 leveraged funds, 17/18/19 other,
@@ -333,6 +383,8 @@ def src_derivatives():
     except Exception as e: errs.append(f'cftc: {e}')
     if not series: raise RuntimeError('; '.join(errs))
     save(name, 'Deribit, OKX, CFTC public endpoints', series, note=('partial: ' + '; '.join(errs)) if errs else '')
+    extra = manifest.pop('_derivatives_extra', None)
+    if extra: manifest[name].update(extra)
 
 # ---------------------------------------------------------------- ETF flows (phase 2)
 def src_etf():
@@ -357,7 +409,13 @@ def src_lppls():
     m = {d: float(v) for d, v in bc['series'].get('price', []) if float(v) > 0}
     ds = sorted(m); dates = [_dt.date.fromisoformat(d) for d in ds]; prices = [m[d] for d in ds]
     existing = load_existing('lppls')
-    doc = lppls.build_history(dates, prices, os.path.join(OUT, 'lppls.json'), existing=existing, log=lambda s: print(s))
+    prior = existing.get('random_baseline') if existing else None
+    doc = lppls.build_history(dates, prices, os.path.join(OUT, 'lppls.json'), existing=existing, log=lambda s: print(s), baseline=prior)
+    # the baseline is recomputed weekly (Mondays) or when absent; it is deterministic (seeded) and takes ~30s
+    if prior is None or dt.datetime.now(dt.timezone.utc).weekday() == 0:
+        base = lppls.random_baseline(dates, prices, doc['series']['lppls_pos'])
+        doc['random_baseline'] = base
+        with open(os.path.join(OUT, 'lppls.json'), 'w') as fh: json.dump(doc, fh, separators=(',', ':'))
     n_pos = len(doc['series']['lppls_pos'])
     manifest['lppls'] = {'status': 'ok', 'fetched_at': NOW, 'source_url': 'computed from the blockchain.com daily price series',
                          'last_date': doc['series']['lppls_pos'][-1][0] if n_pos else None, 'points': n_pos,
@@ -471,8 +529,21 @@ def src_relative():
     manifest[name]['provenance'] = prov
     if errs: manifest[name]['note'] = '; '.join(errs)
 
+# ---------------------------------------------------------------- ETF quarterly holdings from 10-Q/10-K XBRL (reconciliation layer)
+def src_etf_quarterly():
+    import edgar
+    hold = {}
+    try:
+        h = json.load(open(os.path.join(OUT, 'etf_holdings.json')))
+        hold = {tk: v for tk, v in h.items() if isinstance(v, list)}  # etf_holdings.json is {ticker: [[date, btc], ...]}
+    except Exception: pass
+    res = edgar.run(OUT, hold)
+    manifest['etf_quarterly'] = {**res, 'fetched_at': NOW, 'source_url': 'https://data.sec.gov/api/xbrl/companyfacts/', **freshness('etf_quarterly', res.get('last_date'))}
+    if res['status'] == 'error': raise RuntimeError('; '.join(res['errors']) or 'no trust parsed')
+    print(f"  {'ok ' if res['status']=='ok' else 'prt'} etf_quarterly: {len(res['tickers_ok'])} trusts, latest quarter end {res.get('last_date')}")
+
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('offshore_spot', src_offshore_spot), ('mempool', src_mempool),
-           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf), ('lppls', src_lppls)]
+           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf), ('etf_quarterly', src_etf_quarterly), ('lppls', src_lppls)]
 
 def main():
     os.makedirs(OUT, exist_ok=True); print('Snapshot at', NOW)
