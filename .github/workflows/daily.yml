@@ -18,6 +18,7 @@ jobs:
         with: { python-version: '3.12' }
       - run: pip install -r fetch/requirements.txt
       - run: python fetch/fetch_all.py
+        env: { SEC_CONTACT: "${{ vars.SEC_CONTACT }}" }
       - name: Commit data
         run: |
           git config user.name "snapshot-bot"

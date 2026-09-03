@@ -20,7 +20,12 @@ that reason rather than guessed.
 import json, re, time, datetime as dt
 import requests
 
-UA = {'User-Agent': 'btc-data snapshot (github.com/akpasz/btc-data; contact via the repository)', 'Accept-Encoding': 'gzip, deflate'}
+# SEC's access policy requires a User-Agent of the form "Company Name contact@domain"; requests without a
+# mailbox-style contact are refused with 403 at the gateway. The address is read from the SEC_CONTACT
+# environment variable (set as a GitHub Actions variable) with a fallback that must be a real mailbox.
+import os as _os
+UA = {'User-Agent': f"CryptoExponentials {_os.environ.get('SEC_CONTACT', 'tools@cryptoexponentials.com')}", 'Accept-Encoding': 'gzip, deflate', 'Host': 'data.sec.gov'}
+UA_WWW = {'User-Agent': UA['User-Agent'], 'Accept-Encoding': 'gzip, deflate'}
 
 # US spot bitcoin ETPs. CIKs are resolved from the SEC ticker file at run time; the ones listed here are the fallback
 # for tickers that file lacks, and are the ones confirmed from EDGAR filing pages.
@@ -29,11 +34,11 @@ CIK_FALLBACK = {'IBIT': 1980994, 'MSBT': 2103612, 'OBTC': 1767057}
 COIN_RANGE = (50.0, 5_000_000.0)
 
 
-def _get(url, tries=3):
+def _get(url, tries=3, headers=None):
     last = None
     for k in range(tries):
         try:
-            r = requests.get(url, headers=UA, timeout=60)
+            r = requests.get(url, headers=headers or UA, timeout=60)
             if r.status_code in (403, 429) or r.status_code >= 500: raise requests.HTTPError(f'{r.status_code} for {url}', response=r)
             r.raise_for_status(); return r
         except Exception as e:
@@ -45,7 +50,7 @@ def resolve_ciks(tickers):
     """ticker -> CIK from the SEC's own ticker list, with the confirmed fallback for anything it lacks."""
     out = {t: CIK_FALLBACK.get(t) for t in tickers}
     try:
-        j = _get('https://www.sec.gov/files/company_tickers.json').json()
+        j = _get('https://www.sec.gov/files/company_tickers.json', headers=UA_WWW).json()
         by = {v['ticker'].upper(): int(v['cik_str']) for v in j.values() if v.get('ticker')}
         for t in tickers:
             if by.get(t): out[t] = by[t]
