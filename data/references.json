@@ -1,15 +1,10 @@
 {
- "note": "Hand-maintained external reference estimates. Edit values here and commit; the tools hub and the Metcalfe page read this file from the snapshot and fall back to their embedded defaults if it is absent. The daily pipeline never writes this file.",
+ "note": "Hand-maintained external reference figures. The pipeline never writes this file; edit by hand and commit. Pages read it when present and fall back to their built-in values otherwise.",
  "cane_island_met": {
-  "source": "Cane Island, Metcalfe value (MET)",
   "value": 138557.16,
   "as_of": "2026-09-01",
-  "url": "https://www.cane-island.digital/metdashboard"
- },
- "cane_island_mac": {
-  "source": "Cane Island, Macro model value (MAC)",
-  "value": 109000,
-  "as_of": "2026-08-31",
-  "url": "https://www.cane-island.digital/macdashboard"
+  "source": "Cane Island MET dashboard",
+  "url": "https://caneislandcrypto.com",
+  "how_read": "published Metcalfe value figure, read by hand from the dashboard on the as-of date"
  }
 }

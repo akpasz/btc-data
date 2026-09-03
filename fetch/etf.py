@@ -202,7 +202,7 @@ def run(out_dir, price_by_date):
     for tk, ser in hold.items():
         if ser: total_btc[ser[-1][0]] = total_btc.get(ser[-1][0], 0) + ser[-1][1]
     doc = {'source': 'etf_flows', 'source_url': 'issuer daily holdings (see status)', 'fetched_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
-           'note': 'net flow = change in BTC held x price; accumulates from first successful run. Coverage is the four issuers with a primary machine-readable daily coin count; every other product in the universe as of UNIVERSE_CHECKED is recorded with the reason it is absent. Not total spot-ETF flow',
+           'note': 'net flow = change in BTC held x price; accumulates from first successful run. Coverage is the five issuers (IBIT, ARKB, BITB, HODL, OBTC) with a primary machine-readable daily coin count; every other product in the universe as of UNIVERSE_CHECKED is recorded with the reason it is absent. Not total spot-ETF flow',
            'universe_checked': UNIVERSE_CHECKED,
            'issuers': status, 'pending': [], 'no_primary_source': NO_PRIMARY_SOURCE,
            'coverage': coverage,

@@ -18,7 +18,10 @@ tc within a fifth of the window ahead; damping >= 1; oscillations >= 2.5.
 The primary specification is fixed because it is an externally published rule set; alternative filters
 are sensitivity analyses. Results are not selected on which set produces the better record.
 
-Conventions: a window of W days is the last W observations (t[i-W+1 .. i]), matching dt = t2 - t1 + 1.
+Conventions: a window of W days is the last W observations, t1 = t[i-W+1] .. t2 = t[i]; dt = t2 - t1 = W - 1 days,
+and the critical time is searched and filtered on (t2, t2 + dt]. Readings are computed through the last COMPLETED
+daily-average observation in the price series; a partially formed current day is never used, so the series carries a
+one-day lag by design.
 The confidence indicator is the share of the eight window lengths whose best fit qualifies.
 Everything is computed as of each day on data up to that day only; the history is DAILY from 2013.
 
@@ -34,6 +37,8 @@ import math, json, os, datetime as dt
 import numpy as np
 
 WINDOWS = [120, 180, 240, 300, 365, 450, 540, 730]
+TC_EPS = 0.01  # days; the critical time may sit arbitrarily close to the window end, but not on or before it
+RECOMPUTE_TRAILING_DAYS = 30  # readings inside this trailing span are recomputed each run, so a revised daily average is absorbed
 FILTERS = {  # primary: Gerlach, Demos & Sornette (2019), Table 2
     'name': 'Gerlach-Demos-Sornette 2019 (primary, fixed)',
     'm': [0.0, 1.0], 'w': [4.0, 25.0], 'tc_max_frac': 1.0, 'damping_min': 0.5, 'osc_min': 2.5, 'osc_applies_if_C_over_B_at_least': 0.05}
@@ -58,7 +63,7 @@ def fit_window(t, y, maxiter=400):
     """Best LPPLS fit on one window. t in days (monotone), y = ln price. Returns a dict or None."""
     from scipy.optimize import minimize
     T = t[-1]; span = t[-1] - t[0]; best = None
-    for tc in np.linspace(T + 2, T + 1.0 * span, 12):  # full interval the primary filter permits (T, T + dt]
+    for tc in np.linspace(T + TC_EPS, T + span, 12):  # the whole permitted interval (T, T + dt], dt = t2 - t1
         for m in (0.2, 0.5, 0.8):
             for w in (6.0, 9.0, 12.0):
                 r = _lin(t, y, tc, m, w)
@@ -70,7 +75,7 @@ def fit_window(t, y, maxiter=400):
 
     def obj(p):
         tc, m, w = p
-        if tc <= T + 1 or m < 0.01 or m > 0.99 or w < 2 or w > 25:
+        if tc <= T + TC_EPS or tc > T + span or m < 0.001 or m > 0.999 or w < 2 or w > 25:
             return 1e9
         r = _lin(t, y, tc, m, w)
         return 1e9 if r is None else r[1]
@@ -148,7 +153,7 @@ def build_history(dates, prices, out_path, existing=None, log=print, baseline=No
             for d, v in existing.get('series', {}).get(key, []):
                 rows.setdefault(d, {})[key] = v
     start = next((k for k in range(n) if dates[k] >= dt.date(2013, 1, 1)), 0)
-    todo = [i for i in range(start, n) if dates[i].isoformat() not in have]
+    todo = [i for i in range(start, n) if dates[i].isoformat() not in have or i >= n - RECOMPUTE_TRAILING_DAYS]
     log(f'  lppls: {len(todo)} days to compute ({len(have)} already stored)')
     for k, i in enumerate(todo):
         r = reading(logp, i)
@@ -162,7 +167,8 @@ def build_history(dates, prices, out_path, existing=None, log=print, baseline=No
     today = reading(logp, n - 1)
     doc = {'source': 'lppls', 'computed_at': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
            'method': 'Filimonov-Sornette (2013) linearised LPPLS; fixed grid (12 tc over the full permitted interval x 3 m x 3 w) then Nelder-Mead; confidence = share of the 8 window lengths whose best fit passes the filters',
-           'windows_days': WINDOWS, 'window_convention': 'a W-day window is the last W observations, dt = t2 - t1 + 1',
+           'windows_days': WINDOWS, 'window_convention': 'a W-day window is the last W observations; dt = t2 - t1 = W - 1; tc searched and filtered on (t2, t2 + dt]',
+           'timing_convention': 'computed through the last completed daily-average observation; a partial current day is never used (one-day lag by design)',
            'filters_primary': FILTERS, 'filters_sensitivity': FILTERS_STRICT,
            'specification_note': 'the primary specification is the published Gerlach-Demos-Sornette (2019) rule set, fixed before evaluation; the strict set is a sensitivity analysis and is never used to select a result',
            'history_note': 'daily from 2013-01-01, computed point-in-time on daily-average prices',

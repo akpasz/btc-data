@@ -1,7 +1,7 @@
 """Quarterly bitcoin holdings of every US spot bitcoin ETP from its own 10-Q / 10-K, via the SEC's XBRL companyfacts API.
 
 Why this exists: the four issuers with daily coin counts cover only part of the market, and the others publish nothing
-daily. But every trust files quarterly financial statements with the coin quantity tagged in XBRL (e.g. iShares' 10-Q for
+daily. But each trust attempted (7 of 13 currently parse) files quarterly financial statements with the coin quantity tagged in XBRL (e.g. iShares' 10-Q for
 Q1 2024 tags "Bitcoin — 252,011 as of 2024-03-31"). Those are primary, keyless and lag by up to 45 days after quarter end.
 They are published here as a QUARTERLY RECONCILIATION LAYER: not daily flow, never merged into the daily series, and
 labelled as such. For the daily issuers the quarter-end figure is also compared with the daily holdings file on that date,

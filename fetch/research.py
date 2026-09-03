@@ -106,7 +106,7 @@ def valuation_composite(bc, cm):
     return doc, {'dates': dates, 'price': price, 'comp': comp, 'mvrv': mvrv, 'mayer': mayer, 'pld': pld}
 
 
-# ---------------------------------------------------------------- Metcalfe: does the network add anything beyond time?
+# ---------------------------------------------------------------- Metcalfe: does the cumulative address-activity proxy add information beyond time?
 def _ols(Y, X):
     """OLS with intercept; X is (n,k). Returns coef (k+1,), fitted, r2."""
     A = np.column_stack([np.ones(len(Y)), X]); coef, *_ = np.linalg.lstsq(A, Y, rcond=None)
@@ -200,7 +200,7 @@ def independence(arrs, dv, st, fg, start=dt.date(2019, 1, 1)):
         for j in range(k):
             if j < i: M[i][j], N[i][j] = M[j][i], N[j][i]; continue
             c, cnt = (1.0, int(w.sum())) if i == j else _spearman(series[names[i]][w], series[names[j]][w]); M[i][j] = c; N[i][j] = cnt
-    # a crude count of how many "factors" the valuation-type columns amount to: pairs above 0.8 share a factor
+    # evidence overlap among the valuation-type columns (a correlation summary, not a latent-factor count): pairs above 0.8 overlap heavily
     strong = [(names[i], names[j], M[i][j]) for i in range(k) for j in range(i + 1, k) if M[i][j] is not None and abs(M[i][j]) >= 0.8]
     return {'window_from': start.isoformat(), 'names': names, 'spearman': M, 'n_days': N,
             'pairs_above_0_8': [{'a': a, 'b': b, 'rho': r} for a, b, r in strong],

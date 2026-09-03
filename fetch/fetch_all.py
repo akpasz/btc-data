@@ -51,7 +51,7 @@ def save(name, source_url, series: Dict[str, List], note=''):
 
 # HTTP 200 is not freshness: a source can answer with yesterday's data. Each source has an expected maximum age in days;
 # beyond it the run is still 'ok' (the fetch worked) but freshness is 'stale', and the dashboard can say so.
-EXPECTED_MAX_AGE_DAYS = {'lppls': 3, 'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2, 'etf_quarterly': 135}
+EXPECTED_MAX_AGE_DAYS = {'lppls': 3, 'macro': 10, 'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2, 'etf_quarterly': 135}
 def freshness(name, last_date):
     if not last_date: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
     try: age = (dt.datetime.fromisoformat(NOW).date() - dt.date.fromisoformat(last_date[:10])).days
@@ -399,6 +399,37 @@ def src_etf():
     manifest['etf_flows'] = {**res, 'fetched_at': NOW, 'source_url': 'issuer disclosures', **freshness('etf_flows', res.get('last_date'))}
     print(f"  {'ok ' if res['status']=='ok' else 'prt' if res['status']=='partial' else 'ERR'} etf_flows: parsed {res['issuers_ok']}, failed {res['issuers_error']}, pending {res['pending']}")
 
+# ---------------------------------------------------------------- Macro: the series people correlate with bitcoin cycles
+def src_macro():
+    """Fed policy, money, liquidity and risk-appetite series from FRED (keyless CSV). Each leg isolated. Net liquidity
+    (Fed balance sheet less the Treasury account less reverse repo) is assembled in the page from the three legs."""
+    name = 'macro'
+    legs = [('fed_funds_daily', 'DFF', 'effective federal funds rate, % (daily)'),
+            ('treasury_2y', 'DGS2', '2-year Treasury yield, % (daily)'),
+            ('m2_monthly', 'M2SL', 'US M2 money stock, $bn, monthly, seasonally adjusted'),
+            ('fed_assets_weekly', 'WALCL', 'Fed total assets, $mn, weekly (Wednesday)'),
+            ('tga_weekly', 'WTREGEN', 'Treasury General Account, $bn, weekly (Wednesday)'),
+            ('rrp_daily', 'RRPONTSYD', 'overnight reverse repo, $bn, daily'),
+            ('hy_spread_daily', 'BAMLH0A0HYM2', 'ICE BofA US high-yield option-adjusted spread, % (daily)'),
+            ('vix_daily', 'VIXCLS', 'CBOE VIX close (daily)'),
+            ('breakeven_10y_daily', 'T10YIE', '10-year breakeven inflation, % (daily)')]
+    series = {}; prov = {}; errs = []
+    for key, sid, desc in legs:
+        try:
+            s = _fred_daily(sid, since='2010-01-01')
+            if len(s) < 50: raise RuntimeError(f'{sid}: only {len(s)} rows')
+            series[key] = s; prov[key] = f'FRED {sid}: {desc}'
+        except Exception as e:
+            errs.append(f'{key}: {e}')
+    if not series: raise RuntimeError('every macro leg failed: ' + '; '.join(errs))
+    note = ('Series that are widely correlated with bitcoin cycles, published raw so the page can test the claim rather than draw the overlay. '
+            'Not carried and why: ISM manufacturing PMI is proprietary (ISM / S&P Global) with no free primary feed since FRED dropped it in 2016; '
+            "'global M2' is an author-specific blend of central-bank aggregates in dollars with no single public definition, so US M2 is published and the blend is not. "
+            'Provenance: ' + '; '.join(f'{k} = {v}' for k, v in prov.items()))
+    save(name, 'https://fred.stlouisfed.org/', series, note=note)
+    manifest[name]['status'] = 'ok' if not errs else 'partial'; manifest[name]['legs_ok'] = sorted(series); manifest[name]['legs_failed'] = errs
+    print(f"  {'ok ' if not errs else 'prt'} macro: {len(series)} of {len(legs)} legs" + (f", failed {errs}" if errs else ''))
+
 # ---------------------------------------------------------------- LPPLS bubble indicator, point-in-time
 def src_lppls():
     """Log-periodic power law singularity confidence, computed as of each day on the stored price series.
@@ -543,7 +574,7 @@ def src_etf_quarterly():
     print(f"  {'ok ' if res['status']=='ok' else 'prt'} etf_quarterly: {len(res['tickers_ok'])} trusts, latest quarter end {res.get('last_date')}")
 
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('offshore_spot', src_offshore_spot), ('mempool', src_mempool),
-           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf), ('etf_quarterly', src_etf_quarterly), ('lppls', src_lppls)]
+           ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf), ('etf_quarterly', src_etf_quarterly), ('macro', src_macro), ('lppls', src_lppls)]
 
 def main():
     os.makedirs(OUT, exist_ok=True); print('Snapshot at', NOW)

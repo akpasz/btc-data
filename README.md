@@ -1,8 +1,7 @@
 # btc-data — free, keyless Bitcoin research data, updated daily
 
 Daily snapshot pipeline behind the [Crypto Exponentials Bitcoin Research
-Dashboard](https://cryptoexponentials.com/tools/). Every metric is computed from free, keyless,
-primary public sources, published here as plain JSON, and re-read by the dashboard pages. Anyone may
+Dashboard](https://cryptoexponentials.com/tools/). Every metric is computed from free, keyless, publicly accessible sources, with primary sources preferred. Anyone may
 read these files directly — this repository is, in effect, a small public API.
 
 **Base URLs** (identical content):
