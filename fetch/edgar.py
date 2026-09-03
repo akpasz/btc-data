@@ -65,7 +65,11 @@ def find_bitcoin_quantity(facts):
     for taxonomy, concepts in (facts or {}).items():
         for name, c in concepts.items():
             text = ((c.get('label') or '') + ' ' + (c.get('description') or '') + ' ' + name).lower()
-            if 'bitcoin' not in text and 'btc' not in text: continue
+            # The standard element since ASU 2023-08 is us-gaap:CryptoAssetNumberOfUnits, whose label says
+            # "Crypto Asset, Number of Units" and never "bitcoin". For a single-asset bitcoin trust it IS the
+            # coin count. Custom bitcoin-labelled elements from earlier filings are still accepted.
+            is_std = name == 'CryptoAssetNumberOfUnits'
+            if not is_std and 'bitcoin' not in text and 'btc' not in text and 'crypto asset' not in text and 'cryptoasset' not in text: continue
             if any(w in text for w in ('per share', 'fair value', 'cost', 'usd', 'dollar', 'price', 'fee', 'expense', 'gain', 'loss', 'payable', 'proceeds', 'purchase', 'sold', 'value')):
                 # value-like labels are excluded; quantity labels are short ("Bitcoin", "Bitcoin quantity", "Bitcoin held")
                 if not any(w in text for w in ('quantity', 'number of bitcoin', 'bitcoin held', 'bitcoins held', 'held by the trust')): continue
@@ -75,8 +79,8 @@ def find_bitcoin_quantity(facts):
                         and COIN_RANGE[0] <= float(r['val']) <= COIN_RANGE[1] and r.get('form', '') in ('10-Q', '10-K', '10-Q/A', '10-K/A')]
                 if len(inst) >= 2: candidates.append((f'{taxonomy}:{name}:{unit}', inst, text))
     if not candidates: return None, 'no XBRL concept labelled as a bitcoin quantity with instantaneous values in a plausible coin range'
-    # prefer the concept with the most period-ends, then the shortest label (the bare quantity, not a sub-total)
-    candidates.sort(key=lambda c: (-len({r['end'] for r in c[1]}), len(c[2])))
+    # prefer the standard element, then the concept with the most period-ends, then the shortest label
+    candidates.sort(key=lambda c: (0 if c[0].split(':')[1] == 'CryptoAssetNumberOfUnits' else 1, -len({r['end'] for r in c[1]}), len(c[2])))
     key, rows, _ = candidates[0]
     # one value per period end: the latest filing wins (10-K restates the Q4 instant; amendments supersede)
     best = {}
@@ -133,6 +137,14 @@ if __name__ == '__main__':
               {'end': '2024-06-30', 'val': 311001, 'form': '10-Q/A', 'filed': '2024-08-20', 'fy': 2024, 'fp': 'Q2'}]}},
                   'InvestmentInBitcoinFairValue': {'label': 'Bitcoin fair value', 'units': {'USD': [{'end': '2024-03-31', 'val': 17791246945, 'form': '10-Q', 'filed': '2024-05-08'}]}},
                   'BitcoinPurchased': {'label': 'Bitcoin purchased', 'units': {'pure': [{'start': '2024-01-01', 'end': '2024-03-31', 'val': 252016, 'form': '10-Q', 'filed': '2024-05-08'}]}}}}
+    fx['us-gaap'] = {'CryptoAssetNumberOfUnits': {'label': 'Crypto Asset, Number of Units', 'description': 'Number of units of crypto asset held', 'units': {'pure': [
+              {'end': '2024-03-31', 'val': 252011, 'form': '10-Q', 'filed': '2024-05-08', 'fy': 2024, 'fp': 'Q1'},
+              {'end': '2024-06-30', 'val': 311001, 'form': '10-Q', 'filed': '2024-08-07', 'fy': 2024, 'fp': 'Q2'},
+              {'end': '2024-09-30', 'val': 370000, 'form': '10-Q', 'filed': '2024-11-06', 'fy': 2024, 'fp': 'Q3'}]}}}
+    key, series = find_bitcoin_quantity(fx)
+    assert key == 'us-gaap:CryptoAssetNumberOfUnits:pure', key
+    assert [s['btc'] for s in series] == [252011.0, 311001.0, 370000.0], series
+    del fx['us-gaap']
     key, series = find_bitcoin_quantity(fx)
     assert key == 'ibit:BitcoinQuantity:pure', key
     assert [s['btc'] for s in series] == [252011.0, 311001.0], series   # zero excluded by range; amendment supersedes
