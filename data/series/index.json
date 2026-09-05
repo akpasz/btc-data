@@ -4,8 +4,8 @@
  "series": [
   {
    "name": "addr_balance_count",
-   "points": 5893,
-   "bytes": 138472,
+   "points": 5894,
+   "bytes": 138496,
    "url": "series/addr_balance_count.json"
   },
   {
@@ -22,26 +22,26 @@
   },
   {
    "name": "issuance_usd",
-   "points": 5892,
-   "bytes": 152164,
+   "points": 5893,
+   "bytes": 152190,
    "url": "series/issuance_usd.json"
   },
   {
    "name": "market_cap",
-   "points": 5892,
-   "bytes": 160856,
+   "points": 5893,
+   "bytes": 160885,
    "url": "series/market_cap.json"
   },
   {
    "name": "mvrv",
-   "points": 5892,
-   "bytes": 153103,
+   "points": 5893,
+   "bytes": 153129,
    "url": "series/mvrv.json"
   },
   {
    "name": "price",
-   "points": 6454,
-   "bytes": 142574,
+   "points": 6455,
+   "bytes": 142598,
    "url": "series/price.json"
   },
   {
@@ -52,14 +52,14 @@
   },
   {
    "name": "supply",
-   "points": 6449,
-   "bytes": 160495,
+   "points": 6450,
+   "bytes": 160525,
    "url": "series/supply.json"
   },
   {
    "name": "supply_cm",
-   "points": 5893,
-   "bytes": 168112,
+   "points": 5894,
+   "bytes": 168141,
    "url": "series/supply_cm.json"
   },
   {
