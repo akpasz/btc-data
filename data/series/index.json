@@ -1,0 +1,90 @@
+{
+ "schema_version": "1.0",
+ "note": "One file per series, for pages and consumers that need a single metric rather than a whole source file. Fetch series/<series_name>.json; values are [date, number] pairs, sorted ascending, nulls excluded.",
+ "series": [
+  {
+   "name": "addr_balance_count",
+   "points": 5893,
+   "bytes": 138472,
+   "url": "series/addr_balance_count.json"
+  },
+  {
+   "name": "fees_usd",
+   "points": 6433,
+   "bytes": 161000,
+   "url": "series/fees_usd.json"
+  },
+  {
+   "name": "hash_rate",
+   "points": 6444,
+   "bytes": 167924,
+   "url": "series/hash_rate.json"
+  },
+  {
+   "name": "issuance_usd",
+   "points": 5892,
+   "bytes": 152164,
+   "url": "series/issuance_usd.json"
+  },
+  {
+   "name": "market_cap",
+   "points": 5892,
+   "bytes": 160856,
+   "url": "series/market_cap.json"
+  },
+  {
+   "name": "mvrv",
+   "points": 5892,
+   "bytes": 153103,
+   "url": "series/mvrv.json"
+  },
+  {
+   "name": "price",
+   "points": 6454,
+   "bytes": 142574,
+   "url": "series/price.json"
+  },
+  {
+   "name": "price_cm",
+   "points": 5893,
+   "bytes": 152453,
+   "url": "series/price_cm.json"
+  },
+  {
+   "name": "supply",
+   "points": 6449,
+   "bytes": 160495,
+   "url": "series/supply.json"
+  },
+  {
+   "name": "supply_cm",
+   "points": 5893,
+   "bytes": 168112,
+   "url": "series/supply_cm.json"
+  },
+  {
+   "name": "transactions",
+   "points": 6430,
+   "bytes": 137502,
+   "url": "series/transactions.json"
+  },
+  {
+   "name": "tx_volume_usd",
+   "points": 5830,
+   "bytes": 150513,
+   "url": "series/tx_volume_usd.json"
+  },
+  {
+   "name": "unique_addresses",
+   "points": 6418,
+   "bytes": 138019,
+   "url": "series/unique_addresses.json"
+  },
+  {
+   "name": "utxo_count",
+   "points": 6434,
+   "bytes": 152289,
+   "url": "series/utxo_count.json"
+  }
+ ]
+}

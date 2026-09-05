@@ -5,7 +5,20 @@
   <id>tag:cryptoexponentials.com,2026:snapshot-feed</id>
   <link href="https://cryptoexponentials.com/tools/"/>
   <link rel="self" href="https://akpasz.github.io/btc-data/data/changes.atom"/>
-  <updated>2026-09-05T00:53:18Z</updated>
+  <updated>2026-09-05T02:33:49Z</updated>
+  <entry>
+    <title>Snapshot 2026-09-04</title>
+    <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-04</id>
+    <updated>2026-09-05T02:33:49Z</updated>
+    <link href="https://cryptoexponentials.com/tools/"/>
+    <content type="text">Price 81,273 (+5.1% vs 2026-09-03)
+Metcalfe, validated 2017 76,853 (+0.0% vs 2026-09-03)
+Metcalfe, reference 2011 137,166 (+0.0% vs 2026-09-03)
+Power-law level 136,693 (+0.0% vs 2026-09-03)
+Realised price 53,132 (+0.0% vs 2026-09-03)
+Valuation state average (composite 43)
+Crowding composite 46</content>
+  </entry>
   <entry>
     <title>Snapshot 2026-09-03</title>
     <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-03</id>

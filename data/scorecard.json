@@ -1,6 +1,7 @@
 {
+ "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-05T00:53:21+00:00",
+ "generated_at": "2026-09-05T02:33:52+00:00",
  "as_of": "2026-09-04",
  "price_points": 5862,
  "horizon_days": 365,
