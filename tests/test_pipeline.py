@@ -211,3 +211,76 @@ class TestSchemaVersion:
         import scorecard
         src = open(scorecard.__file__).read()
         assert "schema_version" in src, 'derived layers must be versioned as well'
+
+
+# ---------------------------------------------------------------- slim series
+class TestSlim:
+    """One file per series. The rounding here is the risk: a fixed number of
+    decimal places destroyed 1,341 hash-rate points before this was caught."""
+
+    def _m(self):
+        import slim
+        return slim
+
+    def test_significant_figures_survive_tiny_values(self):
+        r = self._m()._round(4.97102696296296e-08, 9)
+        assert r != 0, 'hash rate in 2009 is 5e-08 and must not round to zero'
+        assert abs(r - 4.97102696296296e-08) / 4.97102696296296e-08 < 1e-8
+
+    def test_significant_figures_survive_huge_values(self):
+        v = 1_631_303_497_729.1895
+        assert abs(self._m()._round(v, 9) - v) / v < 1e-8
+
+    def test_zero_stays_zero(self):
+        assert self._m()._round(0.0, 9) == 0
+
+    def test_non_numeric_returns_none_not_a_crash(self):
+        assert self._m()._round(None, 9) is None
+        assert self._m()._round('x', 9) is None
+
+    def test_integers_stay_integers_where_the_unit_is_a_count(self):
+        assert isinstance(self._m()._round(6454, 12), int)
+
+    def test_every_mapped_series_has_a_distinct_published_name(self):
+        m = self._m().MAP
+        names = [n for src in m.values() for n, _ in src.values()]
+        assert len(names) == len(set(names)), 'two series would overwrite one file'
+
+    def test_published_names_are_url_safe(self):
+        import re
+        for src in self._m().MAP.values():
+            for name, _ in src.values():
+                assert re.fullmatch(r'[a-z0-9_]+', name), name
+
+
+# ---------------------------------------------------------------- wiring
+class TestDerivedLayersAreWired:
+    """Phase 5 shipped a fetch_all.py rebuilt from an older copy and silently
+    dropped the scorecard call. The pipeline kept running and the manifest kept
+    saying 'ok' — from the previous run's file. Nothing would have reported it.
+    These assert the calls exist, so a future rebuild cannot quietly lose one."""
+
+    def _src(self):
+        import os
+        p = os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py')
+        return open(p, encoding='utf-8').read()
+
+    def test_scorecard_is_called(self):
+        assert 'import scorecard' in self._src()
+        assert 'scorecard.main()' in self._src()
+
+    def test_slim_is_called(self):
+        assert 'import slim' in self._src()
+        assert 'slim.main()' in self._src()
+
+    def test_kpis_is_called(self):
+        assert 'kpis.main()' in self._src()
+
+    def test_each_derived_layer_is_isolated(self):
+        """One failing layer must not abort the run or block the manifest."""
+        src = self._src()
+        for name in ('slim', 'scorecard', 'kpis'):
+            i = src.find(f'import {name};')
+            assert i > 0, name
+            assert 'try:' in src[max(0, i - 260):i], f'{name} is not inside a try'
+            assert f"manifest_doc['{name}'] = 'error:" in src, f'{name} records no failure reason'

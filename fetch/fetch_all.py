@@ -642,6 +642,17 @@ def main():
         import kpis; kpis.OUT = OUT; kpis.main(); manifest_doc['kpis'] = 'ok'
     except Exception as e:
         manifest_doc['kpis'] = 'error: ' + str(e)[:300]; print('  ERR kpis:', str(e)[:200], file=sys.stderr)
+    # Derived layers. Each is isolated: a failure records a reason in the
+    # manifest and leaves the previous file in place. Both read the source
+    # files off disk, so they must run after the SOURCES loop.
+    try:
+        import slim; slim.OUT = OUT; slim.main(); manifest_doc['slim'] = 'ok'
+    except Exception as e:
+        manifest_doc['slim'] = 'error: ' + str(e)[:300]; print('  ERR slim:', str(e)[:200], file=sys.stderr)
+    try:
+        import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
+    except Exception as e:
+        manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
     with open(os.path.join(OUT, 'manifest.json'), 'w') as f: json.dump(manifest_doc, f, indent=1)
     print('Done. ok:', manifest_doc['ok'], 'errors:', manifest_doc['errors'])
     return 0
