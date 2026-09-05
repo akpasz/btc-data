@@ -1,0 +1,34 @@
+name: tests
+
+# Runs on every push and pull request, and before the daily publish.
+# These are pure-function tests: no network, no fixtures, a few seconds.
+# The point is that a refactor cannot silently change a published number.
+
+on:
+  push:
+    branches: [main]
+    paths: ['fetch/**', 'tests/**', '.github/workflows/tests.yml']
+  pull_request:
+  workflow_call:      # so daily.yml can require this before publishing
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r fetch/requirements.txt
+          pip install pytest
+      - name: Run tests
+        run: python -m pytest tests/ -q
+      - name: Check every fetch module imports
+        run: |
+          cd fetch
+          for f in *.py; do python -c "import ast,sys; ast.parse(open('$f').read())" || exit 1; done
+          echo "all fetch modules parse"

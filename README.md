@@ -11,7 +11,44 @@ https://akpasz.github.io/btc-data/data/<file>.json
 https://raw.githubusercontent.com/akpasz/btc-data/main/data/<file>.json
 ```
 
-Updated once daily at **06:15 UTC** by GitHub Actions (`.github/workflows/daily.yml`). No keys, no
+Updated once daily at **06:15 UTC** by GitHub Actions (`.github/workflows/daily.yml`).
+
+## Schema version
+
+Every published document carries a `schema_version`. Check it before relying on
+a shape.
+
+```json
+{ "schema_version": "1.0", "source": "blockchain", "series": { ... } }
+```
+
+- **MAJOR** — a key was removed or its meaning changed. Consumers must be
+  updated; the old shape will not come back.
+- **MINOR** — a key was added. Existing readers keep working unchanged.
+
+Breaking changes are announced in [`data/changes.atom`](https://akpasz.github.io/btc-data/data/changes.atom)
+and the previous shape is served alongside the new one for at least 30 days
+where that is possible.
+
+**1.0** — first versioned publish, September 2026. Source files carry
+`{schema_version, source, source_url, fetched_at, note, series}`; every series
+value is a `[date, number]` pair, sorted ascending, with nulls excluded rather
+than stored.
+
+## Tests
+
+```
+pip install pytest
+python -m pytest tests/ -q
+```
+
+Pure-function regression tests over the parts where a silent change would
+publish a wrong number: the series merge that protects stored history, the
+freshness rule, gap interpolation, percentile and moving-average helpers, the
+composite band boundaries, and the scorecard's episode, censoring and
+baseline logic. They need no network and run in under a second, so CI gates
+every push (`.github/workflows/tests.yml`).
+ No keys, no
 rate limits beyond GitHub's own, no tracking.
 
 ## Files

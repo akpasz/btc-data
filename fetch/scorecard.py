@@ -196,7 +196,7 @@ def main():
         for k in ('hit_rate','baseline_rate'):
             if x.get(k) is not None: x[k]=round(x[k],1)
 
-    out=dict(source='derived',generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+    out=dict(schema_version='1.0',source='derived',generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
         as_of=dates[-1],price_points=n,horizon_days=HORIZON,cluster_days=CLUSTER,
         min_episodes=MIN_EPISODES,
         method=('Each rule is scored against the days on which it could have fired. The baseline '

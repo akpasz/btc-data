@@ -47,14 +47,19 @@ def merge_series(old: Dict[str, List], new: Dict[str, List]) -> Dict[str, List]:
     for k in set(list(old.keys()) + list(new.keys())):
         m = {}
         for d, v in old.get(k, []): m[d] = v
-        for d, v in new.get(k, []): m[d] = v
+        # A null in the new payload means "this source had nothing for that date",
+        # not "delete what we stored". Letting it through overwrote a good value and
+        # the filter below then dropped the date entirely — permanent, silent loss,
+        # because save() writes the merged result back over the file.
+        for d, v in new.get(k, []):
+            if v is not None: m[d] = v
         out[k] = sorted([[d, v] for d, v in m.items() if v is not None])
     return out
 
 def save(name, source_url, series: Dict[str, List], note=''):
     old = load_existing(name)
     merged = merge_series(old['series'] if old else {}, series)
-    doc = {'source': name, 'source_url': source_url, 'fetched_at': NOW, 'note': note, 'series': merged}
+    doc = {'schema_version': SCHEMA_VERSION, 'source': name, 'source_url': source_url, 'fetched_at': NOW, 'note': note, 'series': merged}
     with open(os.path.join(OUT, name + '.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
     last = max((s[-1][0] for s in merged.values() if s), default=None)
     manifest[name] = {'status': 'ok', 'fetched_at': NOW, 'metrics': {k: len(v) for k, v in merged.items()}, 'last_date': last, 'source_url': source_url}
@@ -63,6 +68,17 @@ def save(name, source_url, series: Dict[str, List], note=''):
 
 # HTTP 200 is not freshness: a source can answer with yesterday's data. Each source has an expected maximum age in days;
 # beyond it the run is still 'ok' (the fetch worked) but freshness is 'stale', and the dashboard can say so.
+# These files are, in effect, a small public API: anyone may read them directly.
+# SCHEMA_VERSION is stamped on every published document so a consumer can tell,
+# without guessing, whether the shape it was written against still holds.
+#   MAJOR  a key was removed or its meaning changed - consumers must be updated
+#   MINOR  a key was added; existing readers keep working
+# History
+#   1.0  first versioned publish. Shape as of September 2026: every source file
+#        carries {source, source_url, fetched_at, note, series}; series values are
+#        [date, number] pairs sorted ascending with nulls excluded.
+SCHEMA_VERSION = '1.0'
+
 EXPECTED_MAX_AGE_DAYS = {'lppls': 3, 'macro': 10, 'coinmetrics': 3, 'fred': 5, 'derivatives': 2, 'relative': 5, 'etf_flows': 4, 'coingecko_global': 2, 'etf_quarterly': 135}
 def freshness(name, last_date):
     if not last_date: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
@@ -618,7 +634,7 @@ def main():
         health = f"{total - len(stale)} of {total} sources refreshed; " + ', '.join(f"{k} is {manifest[k].get('age_days', '?')} day(s) old" for k in stale)
     else:
         health = f'all {total} sources refreshed'
-    manifest_doc = {'generated_at': NOW, 'sources': manifest, 'ok': ok, 'errors': errs, 'stale': stale,
+    manifest_doc = {'schema_version': SCHEMA_VERSION, 'generated_at': NOW, 'sources': manifest, 'ok': ok, 'errors': errs, 'stale': stale,
                     'health': health,
                     'health_state': 'error' if errs else ('stale' if stale else 'ok'),
                     'health_note': 'errors are sources with no usable value; stale are sources that did not refresh but still serve a value inside their expected age'}
@@ -626,10 +642,6 @@ def main():
         import kpis; kpis.OUT = OUT; kpis.main(); manifest_doc['kpis'] = 'ok'
     except Exception as e:
         manifest_doc['kpis'] = 'error: ' + str(e)[:300]; print('  ERR kpis:', str(e)[:200], file=sys.stderr)
-    try:
-        import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
-    except Exception as e:
-        manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
     with open(os.path.join(OUT, 'manifest.json'), 'w') as f: json.dump(manifest_doc, f, indent=1)
     print('Done. ok:', manifest_doc['ok'], 'errors:', manifest_doc['errors'])
     return 0
