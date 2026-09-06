@@ -5,11 +5,11 @@
   <id>tag:cryptoexponentials.com,2026:snapshot-feed</id>
   <link href="https://cryptoexponentials.com/tools/"/>
   <link rel="self" href="https://akpasz.github.io/btc-data/data/changes.atom"/>
-  <updated>2026-09-06T10:56:08Z</updated>
+  <updated>2026-09-06T11:38:03Z</updated>
   <entry>
     <title>Snapshot 2026-09-05</title>
     <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-05</id>
-    <updated>2026-09-06T10:56:08Z</updated>
+    <updated>2026-09-06T11:38:03Z</updated>
     <link href="https://cryptoexponentials.com/tools/"/>
     <content type="text">Price 79,677 (-2.0% vs 2026-09-04)
 Metcalfe, validated 2017 76,880 (+0.0% vs 2026-09-04)
@@ -17,7 +17,7 @@ Metcalfe, reference 2011 137,201 (+0.0% vs 2026-09-04)
 Power-law level 136,866 (+0.1% vs 2026-09-04)
 Realised price 53,159 (+0.0% vs 2026-09-04)
 Valuation state average (composite 41)
-Crowding composite 35</content>
+Crowding composite 36</content>
   </entry>
   <entry>
     <title>Snapshot 2026-09-04</title>
@@ -29,7 +29,7 @@ Metcalfe, validated 2017 76,851 (+0.0% vs 2026-09-03)
 Metcalfe, reference 2011 137,164 (+0.0% vs 2026-09-03)
 Power-law level 136,780 (+0.1% vs 2026-09-03)
 Realised price 53,140 (+0.0% vs 2026-09-03)
-Valuation state average (composite 42)
+Valuation state average (composite 43)
 Crowding composite 29</content>
   </entry>
   <entry>
@@ -42,7 +42,7 @@ Metcalfe, validated 2017 76,818 (+0.0% vs 2026-09-02)
 Metcalfe, reference 2011 137,119 (+0.0% vs 2026-09-02)
 Power-law level 136,693 (+0.1% vs 2026-09-02)
 Realised price 53,132 (+0.1% vs 2026-09-02)
-Valuation state average (composite 39)
+Valuation state average (composite 38)
 Crowding composite 46</content>
   </entry>
   <entry>
@@ -68,7 +68,7 @@ Metcalfe, validated 2017 76,755 (+0.0% vs 2026-08-31)
 Metcalfe, reference 2011 137,034 (+0.0% vs 2026-08-31)
 Power-law level 136,521 (+0.1% vs 2026-08-31)
 Realised price 53,081 (+0.0% vs 2026-08-31)
-Valuation state average (composite 39)
+Valuation state average (composite 40)
 Crowding composite 51</content>
   </entry>
   <entry>
@@ -81,7 +81,7 @@ Metcalfe, validated 2017 76,724
 Metcalfe, reference 2011 136,992
 Power-law level 136,437
 Realised price 53,076
-Valuation state average (composite 39)
+Valuation state average (composite 38)
 Crowding composite 54</content>
   </entry>
 </feed>
