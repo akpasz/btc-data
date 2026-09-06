@@ -344,3 +344,97 @@ class TestAlignRunsFirst:
         a = src.find('import align')
         for later in ('import kpis', 'import slim', 'import scorecard'):
             assert a < src.find(later), f'align must run before {later}'
+
+
+# ---------------------------------------------------------------- portfolio
+class TestPortfolio:
+    """Portfolio arithmetic fails silently: a wrong denominator or an off-by-one
+    window produces numbers that look entirely plausible. Every expectation here
+    is hand-computed."""
+
+    def _m(self):
+        import portfolio
+        return portfolio
+
+    def _flat(self, n=13):
+        return [f'2020-{i:02d}' for i in range(1, 13)] + ['2021-01'][:max(0, n - 12)]
+
+    def test_doubling_in_twelve_months_is_100_percent_cagr(self):
+        P = self._m()
+        months = self._flat()
+        lv = {m: 2 ** (i / 12) for i, m in enumerate(months)}
+        st = P.stats(P.path({'a': P.returns(lv, months)}, {'a': 1.0}, months), months)
+        assert abs(st['cagr_pct'] - 100.0) < 0.01
+
+    def test_flat_series_has_no_volatility_and_no_drawdown(self):
+        P = self._m()
+        months = self._flat()
+        lv = {m: 1.0 for m in months}
+        st = P.stats(P.path({'a': P.returns(lv, months)}, {'a': 1.0}, months), months)
+        assert st['vol_pct'] == 0.0 and st['max_drawdown_pct'] == 0.0
+
+    def test_max_drawdown_is_peak_to_trough(self):
+        P = self._m()
+        months = self._flat()
+        lv = dict(zip(months, [100, 90, 80, 70, 60, 50, 60, 70, 80, 90, 100, 110, 120]))
+        st = P.stats(P.path({'a': P.returns(lv, months)}, {'a': 1.0}, months), months)
+        assert abs(st['max_drawdown_pct'] + 50.0) < 0.01, '100 to 50 is -50%'
+        assert st['longest_underwater_months'] == 9
+
+    def test_rebalancing_and_holding_differ(self):
+        """0.5x(+10%) + 0.5x(-10%) rebalanced is exactly flat; held, the winner
+        compounds. 0.5(1.1^2) + 0.5(0.9^2) = 1.01."""
+        P = self._m()
+        mm = ['2020-01', '2020-02', '2020-03']
+        a = {'2020-01': 100, '2020-02': 110, '2020-03': 121}
+        b = {'2020-01': 100, '2020-02': 90, '2020-03': 81}
+        ra, rb = P.returns(a, mm), P.returns(b, mm)
+        assert abs(P.path({'a': ra, 'b': rb}, {'a': .5, 'b': .5}, mm)[-1] - 1.0) < 1e-12
+        assert abs(P.path({'a': ra, 'b': rb}, {'a': .5, 'b': .5}, mm, 'hold')[-1] - 1.01) < 1e-9
+
+    def test_weights_sum_to_one_at_every_rung(self):
+        P = self._m()
+        for pct in P.WEIGHTS:
+            b = pct / 100.0
+            w = {k: v * (1 - b) for k, v in P.BASE.items()}
+            w['btc'] = b
+            assert abs(sum(w.values()) - 1.0) < 1e-12, pct
+
+    def test_a_window_cannot_see_past_its_own_end(self):
+        """The failure that would be invisible. Changing a month outside the
+        window must not change the window's result."""
+        import copy
+        P = self._m()
+        mm = [f'2020-{i:02d}' for i in range(1, 13)] + [f'2021-{i:02d}' for i in range(1, 13)]
+        lv = {m: 100 * (1.01 ** i) for i, m in enumerate(mm)}
+        assets = {'equities': dict(lv), 'gold': dict(lv), 'btc': dict(lv)}
+        window = mm[:13]
+        before, _ = P.build(assets, window, 10)
+        later = copy.deepcopy(assets)
+        for k in later:
+            later[k][mm[20]] *= 3.0
+        after, _ = P.build(later, window, 10)
+        assert before == after, 'look-ahead: a future month changed a past window'
+
+    def test_refuses_to_publish_on_a_tiny_sample(self):
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'len(months) < 60' in src, 'must refuse to publish on too few months'
+
+    def test_refuses_a_partial_portfolio(self):
+        """A missing leg used to be dropped silently, leaving the weights summing
+        to 0.64 while the result was reported as a whole portfolio."""
+        import pytest as _pt
+        P = self._m()
+        assets = {'equities': {'2020-01': 1.0, '2020-02': 1.0},
+                  'btc': {'2020-01': 1.0, '2020-02': 1.0}}      # no gold
+        with _pt.raises(ValueError):
+            P.build(assets, ['2020-01', '2020-02'], 10)
+
+    def test_monthly_aggregation_is_a_mean_not_a_last_value(self):
+        """The equity and gold series are monthly AVERAGES; taking bitcoin's last
+        daily price mixed two conventions and put the observations half a month
+        apart. Verified against the data: sp500_monthly correlates 0.933 with the
+        Nasdaq monthly average and 0.594 with its month-end close."""
+        P = self._m()
+        pts = [['2020-01-01', 10.0], ['2020-01-15', 20.0], ['2020-01-31', 30.0]]
+        assert P.to_monthly(pts)['2020-01'] == 20.0, 'must be the mean, not 30.0'

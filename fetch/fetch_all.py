@@ -658,6 +658,10 @@ def main():
     except Exception as e:
         manifest_doc['slim'] = 'error: ' + str(e)[:300]; print('  ERR slim:', str(e)[:200], file=sys.stderr)
     try:
+        import portfolio; portfolio.OUT = OUT; portfolio.main(); manifest_doc['portfolio'] = 'ok'
+    except Exception as e:
+        manifest_doc['portfolio'] = 'error: ' + str(e)[:300]; print('  ERR portfolio:', str(e)[:200], file=sys.stderr)
+    try:
         import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
     except Exception as e:
         manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
