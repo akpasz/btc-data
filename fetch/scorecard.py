@@ -32,6 +32,7 @@ Writes scorecard.json. Every rule is scored the same way:
 Right-censored episodes (window not complete) are excluded from denominators
 and counted separately. No rule is scored on data it could not have seen.
 """
+import math
 import io,json,os,sys,math,urllib.request,datetime
 
 DATA=os.environ.get('DATA_DIR','data')
@@ -40,7 +41,8 @@ BASES=['https://akpasz.github.io/btc-data/data/',
 LOCAL=os.environ.get('SNAP_DIR')
 MIN_EPISODES=20
 HORIZON=365
-CLUSTER=90          # days after a trigger treated as the same episode
+CLUSTER=90
+BOOTSTRAP_DRAWS=4000   # enough for a stable 90% interval, cheap to compute          # days after a trigger treated as the same episode
 
 def load(n):
     """In the pipeline the files are already on disk beside us; fall back to
@@ -117,8 +119,36 @@ def score(dates,px,fires,eligible,direction):
         o=outcome(i)
         if o is None: continue
         bt+=1; bh+=1 if o else 0
+    # How wide is the uncertainty on that hit rate?
+    #
+    # "Five observations cannot be told apart from luck" was an assertion until
+    # now. This measures it.
+    #
+    # A resampling bootstrap was the obvious choice and it is WRONG here. When
+    # every episode is a hit, as with Pi Cycle at five for five, every resample
+    # returns 100% and the interval collapses to "100% to 100%" - reporting
+    # certainty from five observations, which is the precise opposite of the
+    # point. The statistic is a binomial proportion, so the Wilson score
+    # interval is the right tool: it is well behaved at zero and one, needs no
+    # random draws, and gives the same answer every run.
+    #
+    # Episodes are the unit, not days, because the days inside one episode are
+    # the same event.
+    hit_n = sum(1 for s0, _ in eps if outcome(s0) is True)
+    obs_n = sum(1 for s0, _ in eps if outcome(s0) is not None)
+    ci = None
+    if obs_n >= 2:
+        z = 1.6449                      # 90% two-sided
+        p = hit_n / obs_n
+        d = 1 + z * z / obs_n
+        centre = (p + z * z / (2 * obs_n)) / d
+        half = (z / d) * math.sqrt(p * (1 - p) / obs_n + z * z / (4 * obs_n * obs_n))
+        ci = [round(max(0.0, centre - half) * 100, 1),
+              round(min(1.0, centre + half) * 100, 1)]
+
     return dict(episodes=tot,censored=cens,
         hit_rate=(100*hit/tot) if tot else None,
+        hit_rate_ci90=ci,
         baseline_rate=(100*bh/bt) if bt else None,
         baseline_days=bt,
         eligible_days=sum(1 for i in range(n) if eligible[i]))

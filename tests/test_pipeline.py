@@ -438,3 +438,42 @@ class TestPortfolio:
         P = self._m()
         pts = [['2020-01-01', 10.0], ['2020-01-15', 20.0], ['2020-01-31', 30.0]]
         assert P.to_monthly(pts)['2020-01'] == 20.0, 'must be the mean, not 30.0'
+
+
+class TestConfidenceInterval:
+    """A resampling bootstrap collapses to "100% to 100%" when every episode is
+    a hit, reporting certainty from five observations. The Wilson score interval
+    is well behaved at the boundaries, which is why it is used instead."""
+
+    def _wilson(self, hits, n, z=1.6449):
+        import math
+        p = hits / n
+        d = 1 + z * z / n
+        c = (p + z * z / (2 * n)) / d
+        h = (z / d) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+        return max(0.0, c - h) * 100, min(1.0, c + h) * 100
+
+    def test_all_hits_does_not_collapse_to_a_point(self):
+        lo, hi = self._wilson(5, 5)
+        assert hi == 100.0
+        assert 55 < lo < 75, f'five for five should admit a rate near 65%, got {lo}'
+
+    def test_no_hits_does_not_collapse_either(self):
+        lo, hi = self._wilson(0, 5)
+        assert lo == 0.0 and 25 < hi < 45
+
+    def test_interval_narrows_as_episodes_grow(self):
+        w5 = self._wilson(3, 5); w50 = self._wilson(30, 50)
+        assert (w50[1] - w50[0]) < (w5[1] - w5[0]) / 2
+
+    def test_interval_contains_the_observed_rate(self):
+        for hits, n in ((1, 4), (5, 5), (0, 5), (12, 20), (7, 15)):
+            lo, hi = self._wilson(hits, n)
+            assert lo <= 100 * hits / n <= hi, (hits, n)
+
+    def test_scorecard_publishes_the_interval(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'scorecard.py'),
+                   encoding='utf-8').read()
+        assert 'hit_rate_ci90' in src
+        assert 'Wilson' in src, 'the choice of interval must be explained in the module'
