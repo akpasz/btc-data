@@ -284,3 +284,63 @@ class TestDerivedLayersAreWired:
             assert i > 0, name
             assert 'try:' in src[max(0, i - 260):i], f'{name} is not inside a try'
             assert f"manifest_doc['{name}'] = 'error:" in src, f'{name} records no failure reason'
+
+
+# ---------------------------------------------------------------- date alignment
+class TestAlign:
+    """Blockchain.com and Coin Metrics labelled the same day's price one day
+    apart, so the site published a price from one convention beside a ratio
+    computed from the other. Divide the two published numbers and you got 1.53
+    against a published MVRV of 1.499."""
+
+    def _m(self):
+        import align
+        return align
+
+    def test_shift_moves_every_date_and_loses_nothing(self):
+        m = self._m()
+        s = {'p': [['2026-01-01', 1.0], ['2026-01-02', 2.0]]}
+        out = m._shift_series(s, 1)
+        assert [d for d, _ in out['p']] == ['2026-01-02', '2026-01-03']
+        assert [v for _, v in out['p']] == [1.0, 2.0], 'values must not change'
+
+    def test_values_travel_with_their_dates(self):
+        out = self._m()._shift_series({'p': [['2026-03-31', 9.0]]}, 1)
+        assert out['p'] == [['2026-04-01', 9.0]], 'month boundary'
+
+    def test_leap_day_survives(self):
+        out = self._m()._shift_series({'p': [['2028-02-28', 1.0]]}, 1)
+        assert out['p'][0][0] == '2028-02-29'
+
+    def test_unparseable_dates_are_dropped_not_crashed(self):
+        out = self._m()._shift_series({'p': [['nonsense', 1.0], ['2026-01-01', 2.0]]}, 1)
+        assert len(out['p']) == 1
+
+    def test_canonical_source_is_never_shifted(self):
+        m = self._m()
+        assert m.CANONICAL not in m.SHIFT, \
+            'the canonical convention must be the one nothing moves against'
+
+    def test_shifts_are_whole_days_and_small(self):
+        for src, days in self._m().SHIFT.items():
+            assert isinstance(days, int) and abs(days) <= 2, \
+                f'{src}: a large shift means the diagnosis is wrong, not the data'
+
+
+class TestAlignRunsFirst:
+    """align must run before anything derives from the sources, or the derived
+    layers are computed on the unaligned data and the fix does nothing."""
+
+    def _src(self):
+        import os
+        p = os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py')
+        return open(p, encoding='utf-8').read()
+
+    def test_align_is_called(self):
+        assert 'import align' in self._src() and 'align.main()' in self._src()
+
+    def test_align_precedes_every_derived_layer(self):
+        src = self._src()
+        a = src.find('import align')
+        for later in ('import kpis', 'import slim', 'import scorecard'):
+            assert a < src.find(later), f'align must run before {later}'

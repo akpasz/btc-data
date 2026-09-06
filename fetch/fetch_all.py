@@ -638,6 +638,14 @@ def main():
                     'health': health,
                     'health_state': 'error' if errs else ('stale' if stale else 'ok'),
                     'health_note': 'errors are sources with no usable value; stale are sources that did not refresh but still serve a value inside their expected age'}
+    # Put every source on one date convention BEFORE anything derives from
+    # them. Coin Metrics labelled a close one day earlier than Blockchain.com,
+    # so MVRV was computed against a price a day away from the one published.
+    try:
+        import align; align.OUT = OUT; align.main(); manifest_doc['align'] = 'ok'
+    except Exception as e:
+        manifest_doc['align'] = 'error: ' + str(e)[:300]; print('  ERR align:', str(e)[:200], file=sys.stderr)
+
     try:
         import kpis; kpis.OUT = OUT; kpis.main(); manifest_doc['kpis'] = 'ok'
     except Exception as e:
