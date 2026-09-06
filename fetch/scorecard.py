@@ -124,7 +124,7 @@ def score(dates,px,fires,eligible,direction):
         eligible_days=sum(1 for i in range(n) if eligible[i]))
 
 def main():
-    bc=load('blockchain'); cm=load('coinmetrics'); lp=load('lppls')
+    bc=load('blockchain'); cm=load('coinmetrics'); lp=load('lppls'); fg=load('fear_greed')
     if not bc: print('no blockchain.json'); return 1
     pr=[(d,v) for d,v in series(bc,'price') if v>0]
     dates=[d for d,_ in pr]; px=[v for _,v in pr]; n=len(px)
@@ -170,6 +170,50 @@ def main():
         'top',[bool(e[i] and mvrv[i]>3.7) for i in range(n)],e,'/tools/bitcoin-realised-value-monitor')
     add('mvrv_low','MVRV below 1','An MVRV below 1 means the average holder is under water: a bottom.',
         'bottom',[bool(e[i] and mvrv[i]<1.0) for i in range(n)],e,'/tools/bitcoin-realised-value-monitor')
+
+
+    # ---- sentiment ----------------------------------------------------
+    fgv = {d: v for d, v in series(fg, 'index')} if fg else {}
+    fgs = [fgv.get(d) for d in dates]
+    e = [fgs[i] is not None and i + HORIZON < n for i in range(n)]
+    add('fear_extreme', 'Fear and Greed at 20 or below',
+        'Extreme fear means the market has capitulated and it is time to buy.',
+        'bottom', [bool(e[i] and fgs[i] <= 20) for i in range(n)], e,
+        '/tools/bitcoin-flows-positioning-monitor')
+    add('greed_extreme', 'Fear and Greed at 80 or above',
+        'Extreme greed means the market is euphoric and due to fall.',
+        'top', [bool(e[i] and fgs[i] >= 80) for i in range(n)], e,
+        '/tools/bitcoin-flows-positioning-monitor')
+
+    # ---- miner capitulation --------------------------------------------
+    hr = {d: v for d, v in series(bc, 'hash_rate')}
+    hrs = [hr.get(d) for d in dates]
+    hr30, hr60 = sma([x if x is not None else 0.0 for x in hrs], 30), \
+                 sma([x if x is not None else 0.0 for x in hrs], 60)
+    e = [hr30[i] is not None and hr60[i] is not None and hrs[i] is not None
+         and i + HORIZON < n for i in range(n)]
+    add('hash_ribbon', 'Hash ribbon capitulation',
+        'When the 30-day hash rate falls below the 60-day, miners are '
+        'capitulating and a bottom is near.',
+        'bottom', [bool(e[i] and hr30[i] < hr60[i]) for i in range(n)], e,
+        '/tools/bitcoin-miners-monitor')
+
+    # ---- stock to flow --------------------------------------------------
+    sup = {d: v for d, v in series(bc, 'supply')}
+    sups = [sup.get(d) for d in dates]
+    s2f = [None] * n
+    for i in range(365, n):
+        a, b = sups[i - 365], sups[i]
+        if a and b and b > a:
+            flow = b - a
+            if flow > 0:
+                r = b / flow
+                s2f[i] = 0.4 * (r ** 3.3)      # PlanB's published coefficients
+    e = [s2f[i] is not None and i + HORIZON < n for i in range(n)]
+    add('below_s2f', 'Price below the Stock-to-Flow model',
+        'Bitcoin trades below its scarcity-implied value and will revert to it.',
+        'bottom', [bool(e[i] and px[i] < s2f[i]) for i in range(n)], e,
+        '/tools/bitcoin-indicator-autopsy')
 
     # LPPL comes precomputed with its own pre-registered specification
     rb=(lp or {}).get('random_baseline') or {}
