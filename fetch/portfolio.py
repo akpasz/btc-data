@@ -252,8 +252,20 @@ def main():
                 pairs.append([months[i + 1], round(num / (dx * dy), 3)])
         roll[other] = pairs
 
+    # Publish the aligned monthly series so the page can recompute any weight,
+    # base mix, start date or rebalancing rule in the browser from EXACTLY the
+    # numbers used here. Without this the page would re-derive them from
+    # relative.json and could silently drift from the published figures.
+    series_out = {k: [[m, round(assets[k][m], 6)] for m in months]
+                  for k in ('equities', 'gold', 'btc') if k in assets}
+    if 'eth' in assets:
+        eth_months = [m for m in months if m in assets['eth']]
+        if len(eth_months) > 60:
+            series_out['eth'] = [[m, round(assets['eth'][m], 6)] for m in eth_months]
+
     out = {
         'schema_version': SCHEMA_VERSION,
+        'monthly': series_out,
         'generated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
         'frequency': 'monthly-average',
         'months': len(months), 'first_month': months[0], 'last_month': months[-1],
