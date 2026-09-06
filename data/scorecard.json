@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-06T12:59:29+00:00",
+ "generated_at": "2026-09-06T22:20:26+00:00",
  "as_of": "2026-09-06",
  "price_points": 5864,
  "horizon_days": 365,
@@ -13,6 +13,10 @@
    "episodes": 5,
    "censored": 0,
    "hit_rate": 100.0,
+   "hit_rate_ci90": [
+    64.9,
+    100.0
+   ],
    "baseline_rate": 25.9,
    "baseline_days": 4310,
    "eligible_days": 5150,
@@ -28,6 +32,10 @@
    "episodes": 8,
    "censored": 0,
    "hit_rate": 25.0,
+   "hit_rate_ci90": [
+    8.7,
+    54.0
+   ],
    "baseline_rate": 26.4,
    "baseline_days": 4173,
    "eligible_days": 5300,
@@ -43,6 +51,10 @@
    "episodes": 4,
    "censored": 0,
    "hit_rate": 75.0,
+   "hit_rate_ci90": [
+    35.6,
+    94.2
+   ],
    "baseline_rate": 46.0,
    "baseline_days": 3199,
    "eligible_days": 4100,
@@ -58,6 +70,10 @@
    "episodes": 4,
    "censored": 0,
    "hit_rate": 25.0,
+   "hit_rate_ci90": [
+    5.8,
+    64.4
+   ],
    "baseline_rate": 44.9,
    "baseline_days": 3056,
    "eligible_days": 4770,
@@ -73,6 +89,10 @@
    "episodes": 12,
    "censored": 0,
    "hit_rate": 66.7,
+   "hit_rate_ci90": [
+    43.1,
+    84.1
+   ],
    "baseline_rate": 57.0,
    "baseline_days": 4208,
    "eligible_days": 5300,
@@ -88,6 +108,10 @@
    "episodes": 12,
    "censored": 0,
    "hit_rate": 58.3,
+   "hit_rate_ci90": [
+    35.6,
+    78.0
+   ],
    "baseline_rate": 28.5,
    "baseline_days": 4208,
    "eligible_days": 5300,
@@ -103,6 +127,10 @@
    "episodes": 20,
    "censored": 0,
    "hit_rate": 30.0,
+   "hit_rate_ci90": [
+    16.4,
+    48.4
+   ],
    "baseline_rate": 38.6,
    "baseline_days": 1289,
    "eligible_days": 5485,
@@ -118,6 +146,10 @@
    "episodes": 21,
    "censored": 0,
    "hit_rate": 47.6,
+   "hit_rate_ci90": [
+    31.0,
+    64.8
+   ],
    "baseline_rate": 59.9,
    "baseline_days": 2369,
    "eligible_days": 5485,
@@ -133,6 +165,10 @@
    "episodes": 5,
    "censored": 0,
    "hit_rate": 20.0,
+   "hit_rate_ci90": [
+    4.6,
+    56.5
+   ],
    "baseline_rate": 28.0,
    "baseline_days": 4615,
    "eligible_days": 5499,
@@ -148,6 +184,10 @@
    "episodes": 5,
    "censored": 0,
    "hit_rate": 60.0,
+   "hit_rate_ci90": [
+    27.2,
+    85.7
+   ],
    "baseline_rate": 54.9,
    "baseline_days": 4097,
    "eligible_days": 5499,
@@ -163,6 +203,10 @@
    "episodes": 5,
    "censored": 0,
    "hit_rate": 20.0,
+   "hit_rate_ci90": [
+    4.6,
+    56.5
+   ],
    "baseline_rate": 51.9,
    "baseline_days": 1065,
    "eligible_days": 2771,
@@ -178,6 +222,10 @@
    "episodes": 5,
    "censored": 0,
    "hit_rate": 40.0,
+   "hit_rate_ci90": [
+    14.3,
+    72.8
+   ],
    "baseline_rate": 39.1,
    "baseline_days": 1941,
    "eligible_days": 2771,
@@ -193,6 +241,10 @@
    "episodes": 15,
    "censored": 0,
    "hit_rate": 60.0,
+   "hit_rate_ci90": [
+    39.3,
+    77.7
+   ],
    "baseline_rate": 53.3,
    "baseline_days": 2942,
    "eligible_days": 5440,
@@ -208,6 +260,10 @@
    "episodes": 2,
    "censored": 0,
    "hit_rate": 50.0,
+   "hit_rate_ci90": [
+    12.1,
+    87.9
+   ],
    "baseline_rate": 3.6,
    "baseline_days": 252,
    "eligible_days": 5134,
