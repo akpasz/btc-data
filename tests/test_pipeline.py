@@ -556,3 +556,71 @@ class TestCensoringIsReachable:
         assert 'sf_ratio' in src
         i = src.find('def main(')
         assert '\\n            r = b / flow' not in src[i:]
+
+
+class TestConventionIsChecked:
+    """align verified only that nothing was dated in the future. That would not
+    notice the shift being WRONG: move the series back a day and no date is in
+    the future, the calendar check passes, and the data is simply a day out."""
+
+    def _m(self):
+        import align
+        return align
+
+    def test_best_offset_finds_zero_when_aligned(self):
+        import datetime as dt
+        base = dt.date(2026, 1, 1)
+        a = {(base + dt.timedelta(i)).isoformat(): 100.0 + i for i in range(120)}
+        off, err = self._m().best_offset(a, dict(a))
+        assert off == 0 and err < 1e-9
+
+    def test_best_offset_returns_none_on_too_few_points(self):
+        """Fewer than 30 overlapping days cannot settle a one-day question."""
+        a = {f'2026-01-{d:02d}': 100.0 + d for d in range(1, 21)}
+        assert self._m().best_offset(a, dict(a)) is None
+
+    def test_best_offset_finds_the_shift_when_misaligned(self):
+        import datetime as dt
+        base = dt.date(2026, 1, 1)
+        b = {(base + dt.timedelta(i)).isoformat(): 100.0 + i * 5 for i in range(120)}
+        a = {(dt.date.fromisoformat(k) + dt.timedelta(1)).isoformat(): v for k, v in b.items()}
+        off, _ = self._m().best_offset(a, b)
+        assert off == -1, 'a series shifted forward must want shifting back'
+
+    def test_main_rejects_a_wrong_convention(self, tmp_path):
+        """The case the calendar check misses entirely."""
+        import json, datetime as dt, pytest as _pt, align
+        base = dt.date(2026, 1, 1)
+        canon = {(base + dt.timedelta(i)).isoformat(): 100.0 + i * 3 for i in range(120)}
+        wrong = {(base + dt.timedelta(i - 1)).isoformat(): 100.0 + i * 3 for i in range(120)}
+        (tmp_path / 'blockchain.json').write_text(json.dumps(
+            {'series': {'price': [[k, v] for k, v in sorted(canon.items())]}}))
+        (tmp_path / 'coinmetrics.json').write_text(json.dumps(
+            {'series': {'PriceUSD': [[k, v] for k, v in sorted(wrong.items())]}}))
+        align.OUT = str(tmp_path)
+        with _pt.raises(ValueError, match='convention'):
+            align.main()
+
+
+class TestEtfDatesAreNotInvented:
+    """etf.py dated an undated scrape "today", so a Saturday run wrote a
+    weekend row carrying Friday's figure and etf_flows reported age 0."""
+
+    def _m(self):
+        import etf
+        return etf
+
+    def test_fallback_date_is_a_business_day(self):
+        import datetime as dt
+        d = dt.date.fromisoformat(self._m().TODAY)
+        assert d.weekday() < 5, 'the fallback must never be a Saturday or Sunday'
+
+    def test_fallback_is_not_in_the_future(self):
+        import datetime as dt
+        assert dt.date.fromisoformat(self._m().TODAY) <= dt.date.today()
+
+    def test_asserted_dates_are_recorded(self):
+        m = self._m()
+        assert hasattr(m, 'DATE_ASSERTED')
+        src = open(m.__file__, encoding='utf-8').read()
+        assert "'date_asserted'" in src, 'the published file must say which dates were inferred'

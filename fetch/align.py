@@ -81,6 +81,41 @@ def _shift_series(series, days):
     return out
 
 
+def _mean_abs_pct(a, b, keys):
+    tot = 0.0
+    for k in keys:
+        if b[k]:
+            tot += abs(a[k] - b[k]) / abs(b[k]) * 100.0
+    return tot / len(keys) if keys else None
+
+
+def best_offset(series_a, series_b, span=2, tail=400):
+    """Which whole-day shift of series_a best matches series_b?
+
+    align used to verify only that nothing was dated in the future. That would
+    not notice the shift being WRONG: set SHIFT to 0 or 2 and no date is in the
+    future, the check prints ok, and the series is simply a day out - mean
+    difference jumping from 0.09% to 1.6% with nothing to say so.
+    """
+    import datetime as _dt
+    best = None
+    for off in range(-span, span + 1):
+        moved = {}
+        for d, v in series_a.items():
+            try:
+                nd = (_dt.date.fromisoformat(d) + _dt.timedelta(off)).isoformat()
+            except Exception:
+                continue
+            moved[nd] = v
+        keys = sorted(set(moved) & set(series_b))[-tail:]
+        if len(keys) < 30:
+            continue
+        e = _mean_abs_pct(moved, series_b, keys)
+        if e is not None and (best is None or e < best[1]):
+            best = (off, e)
+    return best
+
+
 def main():
     """Verify the convention holds. This no longer SHIFTS anything.
 
@@ -122,12 +157,33 @@ def main():
             os.replace(tmp, p)
             print(f'  align: removed the stale alignment flag from {src}.json')
 
+    # Is the convention still the right one? Compare the canonical price series
+    # against the shifted one at several offsets; zero should win.
+    try:
+        _c = json.load(io.open(os.path.join(OUT, CANONICAL + '.json'), encoding='utf-8'))
+        _s = json.load(io.open(os.path.join(OUT, 'coinmetrics.json'), encoding='utf-8'))
+        _a = {d: v for d, v in _s['series'].get('PriceUSD', []) if v}
+        _b = {d: v for d, v in _c['series'].get('price', []) if v}
+        _best = best_offset(_a, _b)
+        if _best:
+            report['best_extra_offset'] = _best[0]
+            report['mean_abs_pct_at_zero'] = round(
+                _mean_abs_pct(_a, _b, sorted(set(_a) & set(_b))[-400:]) or 0, 4)
+            if _best[0] != 0:
+                problems.append(
+                    f'coinmetrics fits {CANONICAL} better shifted a further {_best[0]:+d} day '
+                    f'({_best[1]:.4f}% vs {report["mean_abs_pct_at_zero"]:.4f}% as stored) - '
+                    f'the convention in SHIFT is wrong')
+    except Exception as _e:
+        print(f'  align: convention check skipped ({_e})')
+
     if problems:
         for m in problems:
             print(f'  align: FUTURE-DATED {m}', file=sys.stderr)
         raise ValueError('; '.join(problems))
 
     print(f'  align: {CANONICAL} canonical, shift at ingest {dict(SHIFT)}, '
+          f'fit {report.get("mean_abs_pct_at_zero","?")}% at offset 0, '
           f'no future dates ({", ".join(f"{k} to {v}" for k, v in report["checked"].items())})')
     return 0
 

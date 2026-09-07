@@ -10,7 +10,33 @@ import requests
 
 UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,text/csv,application/json;q=0.9,*/*;q=0.8', 'Accept-Language': 'en-US,en;q=0.9'}
-TODAY = dt.date.today().isoformat()
+def _last_business_day():
+    """The most recent weekday, not today.
+
+    ETF holdings are disclosed on business days. Dating a Saturday scrape
+    "today" invented rows: BITB carried 2026-09-05, 06 and 07 with a single
+    Friday figure, and etf_flows then reported age 0, "current", while the real
+    disclosures were from the 3rd and 4th. Same defect as the Coin Metrics
+    drift - a date asserted rather than observed, and a freshness signal
+    reading healthy because of it.
+    """
+    d = dt.date.today()
+    while d.weekday() >= 5:          # 5 Saturday, 6 Sunday
+        d -= dt.timedelta(days=1)
+    return d.isoformat()
+
+
+# Fallback only, for issuers whose page publishes no date of its own.
+TODAY = _last_business_day()
+
+# Every use of that fallback is recorded, so the published file can say which
+# figures carry a date we inferred rather than one we read.
+DATE_ASSERTED = set()
+
+
+def _assert_date(issuer):
+    DATE_ASSERTED.add(issuer)
+    return TODAY
 
 def _get(url, tries=3, **kw):
     last = None
@@ -92,7 +118,7 @@ def grayscale(ticker):
     time.sleep(20); txt = _get(url, tries=4).text
     per = re.search(r'Bitcoin per Share[^0-9]*([0-9.]+)', txt, re.I); sh = re.search(r'Shares Outstanding[^0-9]*([0-9,]+)', txt, re.I)
     if not (per and sh): raise RuntimeError('fields not found on page')
-    date = re.search(r'as of\s*([0-9/]+)', txt, re.I); d = dt.datetime.strptime(date.group(1), '%m/%d/%Y').date().isoformat() if date else TODAY
+    date = re.search(r'as of\s*([0-9/]+)', txt, re.I); d = dt.datetime.strptime(date.group(1), '%m/%d/%Y').date().isoformat() if date else _assert_date('IBIT')
     return d, float(per.group(1)) * float(sh.group(1).replace(',', ''))
 
 def arkb():
@@ -104,13 +130,13 @@ def arkb():
         if any('BITCOIN' in c.upper() for c in row) and not any('CASH' in c.upper() for c in row):
             cands = [v for v in (_num(c) for c in row) if v and 1e3 <= v <= 5e6]
             if cands: btc = max(cands)
-    return date or TODAY, btc
+    return date or _assert_date('ARKB'), btc
 
 def bitwise():
     txt = _get('https://bitbetf.com/').text
     m = re.search(r'Bitcoin in Trust[^0-9]*([0-9,]+\.?[0-9]*)', txt, re.I) or re.search(r'BTC in Trust[^0-9]*([0-9,]+\.?[0-9]*)', txt, re.I)
     if not m: raise RuntimeError('holdings not found')
-    return TODAY, float(m.group(1).replace(',', ''))
+    return _assert_date('BITB'), float(m.group(1).replace(',', ''))
 
 def hodl():
     """VanEck exposes a plain JSON holdings dataset (the product page's "Get holdings" link).
@@ -203,11 +229,19 @@ def run(out_dir, price_by_date):
         if ser: total_btc[ser[-1][0]] = total_btc.get(ser[-1][0], 0) + ser[-1][1]
     doc = {'source': 'etf_flows', 'source_url': 'issuer daily holdings (see status)', 'fetched_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
            'note': 'net flow = change in BTC held x price; accumulates from first successful run. Coverage is the five issuers (IBIT, ARKB, BITB, HODL, OBTC) with a primary machine-readable daily coin count; every other product in the universe as of UNIVERSE_CHECKED is recorded with the reason it is absent. Not total spot-ETF flow',
+           'date_asserted': sorted(DATE_ASSERTED),
+           'date_asserted_note': ('These issuers publish no date on the page we read, so the '
+                                  'figure is dated to the most recent business day rather than '
+                                  'to a date the source stated. It was previously dated to '
+                                  'today, which invented weekend rows.'),
            'universe_checked': UNIVERSE_CHECKED,
            'issuers': status, 'pending': [], 'no_primary_source': NO_PRIMARY_SOURCE,
            'coverage': coverage,
            'series': {'net_flow_usd': sorted([[d, v] for d, v in flows.items()]), 'btc_held_by_issuer': {tk: ser[-1] for tk, ser in hold.items() if ser}}}
-    with open(os.path.join(out_dir, 'etf_flows.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
+    # atomic: a crash mid-write leaves the last good file rather than a truncated one
+    _dst = os.path.join(out_dir, 'etf_flows.json'); _tmp = _dst + '.tmp'
+    with open(_tmp, 'w') as f: json.dump(doc, f, separators=(',', ':'))
+    os.replace(_tmp, _dst)
     ok = [k for k, v in status.items() if v['status'] == 'ok']
     bad = [k for k, v in status.items() if v['status'] != 'ok']
     # 'partial' when some issuers fail, so the hub does not show a green 'ok' over a mostly-failing source
