@@ -477,3 +477,49 @@ class TestConfidenceInterval:
                    encoding='utf-8').read()
         assert 'hit_rate_ci90' in src
         assert 'Wilson' in src, 'the choice of interval must be explained in the module'
+
+
+class TestNoFutureDates:
+    """Coin Metrics drifted five days into the future and was served publicly,
+    with freshness reporting 'current' the whole time because a negative age
+    passes an "older than N days" test. Three defences now, each tested."""
+
+    def _m(self):
+        import fetch_all
+        return fetch_all
+
+    def test_future_dating_is_its_own_freshness_state(self):
+        f = self._m().freshness('coinmetrics', '2999-01-01')
+        assert f['freshness'] == 'future_dated', 'a negative age must not read as current'
+        assert f['age_days'] < 0
+
+    def test_normal_ages_still_classify(self):
+        import datetime as dt
+        m = self._m()
+        today = dt.datetime.fromisoformat(m.NOW).date()
+        assert m.freshness('coinmetrics', today.isoformat())['freshness'] == 'current'
+        old = (today - dt.timedelta(days=30)).isoformat()
+        assert m.freshness('coinmetrics', old)['freshness'] == 'stale'
+
+    def test_save_truncates_future_dated_points(self):
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'future-dated points' in src, 'save() must drop points dated after today'
+
+    def test_the_shift_happens_at_ingest_not_on_stored_files(self):
+        """align.py mutating the stored file was the bug: save() rebuilds each
+        document and drops the idempotency flag, so the shift reapplied forever."""
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'align.shift_series' in src or '_align.shift_series' in src, \
+            'coinmetrics must be shifted on the raw rows at ingest'
+        import align
+        a = open(align.__file__, encoding='utf-8').read()
+        i = a.find('def main(')
+        assert '_shift_series(doc' not in a[i:], 'align.main must no longer shift stored files'
+
+    def test_align_main_rejects_a_future_dated_file(self, tmp_path):
+        import json, pytest as _pt, align
+        (tmp_path / 'blockchain.json').write_text(json.dumps(
+            {'series': {'price': [['2999-01-01', 1.0]]}}))
+        align.OUT = str(tmp_path)
+        with _pt.raises(ValueError):
+            align.main()

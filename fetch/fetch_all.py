@@ -59,6 +59,20 @@ def merge_series(old: Dict[str, List], new: Dict[str, List]) -> Dict[str, List]:
 def save(name, source_url, series: Dict[str, List], note=''):
     old = load_existing(name)
     merged = merge_series(old['series'] if old else {}, series)
+    # No published series may carry a date later than today. A future-dated
+    # point is always a defect, and it hides itself: freshness() computes a
+    # NEGATIVE age, which passes the "not older than N days" test, so a series
+    # drifting into the future reports as current forever. This also truncates
+    # any phantom tail an earlier run left behind.
+    _today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    _dropped = 0
+    for _k, _v in merged.items():
+        _keep = [p for p in _v if str(p[0])[:10] <= _today]
+        _dropped += len(_v) - len(_keep)
+        merged[_k] = _keep
+    if _dropped:
+        print(f'  !!  {name}: dropped {_dropped} future-dated points (max allowed {_today})',
+              file=sys.stderr)
     doc = {'schema_version': SCHEMA_VERSION, 'source': name, 'source_url': source_url, 'fetched_at': NOW, 'note': note, 'series': merged}
     with open(os.path.join(OUT, name + '.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))
     last = max((s[-1][0] for s in merged.values() if s), default=None)
@@ -85,6 +99,12 @@ def freshness(name, last_date):
     try: age = (dt.datetime.fromisoformat(NOW).date() - dt.date.fromisoformat(last_date[:10])).days
     except Exception: return {'freshness': 'unknown', 'age_days': None, 'expected_max_age_days': EXPECTED_MAX_AGE_DAYS.get(name, 2)}
     thr = EXPECTED_MAX_AGE_DAYS.get(name, 2)
+    # A NEGATIVE age means the series is dated in the future, which is always a
+    # defect - and it used to hide itself here, because -4 <= 3 reported as
+    # 'current'. Coin Metrics drifted five days ahead and freshness called it
+    # healthy the whole time. Future dating is now its own state.
+    if age < 0:
+        return {'freshness': 'future_dated', 'age_days': age, 'expected_max_age_days': thr}
     return {'freshness': 'current' if age <= thr else 'stale', 'age_days': age, 'expected_max_age_days': thr}
 
 def fail(name, e, source_url=''):
@@ -153,7 +173,26 @@ def src_coinmetrics():
         for m in ok:
             v = r.get(m)
             if v not in (None, ''): series[m].append([d, float(v)])
-    save(name, base, {k: v for k, v in series.items() if v}, note=f'community tier; {len(ok)} of {len(wanted)} metrics available')
+    # Put Coin Metrics on the canonical date convention HERE, on the raw rows,
+    # before anything is merged or stored.
+    #
+    # It used to be done afterwards, by align.py, on the stored file. That was
+    # wrong in a way that only showed in production: save() rebuilds the
+    # document from scratch and drops the date_alignment_applied flag, so the
+    # idempotency guard never fired, and merge_series unions dates rather than
+    # replacing them. Every run therefore shifted the whole series one more day
+    # into the future and the drift ratcheted - five phantom days, all carrying
+    # a copy of the last real value, served publicly.
+    #
+    # Shifting the raw rows removes the possibility entirely: stored data is
+    # never touched twice because it is never touched at all.
+    import align as _align
+    shifted = _align.shift_series({k: v for k, v in series.items() if v},
+                                  _align.SHIFT.get('coinmetrics', 0))
+    save(name, base, shifted,
+         note=f'community tier; {len(ok)} of {len(wanted)} metrics available; '
+              f'dates shifted +{_align.SHIFT.get("coinmetrics", 0)}d at ingest to the '
+              f'{_align.CANONICAL} convention, see fetch/align.py')
 
 # ---------------------------------------------------------------- Coinbase spot
 def src_coinbase():

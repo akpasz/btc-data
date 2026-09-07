@@ -61,6 +61,12 @@ SHIFT = {'coinmetrics': 1}
 CANONICAL = 'blockchain'
 
 
+def shift_series(series, days):
+    """Move every date label by `days`. Used at INGEST by fetch_all, on raw rows,
+    before anything is merged or stored."""
+    return _shift_series(series, days)
+
+
 def _shift_series(series, days):
     out = {}
     for name, points in series.items():
@@ -76,46 +82,53 @@ def _shift_series(series, days):
 
 
 def main():
-    applied = {}
-    for src, days in SHIFT.items():
+    """Verify the convention holds. This no longer SHIFTS anything.
+
+    It used to shift the stored file, and that was wrong in a way only
+    production showed: fetch_all.save() rebuilds each document from scratch and
+    drops the date_alignment_applied flag, so the idempotency guard never fired,
+    and merge_series unions dates rather than replacing them. Every run pushed
+    Coin Metrics one more day into the future, permanently - five phantom days,
+    each a copy of the last real value, served publicly on the API.
+
+    The shift now happens in src_coinmetrics() on the raw rows, where a second
+    application is impossible because stored data is never re-read and re-written.
+    What is left here is the definition of the convention and a check that it held.
+    """
+    today = dt.date.today().isoformat()
+    report = {'canonical': CANONICAL, 'shift_at_ingest': dict(SHIFT), 'checked': {}}
+    problems = []
+    for src in set(list(SHIFT) + [CANONICAL]):
         p = os.path.join(OUT, src + '.json')
         if not os.path.exists(p):
-            print(f'  align: {src}.json not found, skipping')
             continue
         doc = json.load(io.open(p, encoding='utf-8'))
+        last = None
+        for name, pts in (doc.get('series') or {}).items():
+            if not pts:
+                continue
+            d = str(pts[-1][0])[:10]
+            if last is None or d > last:
+                last = d
+            if d > today:
+                problems.append(f'{src}.{name} ends {d}, which is after {today}')
+        report['checked'][src] = last
         if doc.get('date_alignment_applied'):
-            print(f'  align: {src} already aligned, skipping')
-            applied[src] = doc['date_alignment_applied']
-            continue
-        before = {k: len(v) for k, v in doc.get('series', {}).items()}
-        doc['series'] = _shift_series(doc.get('series', {}), days)
-        after = {k: len(v) for k, v in doc['series'].items()}
-        lost = {k: before[k] - after.get(k, 0) for k in before if before[k] != after.get(k, 0)}
-        if lost:
-            print(f'  align: ABORTED on {src} — shifting dropped points {lost}')
-            return 1
-        doc['date_alignment_applied'] = days
-        doc['date_alignment_note'] = (
-            f'Every date label moved {days:+d} day to match {CANONICAL}.json, which is '
-            f'the convention this site publishes as price_close. The two sources '
-            f'described the same days under labels one day apart; measured over 400 '
-            f'overlapping days the mean difference falls from 1.594% to 0.089% when '
-            f'this shift is applied. See fetch/align.py.')
-        tmp = p + '.tmp'
-        io.open(tmp, 'w', encoding='utf-8').write(json.dumps(doc, separators=(',', ':')))
-        os.replace(tmp, p)          # atomic: a failed run leaves the last good file
-        applied[src] = days
-        print(f'  align: {src} shifted {days:+d} day, {sum(after.values())} points')
+            # left over from when this module mutated stored files
+            doc.pop('date_alignment_applied', None)
+            doc.pop('date_alignment_note', None)
+            tmp = p + '.tmp'
+            io.open(tmp, 'w', encoding='utf-8').write(json.dumps(doc, separators=(',', ':')))
+            os.replace(tmp, p)
+            print(f'  align: removed the stale alignment flag from {src}.json')
 
-    if applied:
-        # record it where a consumer will see it
-        mp = os.path.join(OUT, 'manifest.json')
-        if os.path.exists(mp):
-            m = json.load(io.open(mp, encoding='utf-8'))
-            m['date_alignment'] = {'canonical': CANONICAL, 'shifted': applied}
-            tmp = mp + '.tmp'
-            io.open(tmp, 'w', encoding='utf-8').write(json.dumps(m, indent=1))
-            os.replace(tmp, mp)
+    if problems:
+        for m in problems:
+            print(f'  align: FUTURE-DATED {m}', file=sys.stderr)
+        raise ValueError('; '.join(problems))
+
+    print(f'  align: {CANONICAL} canonical, shift at ingest {dict(SHIFT)}, '
+          f'no future dates ({", ".join(f"{k} to {v}" for k, v in report["checked"].items())})')
     return 0
 
 

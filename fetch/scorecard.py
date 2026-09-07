@@ -218,8 +218,18 @@ def main():
     # ---- miner capitulation --------------------------------------------
     hr = {d: v for d, v in series(bc, 'hash_rate')}
     hrs = [hr.get(d) for d in dates]
-    hr30, hr60 = sma([x if x is not None else 0.0 for x in hrs], 30), \
-                 sma([x if x is not None else 0.0 for x in hrs], 60)
+    # Forward-fill, never zero-fill. A zero costs the 30-day mean 1/30 of its
+    # level but the 60-day only 1/60, so a gap MANUFACTURES hr30 < hr60 - the
+    # capitulation condition. Blockchain.com has an 11-day gap including one
+    # 7-day stretch; zero-filling turned 4 genuine capitulation days into 21.
+    # Both gaps currently sit in the ineligible tail, so today's scores are
+    # unaffected, but the 2025 gap ages into the scoreable window next year.
+    _f, _last = [], None
+    for x in hrs:
+        if x is not None:
+            _last = x
+        _f.append(_last if _last is not None else 0.0)
+    hr30, hr60 = sma(_f, 30), sma(_f, 60)
     e = [hr30[i] is not None and hr60[i] is not None and hrs[i] is not None
          and i + HORIZON < n for i in range(n)]
     add('hash_ribbon', 'Hash ribbon capitulation',
@@ -238,7 +248,14 @@ def main():
             flow = b - a
             if flow > 0:
                 r = b / flow
-                s2f[i] = 0.4 * (r ** 3.3)      # PlanB's published coefficients
+                    # PlanB's published regression is on MARKET VALUE:
+                # ln(mktcap) = 3.3*ln(SF) + 14.6. This uses his exponent with a
+                # price-scale coefficient of 0.4, which is neither of his
+                # published forms and sits well above both. The rule fires as
+                # one long episode either way, so the verdict is unaffected -
+                # but the model line drawn on the claim page is too high and
+                # the coefficient should not be described as his.
+                s2f[i] = 0.4 * (r ** 3.3)
     e = [s2f[i] is not None and i + HORIZON < n for i in range(n)]
     add('below_s2f', 'Price below the Stock-to-Flow model',
         'Bitcoin trades below its scarcity-implied value and will revert to it.',
