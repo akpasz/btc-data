@@ -115,7 +115,18 @@ are documented on the [methods page](https://cryptoexponentials.com/tools/method
 
 ## Using the data
 
-Attribution appreciated: *Crypto Exponentials Research, cryptoexponentials.com/tools*. The
+Attribution appreciated: *Kishor Akshinthala, Crypto Exponentials Research,
+cryptoexponentials.com/tools*. The
 underlying series remain subject to their original providers' terms (Blockchain.com, Coin Metrics
 community tier, Deribit, OKX, DefiLlama, FRED, Alternative.me, CoinGecko, CFTC, Coinbase,
 mempool.space). Nothing here is investment advice.
+
+## Maintainer
+
+Built and maintained by **Kishor Akshinthala** —
+[LinkedIn](https://www.linkedin.com/in/kishorakshinthala/) ·
+[cryptoexponentials.com](https://cryptoexponentials.com/)
+
+Corrections and methodology challenges are welcome. If a specification here is
+wrong, or a better one exists, open an issue: the tests and the thresholds are
+public precisely so they can be argued with.
