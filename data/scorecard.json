@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-06T22:30:50+00:00",
+ "generated_at": "2026-09-07T03:29:32+00:00",
  "as_of": "2026-09-06",
  "price_points": 5864,
  "horizon_days": 365,
@@ -283,11 +283,11 @@
    "episodes": 18,
    "censored": 0,
    "hit_rate": 28.0,
-   "baseline_rate": 34.4,
-   "baseline_days": 4627,
-   "eligible_days": 4627,
+   "baseline_rate": 34.5,
+   "baseline_days": 4631,
+   "eligible_days": 4631,
    "detail": "/tools/bitcoin-indicator-autopsy",
-   "note": "random-block p = 0.6734",
+   "note": "random-block p = 0.6751",
    "difference": -6.5,
    "verdict": "Not enough episodes to score"
   }
