@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-07T03:29:32+00:00",
+ "generated_at": "2026-09-07T03:54:29+00:00",
  "as_of": "2026-09-06",
  "price_points": 5864,
  "horizon_days": 365,
@@ -12,6 +12,7 @@
   {
    "episodes": 5,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 100.0,
    "hit_rate_ci90": [
     64.9,
@@ -19,7 +20,7 @@
    ],
    "baseline_rate": 25.9,
    "baseline_days": 4310,
-   "eligible_days": 5150,
+   "eligible_days": 5515,
    "key": "pi_cycle",
    "name": "Pi Cycle Top",
    "claim": "The 111-day average crossing above twice the 350-day average marks a cycle top.",
@@ -31,6 +32,7 @@
   {
    "episodes": 8,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 25.0,
    "hit_rate_ci90": [
     8.7,
@@ -38,7 +40,7 @@
    ],
    "baseline_rate": 26.4,
    "baseline_days": 4173,
-   "eligible_days": 5300,
+   "eligible_days": 5665,
    "key": "mayer_high",
    "name": "Mayer multiple above 2.4",
    "claim": "Price at 2.4x its 200-day average is an overheated market.",
@@ -49,7 +51,8 @@
   },
   {
    "episodes": 4,
-   "censored": 0,
+   "censored": 1,
+   "pending_since": "2026-06-06",
    "hit_rate": 75.0,
    "hit_rate_ci90": [
     35.6,
@@ -57,7 +60,7 @@
    ],
    "baseline_rate": 46.0,
    "baseline_days": 3199,
-   "eligible_days": 4100,
+   "eligible_days": 4465,
    "key": "below_200w",
    "name": "Price below the 200-week average",
    "claim": "Price under its 200-week average is a generational buying zone.",
@@ -68,7 +71,8 @@
   },
   {
    "episodes": 4,
-   "censored": 0,
+   "censored": 1,
+   "pending_since": "2026-01-30",
    "hit_rate": 25.0,
    "hit_rate_ci90": [
     5.8,
@@ -76,7 +80,7 @@
    ],
    "baseline_rate": 44.9,
    "baseline_days": 3056,
-   "eligible_days": 4770,
+   "eligible_days": 5135,
    "key": "two_year_ma",
    "name": "Price below the 2-year average",
    "claim": "The 2-year moving average multiplier marks the accumulation band.",
@@ -88,6 +92,7 @@
   {
    "episodes": 12,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 66.7,
    "hit_rate_ci90": [
     43.1,
@@ -95,7 +100,7 @@
    ],
    "baseline_rate": 57.0,
    "baseline_days": 4208,
-   "eligible_days": 5300,
+   "eligible_days": 5665,
    "key": "golden_cross",
    "name": "Golden cross",
    "claim": "The 50-day crossing above the 200-day average starts a bull phase.",
@@ -106,7 +111,8 @@
   },
   {
    "episodes": 12,
-   "censored": 0,
+   "censored": 1,
+   "pending_since": "2025-11-17",
    "hit_rate": 58.3,
    "hit_rate_ci90": [
     35.6,
@@ -114,7 +120,7 @@
    ],
    "baseline_rate": 28.5,
    "baseline_days": 4208,
-   "eligible_days": 5300,
+   "eligible_days": 5665,
    "key": "death_cross",
    "name": "Death cross",
    "claim": "The 50-day crossing below the 200-day average starts a bear phase.",
@@ -125,7 +131,8 @@
   },
   {
    "episodes": 20,
-   "censored": 0,
+   "censored": 1,
+   "pending_since": "2026-08-20",
    "hit_rate": 30.0,
    "hit_rate_ci90": [
     16.4,
@@ -133,7 +140,7 @@
    ],
    "baseline_rate": 38.6,
    "baseline_days": 1289,
-   "eligible_days": 5485,
+   "eligible_days": 5850,
    "key": "rsi_hot",
    "name": "RSI-14 above 70",
    "claim": "An overbought RSI precedes a fall.",
@@ -144,7 +151,8 @@
   },
   {
    "episodes": 21,
-   "censored": 0,
+   "censored": 2,
+   "pending_since": "2025-11-18",
    "hit_rate": 47.6,
    "hit_rate_ci90": [
     31.0,
@@ -152,7 +160,7 @@
    ],
    "baseline_rate": 59.9,
    "baseline_days": 2369,
-   "eligible_days": 5485,
+   "eligible_days": 5850,
    "key": "rsi_cold",
    "name": "RSI-14 below 30",
    "claim": "An oversold RSI precedes a rally.",
@@ -164,6 +172,7 @@
   {
    "episodes": 5,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 20.0,
    "hit_rate_ci90": [
     4.6,
@@ -171,7 +180,7 @@
    ],
    "baseline_rate": 28.0,
    "baseline_days": 4615,
-   "eligible_days": 5499,
+   "eligible_days": 5864,
    "key": "mvrv_high",
    "name": "MVRV above 3.7",
    "claim": "An MVRV above 3.7 marks the top of the cycle.",
@@ -183,6 +192,7 @@
   {
    "episodes": 5,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 60.0,
    "hit_rate_ci90": [
     27.2,
@@ -190,7 +200,7 @@
    ],
    "baseline_rate": 54.9,
    "baseline_days": 4097,
-   "eligible_days": 5499,
+   "eligible_days": 5864,
    "key": "mvrv_low",
    "name": "MVRV below 1",
    "claim": "An MVRV below 1 means the average holder is under water: a bottom.",
@@ -201,7 +211,8 @@
   },
   {
    "episodes": 5,
-   "censored": 0,
+   "censored": 1,
+   "pending_since": "2025-11-08",
    "hit_rate": 20.0,
    "hit_rate_ci90": [
     4.6,
@@ -209,7 +220,7 @@
    ],
    "baseline_rate": 51.9,
    "baseline_days": 1065,
-   "eligible_days": 2771,
+   "eligible_days": 3136,
    "key": "fear_extreme",
    "name": "Fear and Greed at 20 or below",
    "claim": "Extreme fear means the market has capitulated and it is time to buy.",
@@ -221,6 +232,7 @@
   {
    "episodes": 5,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 40.0,
    "hit_rate_ci90": [
     14.3,
@@ -228,7 +240,7 @@
    ],
    "baseline_rate": 39.1,
    "baseline_days": 1941,
-   "eligible_days": 2771,
+   "eligible_days": 3136,
    "key": "greed_extreme",
    "name": "Fear and Greed at 80 or above",
    "claim": "Extreme greed means the market is euphoric and due to fall.",
@@ -239,7 +251,8 @@
   },
   {
    "episodes": 15,
-   "censored": 0,
+   "censored": 1,
+   "pending_since": "2025-11-25",
    "hit_rate": 60.0,
    "hit_rate_ci90": [
     39.3,
@@ -247,7 +260,7 @@
    ],
    "baseline_rate": 53.3,
    "baseline_days": 2942,
-   "eligible_days": 5440,
+   "eligible_days": 5795,
    "key": "hash_ribbon",
    "name": "Hash ribbon capitulation",
    "claim": "When the 30-day hash rate falls below the 60-day, miners are capitulating and a bottom is near.",
@@ -259,6 +272,7 @@
   {
    "episodes": 2,
    "censored": 0,
+   "pending_since": null,
    "hit_rate": 50.0,
    "hit_rate_ci90": [
     12.1,
@@ -266,7 +280,7 @@
    ],
    "baseline_rate": 3.6,
    "baseline_days": 252,
-   "eligible_days": 5134,
+   "eligible_days": 5499,
    "key": "below_s2f",
    "name": "Price below the Stock-to-Flow model",
    "claim": "Bitcoin trades below its scarcity-implied value and will revert to it.",
