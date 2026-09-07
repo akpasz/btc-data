@@ -26,7 +26,7 @@ The confidence indicator is the share of the eight window lengths whose best fit
 Everything is computed as of each day on data up to that day only; the history is DAILY from 2013.
 
 Caveats recorded here and on the page:
-  * The fit is multi-modal. The search is a fixed coarse grid (8 tc x 3 m x 3 w) followed by Nelder-Mead;
+  * The fit is multi-modal. The search is a fixed coarse grid (12 tc x 3 m x 3 w) followed by Nelder-Mead;
     the critical time is searched over the full interval the primary filter permits, (T, T + dt], with
     12 grid points then Nelder-Mead; the result is conditional on that search, and it is not the original
     authors' numerical optimiser.

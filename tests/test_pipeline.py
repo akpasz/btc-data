@@ -624,3 +624,22 @@ class TestEtfDatesAreNotInvented:
         assert hasattr(m, 'DATE_ASSERTED')
         src = open(m.__file__, encoding='utf-8').read()
         assert "'date_asserted'" in src, 'the published file must say which dates were inferred'
+
+    def test_weekend_rows_are_dropped(self):
+        """Two survived the last-business-day fix because merges preserve every
+        date ever written. No issuer discloses at the weekend."""
+        import datetime as dt
+        m = self._m()
+        s = {'BITB': [['2026-09-04', 1.0], ['2026-09-05', 1.0], ['2026-09-06', 1.0],
+                      ['2026-09-07', 2.0]]}
+        out = m._drop_weekend_rows(s)['BITB']
+        assert [p[0] for p in out] == ['2026-09-04', '2026-09-07']
+        for p in out:
+            assert dt.date.fromisoformat(p[0]).weekday() < 5
+
+    def test_align_publishes_its_fit(self):
+        import align, os
+        src = open(align.__file__, encoding='utf-8').read()
+        assert 'align_report.json' in src, \
+            'the convention fit must be published, not only logged'
+        assert 'mean_abs_pct_at_zero' in src

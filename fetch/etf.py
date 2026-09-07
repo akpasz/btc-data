@@ -34,6 +34,31 @@ TODAY = _last_business_day()
 DATE_ASSERTED = set()
 
 
+def _drop_weekend_rows(series):
+    """Remove holdings dated to a Saturday or Sunday.
+
+    Two survive from before the last-business-day fix - BITB on 2026-09-05 and
+    06 - because merges preserve every date ever written. No issuer discloses at
+    the weekend, so any such row is an artefact, and net_flow_usd shows them as
+    zero-flow days. This clears them once and prevents any recurrence.
+    """
+    out, dropped = {}, 0
+    for name, pts in (series or {}).items():
+        keep = []
+        for p in pts:
+            try:
+                if dt.date.fromisoformat(str(p[0])[:10]).weekday() >= 5:
+                    dropped += 1
+                    continue
+            except Exception:
+                pass
+            keep.append(p)
+        out[name] = keep
+    if dropped:
+        print(f'  etf: dropped {dropped} weekend-dated holding rows')
+    return out
+
+
 def _assert_date(issuer):
     DATE_ASSERTED.add(issuer)
     return TODAY
@@ -237,7 +262,10 @@ def run(out_dir, price_by_date):
            'universe_checked': UNIVERSE_CHECKED,
            'issuers': status, 'pending': [], 'no_primary_source': NO_PRIMARY_SOURCE,
            'coverage': coverage,
-           'series': {'net_flow_usd': sorted([[d, v] for d, v in flows.items()]), 'btc_held_by_issuer': {tk: ser[-1] for tk, ser in hold.items() if ser}}}
+           'series': {'net_flow_usd': [p for p in sorted([[d, v] for d, v in flows.items()])
+                                      if dt.date.fromisoformat(str(p[0])[:10]).weekday() < 5],
+                      'btc_held_by_issuer': {tk: ser[-1] for tk, ser in
+                                             _drop_weekend_rows(hold).items() if ser}}}
     # atomic: a crash mid-write leaves the last good file rather than a truncated one
     _dst = os.path.join(out_dir, 'etf_flows.json'); _tmp = _dst + '.tmp'
     with open(_tmp, 'w') as f: json.dump(doc, f, separators=(',', ':'))

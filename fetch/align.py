@@ -185,6 +185,20 @@ def main():
     print(f'  align: {CANONICAL} canonical, shift at ingest {dict(SHIFT)}, '
           f'fit {report.get("mean_abs_pct_at_zero","?")}% at offset 0, '
           f'no future dates ({", ".join(f"{k} to {v}" for k, v in report["checked"].items())})')
+    # Publish the fit, not just print it. fetch_all records align as the bare
+    # string "ok" and rewrites manifest.json at the end of the run, so this
+    # number survived only in a log. It is the single most diagnostic figure
+    # here: if the convention ever drifts, this moves before anything breaks.
+    try:
+        mp = os.path.join(OUT, 'align_report.json')
+        tmp = mp + '.tmp'
+        io.open(tmp, 'w', encoding='utf-8').write(json.dumps({
+            'schema_version': SCHEMA_VERSION,
+            'checked_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
+            **report}, indent=1))
+        os.replace(tmp, mp)
+    except Exception as e:
+        print(f'  align: could not write align_report.json ({e})')
     return 0
 
 
