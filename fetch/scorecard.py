@@ -42,7 +42,7 @@ LOCAL=os.environ.get('SNAP_DIR')
 MIN_EPISODES=20
 HORIZON=365
 CLUSTER=90
-BOOTSTRAP_DRAWS=4000   # enough for a stable 90% interval, cheap to compute          # days after a trigger treated as the same episode
+# CLUSTER: days after a trigger treated as the same episode
 
 def load(n):
     """In the pipeline the files are already on disk beside us; fall back to
@@ -103,10 +103,23 @@ def score(dates,px,fires,eligible,direction):
                 j+=1
             eps.append((start,last)); i=last+1
         else: i+=1
+    # `eligible` now means the INPUTS existed on that day. Whether the 365-day
+    # outcome window has closed is decided here, so an episode that fired
+    # recently is counted as PENDING rather than dropped.
+    #
+    # It used to be dropped invisibly. Every eligible definition already
+    # required i + HORIZON < n, so an episode could never be censored and the
+    # counter was unreachable - it reported 0 for every rule while seven rules
+    # had fired inside the last year. "Price below the 2-year average" had been
+    # firing continuously since January with no hint on the page.
     hit=tot=cens=0
+    pending_dates=[]
     for s,_ in eps:
         o=outcome(s)
-        if o is None: cens+=1; continue
+        if o is None:
+            cens+=1
+            pending_dates.append(dates[s])
+            continue
         tot+=1; hit+=1 if o else 0
 
     # transition-matched baseline
@@ -147,6 +160,7 @@ def score(dates,px,fires,eligible,direction):
               round(min(1.0, centre + half) * 100, 1)]
 
     return dict(episodes=tot,censored=cens,
+        pending_since=(pending_dates[0] if pending_dates else None),
         hit_rate=(100*hit/tot) if tot else None,
         hit_rate_ci90=ci,
         baseline_rate=(100*bh/bt) if bt else None,
@@ -165,7 +179,7 @@ def main():
     mvrv=[mv.get(d) for d in dates]
 
     def el(*arrs):
-        return [all(a[i] is not None for a in arrs) and i+HORIZON<n for i in range(n)]
+        return [all(a[i] is not None for a in arrs) for i in range(n)]
 
     RULES=[]
     def add(key,name,claim,direction,fires,eligible,detail):
@@ -190,12 +204,12 @@ def main():
         'bottom',[bool(e[i] and i>0 and ma50[i-1] is not None and ma200[i-1] is not None and ma50[i]>ma200[i] and ma50[i-1]<=ma200[i-1]) for i in range(n)],e,'/tools/bitcoin-technical-signals')
     add('death_cross','Death cross','The 50-day crossing below the 200-day average starts a bear phase.',
         'top',[bool(e[i] and i>0 and ma50[i-1] is not None and ma200[i-1] is not None and ma50[i]<ma200[i] and ma50[i-1]>=ma200[i-1]) for i in range(n)],e,'/tools/bitcoin-technical-signals')
-    e=[r[i] is not None and i+HORIZON<n for i in range(n)]
+    e=[r[i] is not None for i in range(n)]
     add('rsi_hot','RSI-14 above 70','An overbought RSI precedes a fall.',
         'top',[bool(e[i] and r[i]>70) for i in range(n)],e,'/tools/bitcoin-technical-signals')
     add('rsi_cold','RSI-14 below 30','An oversold RSI precedes a rally.',
         'bottom',[bool(e[i] and r[i]<30) for i in range(n)],e,'/tools/bitcoin-technical-signals')
-    e=[mvrv[i] is not None and i+HORIZON<n for i in range(n)]
+    e=[mvrv[i] is not None for i in range(n)]
     add('mvrv_high','MVRV above 3.7','An MVRV above 3.7 marks the top of the cycle.',
         'top',[bool(e[i] and mvrv[i]>3.7) for i in range(n)],e,'/tools/bitcoin-realised-value-monitor')
     add('mvrv_low','MVRV below 1','An MVRV below 1 means the average holder is under water: a bottom.',
@@ -205,7 +219,7 @@ def main():
     # ---- sentiment ----------------------------------------------------
     fgv = {d: v for d, v in series(fg, 'index')} if fg else {}
     fgs = [fgv.get(d) for d in dates]
-    e = [fgs[i] is not None and i + HORIZON < n for i in range(n)]
+    e = [fgs[i] is not None for i in range(n)]
     add('fear_extreme', 'Fear and Greed at 20 or below',
         'Extreme fear means the market has capitulated and it is time to buy.',
         'bottom', [bool(e[i] and fgs[i] <= 20) for i in range(n)], e,
@@ -231,7 +245,7 @@ def main():
         _f.append(_last if _last is not None else 0.0)
     hr30, hr60 = sma(_f, 30), sma(_f, 60)
     e = [hr30[i] is not None and hr60[i] is not None and hrs[i] is not None
-         and i + HORIZON < n for i in range(n)]
+         for i in range(n)]
     add('hash_ribbon', 'Hash ribbon capitulation',
         'When the 30-day hash rate falls below the 60-day, miners are '
         'capitulating and a bottom is near.',
@@ -247,7 +261,7 @@ def main():
         if a and b and b > a:
             flow = b - a
             if flow > 0:
-                r = b / flow
+                sf_ratio = b / flow      # NOT `r`: that name holds the RSI series
                     # PlanB's published regression is on MARKET VALUE:
                 # ln(mktcap) = 3.3*ln(SF) + 14.6. This uses his exponent with a
                 # price-scale coefficient of 0.4, which is neither of his
@@ -255,8 +269,8 @@ def main():
                 # one long episode either way, so the verdict is unaffected -
                 # but the model line drawn on the claim page is too high and
                 # the coefficient should not be described as his.
-                s2f[i] = 0.4 * (r ** 3.3)
-    e = [s2f[i] is not None and i + HORIZON < n for i in range(n)]
+                s2f[i] = 0.4 * (sf_ratio ** 3.3)
+    e = [s2f[i] is not None for i in range(n)]
     add('below_s2f', 'Price below the Stock-to-Flow model',
         'Bitcoin trades below its scarcity-implied value and will revert to it.',
         'bottom', [bool(e[i] and px[i] < s2f[i]) for i in range(n)], e,

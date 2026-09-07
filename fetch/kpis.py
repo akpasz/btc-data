@@ -291,10 +291,27 @@ def kpi_powerlaw(bc):
             'projection': proj, 'spec': 'log10 P = a + β log10(days since genesis), from day 560', 'spark': spark(dates, price, trend)}, dates, price, trend
 
 # ------------------------------------------------------------ Realised value (Coin Metrics; realised cap = market cap / MVRV; window 2017+)
-def kpi_realised(cm):
+def kpi_realised(cm, as_of=None):
+    """Realised value, ending no later than `as_of`.
+
+    Without that cap the realised block ran to Coin Metrics' own last date,
+    which under the +1 date convention is legitimately ONE DAY AHEAD of
+    Blockchain.com - Coin Metrics' last raw observation carries tomorrow's
+    label. kpis then published price_close from one day and mvrv_close from
+    the next, under a single as_of. Dividing the two published numbers did not
+    reproduce the third, which is the exact defect the alignment work was meant
+    to end; it had simply moved from five days to one.
+
+    Every headline figure must describe the same day.
+    """
     if not cm.get('PriceUSD'): return None, None, None, None
     pd_, pv = to_daily(cm['PriceUSD']); _, a = align(('price', (pd_, pv)), ('mkt', to_daily(cm['CapMrktCurUSD'])), ('mvrv', to_daily(cm['CapMVRVCur'])), ('sup', to_daily(cm['SplyCur'])), ('adr', to_daily(cm.get('AdrBalCnt', []))))
-    ok = np.isfinite(a['mkt']) & np.isfinite(a['mvrv']) & np.isfinite(a['sup']) & (pv > 0); dates = [d for d, k in zip(pd_, ok) if k]
+    ok = np.isfinite(a['mkt']) & np.isfinite(a['mvrv']) & np.isfinite(a['sup']) & (pv > 0)
+    if as_of is not None:
+        _cap = as_of if isinstance(as_of, dt.date) else dt.date.fromisoformat(str(as_of)[:10])
+        ok = ok & np.array([d <= _cap for d in pd_])
+    dates = [d for d, k in zip(pd_, ok) if k]
+    if not dates: return None, None, None, None
     price, mkt, mvrv, sup, adr = pv[ok], a['mkt'][ok], a['mvrv'][ok], a['sup'][ok], a['adr'][ok]
     real = mkt / mvrv; realp = real / sup; w = np.array([d >= dt.date(2017, 1, 1) for d in dates]); sd = mkt[w].std(ddof=1); z = (mkt - real) / sd; mv = mkt / real; mvs = np.sort(mv[w])
     return {'realised_price': round(float(realp[-1]), 2), 'realised_cap': float(real[-1]), 'supply': float(sup[-1]), 'mvrv_close': round(float(mv[-1]), 3), 'z_close': round(float(z[-1]), 3),
@@ -371,7 +388,8 @@ def main():
     kp = {'generated_at': dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(), 'note': 'Headline readings of each tool page at its default specification, computed from the same snapshot. Price-dependent readings are recomputed live on the hub from the spot price.'}
     m, dates, price, met = kpi_metcalfe(bc); kp['metcalfe'] = m; kp['price_close'] = round(float(price[-1]), 2); kp['as_of'] = dates[-1].isoformat()
     p, _, _, _ = kpi_powerlaw(bc); kp['powerlaw'] = p
-    r, _, _, _ = kpi_realised(cm); kp['realised'] = r
+    # capped to the same day as_of reports, so every headline figure agrees
+    r, _, _, _ = kpi_realised(cm, kp['as_of']); kp['realised'] = r
     kp['positioning'] = kpi_positioning(bc, dv, st, fg, fr, cm)
     try:
         kp['extended'] = kpi_extended(bc, cm, dv, fr=fr, cb=load('coinbase'), bn=load('offshore_spot') or load('binance'), cg=load('coingecko_global'))

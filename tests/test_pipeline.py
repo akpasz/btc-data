@@ -523,3 +523,36 @@ class TestNoFutureDates:
         align.OUT = str(tmp_path)
         with _pt.raises(ValueError):
             align.main()
+
+
+class TestCensoringIsReachable:
+    """The methodology says right-censored episodes are "counted separately".
+    They were not counted at all: every eligible definition already required
+    i + HORIZON < n, so an episode could never be censored and the counter was
+    dead. Seven rules had fired inside the last year with no hint on the page."""
+
+    def _src(self):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'scorecard.py'),
+                    encoding='utf-8').read()
+
+    def test_eligibility_no_longer_encodes_the_horizon(self):
+        src = self._src()
+        i = src.find('def main(')
+        assert 'i + HORIZON < n' not in src[i:] and 'i+HORIZON<n' not in src[i:], \
+            'eligibility must mean inputs present; score() applies the horizon'
+
+    def test_score_still_applies_the_horizon(self):
+        src = self._src()
+        assert 'if i+HORIZON>=n: return None' in src, 'outcome() must still censor'
+
+    def test_pending_episodes_are_dated(self):
+        assert 'pending_since' in self._src()
+
+    def test_rsi_series_is_not_shadowed_by_stock_to_flow(self):
+        """`r` held the RSI series and was rebound inside the S2F loop. It
+        worked only because RSI happened to be scored first."""
+        src = self._src()
+        assert 'sf_ratio' in src
+        i = src.find('def main(')
+        assert '\\n            r = b / flow' not in src[i:]
