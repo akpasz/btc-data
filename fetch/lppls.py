@@ -181,7 +181,7 @@ def build_history(dates, prices, out_path, existing=None, log=print, baseline=No
     return doc
 
 
-def random_baseline(dates, prices, series_pos, threshold=0.5, draws=10000, seed=2026):
+def random_baseline(dates, prices, series_pos, threshold=0.5, draws=10000, seed=2026, direction='top'):
     """Signal-day evaluation against a block-matched random baseline. Deterministic seed so the published
     figure is reproducible; recomputed on each run as the history grows."""
     import random as _r
@@ -204,7 +204,10 @@ def random_baseline(dates, prices, series_pos, threshold=0.5, draws=10000, seed=
         if runs and i - runs[-1][-1] <= 7: runs[-1].append(i)
         else: runs.append([i])
     lens = [len(r) for r in runs]
-    hit = float(dec[sig].mean()); base = float(dec[elig].mean())
+    # a NEGATIVE bubble is an accelerating decline; its claim is that a bottom is
+    # near, so its hit is the mirror of the top rule's: a doubling within a year
+    target = dec if direction == 'top' else up
+    hit = float(target[sig].mean()); base = float(target[elig].mean())
     def draw():
         # exact non-overlap: each placed block is an inclusive interval [s, s+L-1]; a candidate is
         # rejected if it intersects any placed interval, whatever the two lengths are
@@ -215,11 +218,83 @@ def random_baseline(dates, prices, series_pos, threshold=0.5, draws=10000, seed=
                 if e <= elig[-1] and all(e < a or s > b for a, b in placed): break
             else:
                 raise RuntimeError('could not place a block without overlap')
-            placed.append((s, e)); tot += dec[s:s + L].mean() * L
+            placed.append((s, e)); tot += target[s:s + L].mean() * L
         return tot / sum(lens)
     dist = np.array([draw() for _ in range(draws)])
-    return {'rule': 'signal days = daily confidence >= 0.5 under the primary filters with a completed 365-day window; hit = lowest close within 365 days at least 40% below; baseline = random day-blocks matching the number and lengths of the signal runs',
+    _rule = ('signal days = daily confidence >= 0.5 with a completed 365-day window; hit = '
+             + ('lowest close within 365 days at least 40% below' if direction == 'top'
+                else 'highest close within 365 days at least 100% above')
+             + '; baseline = random day-blocks matching the number and lengths of the signal runs')
+    return {'rule': _rule, 'direction': direction,
             'signal_days': len(sig), 'eligible_days': len(elig), 'runs': len(runs), 'median_run_days': int(np.median(lens)), 'longest_run_days': int(max(lens)),
             'hit_rate_signal': hit, 'hit_rate_all_days': base, 'doubling_rate_signal': float(up[sig].mean()), 'doubling_rate_all_days': float(up[elig].mean()),
             'random_mean': float(dist.mean()), 'random_p5': float(np.percentile(dist, 5)), 'random_p95': float(np.percentile(dist, 95)),
             'p_random_at_least_observed': float((dist >= hit).mean()), 'draws': draws, 'seed': seed}
+
+
+def critical_time_test(dates, prices, series_pos, series_tc, threshold=0.5, tolerance=30, seed=2026, draws=10000):
+    """Test what LPPLS actually claims: a critical TIME, not a magnitude.
+
+    random_baseline scores "a 40% fall within a year" - a reasonable reading of
+    a bubble signal, but not the model's own assertion. LPPLS fits t_c, the
+    date the regime ends. This asks: at the START of each signal run, did the
+    highest close of the following year fall within +-tolerance days of the
+    fitted t_c?
+
+    Scored per RUN, not per day. Days inside a run share nearly the same t_c
+    and the same forward year, so counting each as a trial would inflate the
+    sample roughly thirty-fold and manufacture significance. This matches how
+    every other rule on the site counts: episodes, not days.
+
+    Baseline: the same question for random start days, with t_c offsets drawn
+    from the runs' own offsets, so the comparison is like for like. Two
+    tolerances are reported so a reader can see the result is not an artefact
+    of one window.
+    """
+    import random as _r
+    _r.seed(seed)
+    p = np.asarray(prices, dtype=float); n = len(p)
+    idx = {d.isoformat(): i for i, d in enumerate(dates)}
+    tc = dict((d, float(v)) for d, v in series_tc if v is not None)
+    i0 = next((k for k in range(n) if dates[k] >= dt.date(2013, 1, 1)), 0)
+    elig = [i for i in range(i0, n - 366)]
+    es = set(elig)
+    sig = sorted(idx[d] for d, v in series_pos if v >= threshold and idx.get(d) in es)
+    runs = []
+    for i in sig:
+        if runs and i - runs[-1][-1] <= 7: runs[-1].append(i)
+        else: runs.append([i])
+    # one trial per run: its first day and that day's fitted t_c
+    trials = []
+    for r in runs:
+        d0 = dates[r[0]].isoformat()
+        if d0 in tc and 0 < tc[d0] <= 365:
+            trials.append((r[0], tc[d0]))
+    if len(trials) < 5:
+        return {'runs': len(runs), 'trials': len(trials), 'note': 'too few runs with a fitted t_c inside the year'}
+    def near_top(i, offset, tol):
+        seg = p[i + 1:i + 366]
+        peak = i + 1 + int(np.argmax(seg))
+        return abs(peak - (i + offset)) <= tol
+    offsets = [off for _, off in trials]
+    out = {'rule': ('one trial per signal run: at its first day, did the highest close of the following '
+                    '365 days fall within the tolerance of the fitted t_c; baseline = random start days '
+                    'with t_c offsets resampled from the runs'),
+           'runs': len(runs), 'trials': len(trials), 'median_tc_days_ahead': float(np.median(offsets)),
+           'draws': draws, 'seed': seed, 'by_tolerance': {}}
+    for tol in (15, 30, 60):
+        hits = [near_top(i, off, tol) for i, off in trials]
+        hit = float(np.mean(hits))
+        dist = []
+        for _ in range(draws):
+            ok = 0
+            for _k in range(len(trials)):
+                ok += near_top(_r.choice(elig), _r.choice(offsets), tol)
+            dist.append(ok / len(trials))
+        dist = np.array(dist)
+        out['by_tolerance'][str(tol)] = {
+            'hit_rate_signal': hit, 'hits': int(sum(hits)),
+            'random_mean': float(dist.mean()),
+            'random_p5': float(np.percentile(dist, 5)), 'random_p95': float(np.percentile(dist, 95)),
+            'p_random_at_least_observed': float((dist >= hit).mean())}
+    return out

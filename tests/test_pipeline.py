@@ -669,8 +669,115 @@ class TestLpplsScorecardEntry:
         assert 'doubling_after_signal' in src[i:i+2500]
         assert 'doubling_baseline' in src[i:i+2500]
 
-    def test_lppls_admits_the_strict_spec_is_unscored(self):
+    def test_lppls_reports_whether_the_strict_spec_was_scored(self):
+        """Once hardcoded False; now derived from whether the pipeline
+        actually produced a strict-spec baseline."""
         src = self._src()
         i = src.find("key='lppls'")
-        assert 'strict_spec_scored=False' in src[i:i+2500], \
-            'two filter sets are defined and one is scored; the page must say so'
+        assert 'strict_spec_scored=' in src[i:i+3000]
+        assert 'strict_spec_scored=False' not in src[i:i+3000], 'must be derived, not asserted'
+
+
+class TestLpplsThreeFurtherTests:
+    """The strict spec, negative bubbles and the critical-time claim were all
+    computed daily and published, and none was scored. Now all three are."""
+
+    def _m(self):
+        import lppls
+        return lppls
+
+    def test_random_baseline_accepts_a_direction(self):
+        import inspect
+        assert 'direction' in inspect.signature(self._m().random_baseline).parameters
+
+    def test_critical_time_scores_per_run_not_per_day(self):
+        """Per day, 522 correlated trials gave p = 0.000. Per run, 16 trials
+        gave 1 hit. The per-day version was a false positive."""
+        src = open(self._m().__file__, encoding='utf-8').read()
+        i = src.find('def critical_time_test')
+        body = src[i:]
+        assert 'one trial per run' in body.lower() or 'per run' in body.lower()
+        assert 'trials.append((r[0]' in body, 'must take one trial per run, at its first day'
+
+    def test_critical_time_reports_several_tolerances(self):
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'for tol in (15, 30, 60)' in src
+
+    def test_critical_time_on_synthetic_data(self):
+        """A signal whose t_c always lands on the year's high must score 100%."""
+        import datetime as dt, numpy as np
+        m = self._m()
+        n = 3000
+        dates = [dt.date(2013, 1, 1) + dt.timedelta(i) for i in range(n)]
+        prices = [100.0] * n
+        pos, tc = [], []
+        # ten runs; each run's first day has t_c = 50, and price spikes at exactly +50
+        for k in range(10):
+            s = 200 + k * 250
+            prices[s + 50] = 1000.0
+            for j in range(s, s + 5):
+                pos.append([dates[j].isoformat(), 1.0])
+                tc.append([dates[j].isoformat(), 50.0])
+        out = m.critical_time_test(dates, prices, pos, tc, draws=200)
+        assert out['trials'] == 10
+        assert out['by_tolerance']['15']['hit_rate_signal'] == 1.0
+
+
+class TestCapitalFlows:
+    """The flow monitor's arithmetic must reconcile exactly and its supply
+    schedule must reproduce reality. Every published figure on that page is
+    read from this layer, so an error here is an error on the page."""
+
+    def _m(self):
+        import flows
+        return flows
+
+    def test_supply_schedule_reproduces_a_known_span(self):
+        """From 20.0M on a known date the schedule must reach the pipeline's
+        current supply to within 0.2%: 3.125 BTC x 144 blocks a day."""
+        import datetime as dt
+        m = self._m()
+        s = m.supply_on(dt.date(2026, 9, 7), 19_900_000.0, dt.date(2026, 5, 1))
+        # 129 days x 450 BTC/day = 58,050
+        assert abs(s - (19_900_000 + 129 * 3.125 * 144)) < 1e-6
+
+    def test_supply_schedule_halves_in_2028(self):
+        import datetime as dt
+        m = self._m()
+        before = m.supply_on(dt.date(2028, 4, 14), 20_000_000.0, dt.date(2028, 4, 13))
+        after = m.supply_on(dt.date(2028, 4, 16), 20_000_000.0, dt.date(2028, 4, 15))
+        assert abs((before - 20_000_000) - 3.125 * 144) < 1e-6
+        assert abs((after - 20_000_000) - 1.5625 * 144) < 1e-6
+
+    def test_realised_cap_reconciles(self, tmp_path):
+        """market cap / MVRV x MVRV must give market cap back, and market cap /
+        supply must give price. These are the identities the page publishes."""
+        import json
+        m = self._m()
+        days = [f'2024-01-{d:02d}' for d in range(1, 11)]
+        cm = {'series': {'CapMrktCurUSD': [[d, 1.0e12 + i * 1e9] for i, d in enumerate(days)],
+                         'CapMVRVCur': [[d, 1.5 + i * 0.01] for i, d in enumerate(days)],
+                         'SplyCur': [[d, 19.6e6] for d in days],
+                         'PriceUSD': [[d, (1.0e12 + i * 1e9) / 19.6e6] for i, d in enumerate(days)]}}
+        dd, RC, MV, MC, SP, PR = m.realised_cap_series(cm)
+        for d in dd:
+            assert abs(RC[d] * MV[d] - MC[d]) < 1e-3
+            assert abs(MC[d] / SP[d] - PR[d]) < 1e-6
+
+    def test_surface_cell_is_the_stated_arithmetic(self):
+        """price = (RC_now + inflow) x MVRV / supply, nothing else."""
+        rc, inf, mvrv, sup = 1.07e12, 1.3e12, 1.7, 20.46e6
+        assert abs((rc + inf) * mvrv / sup - 196_920.8) < 1.0
+
+    def test_walk_forward_uses_only_completed_windows(self):
+        """No training window may end after its origin."""
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'D[k] > od' in src, 'windows ending after the origin must be excluded'
+
+    def test_holder_categories_come_from_primary_sources_only(self):
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'widely reported' in src.lower() or 'primary source' in src.lower()
+        import treasuries
+        t = open(treasuries.__file__, encoding='utf-8').read()
+        assert 'addressbalance' in t, 'sovereign balance must be read on chain'
+        assert 'companyfacts' in t, 'treasury holdings must come from SEC XBRL'

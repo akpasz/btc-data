@@ -525,9 +525,27 @@ def src_lppls():
     prior = existing.get('random_baseline') if existing else None
     doc = lppls.build_history(dates, prices, os.path.join(OUT, 'lppls.json'), existing=existing, log=lambda s: print(s), baseline=prior)
     # the baseline is recomputed weekly (Mondays) or when absent; it is deterministic (seeded) and takes ~30s
-    if prior is None or dt.datetime.now(dt.timezone.utc).weekday() == 0:
+    # weekly, or whenever any evaluation is missing - so a newly added one is
+    # computed on the first run after it ships rather than waiting for Monday
+    _need = any(k not in (existing or {}) for k in
+                ('random_baseline', 'random_baseline_strict', 'random_baseline_negative', 'critical_time_test'))
+    if prior is None or _need or dt.datetime.now(dt.timezone.utc).weekday() == 0:
         base = lppls.random_baseline(dates, prices, doc['series']['lppls_pos'])
         doc['random_baseline'] = base
+        # The three things the page could not previously say. Each was already
+        # computed daily and published; none had been SCORED.
+        try:
+            doc['random_baseline_strict'] = lppls.random_baseline(dates, prices, doc['series']['lppls_pos_strict'])
+        except Exception as e:
+            doc['random_baseline_strict'] = {'error': str(e)[:200]}
+        try:
+            doc['random_baseline_negative'] = lppls.random_baseline(dates, prices, doc['series']['lppls_neg'], direction='bottom')
+        except Exception as e:
+            doc['random_baseline_negative'] = {'error': str(e)[:200]}
+        try:
+            doc['critical_time_test'] = lppls.critical_time_test(dates, prices, doc['series']['lppls_pos'], doc['series']['lppls_tc_days'])
+        except Exception as e:
+            doc['critical_time_test'] = {'error': str(e)[:200]}
         with open(os.path.join(OUT, 'lppls.json'), 'w') as fh: json.dump(doc, fh, separators=(',', ':'))
     n_pos = len(doc['series']['lppls_pos'])
     manifest['lppls'] = {'status': 'ok', 'fetched_at': NOW, 'source_url': 'computed from the blockchain.com daily price series',
@@ -696,6 +714,14 @@ def main():
         import slim; slim.OUT = OUT; slim.main(); manifest_doc['slim'] = 'ok'
     except Exception as e:
         manifest_doc['slim'] = 'error: ' + str(e)[:300]; print('  ERR slim:', str(e)[:200], file=sys.stderr)
+    try:
+        import treasuries; treasuries.OUT = OUT; treasuries.main(); manifest_doc['treasuries'] = 'ok'
+    except Exception as e:
+        manifest_doc['treasuries'] = 'error: ' + str(e)[:300]; print('  ERR treasuries:', str(e)[:200], file=sys.stderr)
+    try:
+        import flows; flows.OUT = OUT; flows.main(); manifest_doc['flows'] = 'ok'
+    except Exception as e:
+        manifest_doc['flows'] = 'error: ' + str(e)[:300]; print('  ERR flows:', str(e)[:200], file=sys.stderr)
     try:
         import portfolio; portfolio.OUT = OUT; portfolio.main(); manifest_doc['portfolio'] = 'ok'
     except Exception as e:

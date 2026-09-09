@@ -167,6 +167,19 @@ def score(dates,px,fires,eligible,direction):
         baseline_days=bt,
         eligible_days=sum(1 for i in range(n) if eligible[i]))
 
+def _lppls_summary(rb):
+    """Compact form of a random_baseline result for the scorecard."""
+    if not rb or 'error' in rb:
+        return None
+    if not rb.get('signal_days'):
+        return {'signal_days': 0, 'runs': 0, 'note': 'never fires at confidence 0.5'}
+    return {'signal_days': rb.get('signal_days'), 'runs': rb.get('runs'),
+            'hit_rate': round(100*float(rb['hit_rate_signal']), 1),
+            'baseline_rate': round(100*float(rb['hit_rate_all_days']), 1),
+            'random_p5': round(100*float(rb['random_p5']), 1), 'random_p95': round(100*float(rb['random_p95']), 1),
+            'p': rb.get('p_random_at_least_observed'), 'direction': rb.get('direction', 'top')}
+
+
 def main():
     bc=load('blockchain'); cm=load('coinmetrics'); lp=load('lppls'); fg=load('fear_greed')
     if not bc: print('no blockchain.json'); return 1
@@ -184,7 +197,17 @@ def main():
     RULES=[]
     def add(key,name,claim,direction,fires,eligible,detail):
         s=score(dates,px,fires,eligible,direction)
-        s.update(key=key,name=name,claim=claim,direction=direction,detail=detail)
+        # Is the rule firing on the latest day, and when did it last fire? The
+        # scorecard showed every rule's track record and not its current state,
+        # so a visitor asking "is RSI oversold today, and does that matter?"
+        # got the second half on a page that withheld the first.
+        _last=None
+        for _i in range(len(fires)-1,-1,-1):
+            if fires[_i] and eligible[_i]:
+                _last=dates[_i]; break
+        s.update(key=key,name=name,claim=claim,direction=direction,detail=detail,
+                 firing_today=bool(fires[-1] and eligible[-1]) if len(fires) else None,
+                 last_fired=_last, as_of_day=dates[-1] if len(dates) else None)
         RULES.append(s)
 
     e=el(ma111,ma350)
@@ -303,7 +326,14 @@ def main():
             median_run_days=rb.get('median_run_days'), longest_run_days=rb.get('longest_run_days'),
             signal_days=rb.get('signal_days'),
             confidence_threshold=0.5,
-            strict_spec_scored=False,
+            firing_today=(float((lp or {}).get('today',{}).get('pos') or 0) >= 0.5) if lp else None,
+            last_fired=next((d for d,v in reversed((lp or {}).get('series',{}).get('lppls_pos',[])) if v is not None and float(v)>=0.5), None),
+            as_of_day=((lp or {}).get('series',{}).get('lppls_pos') or [[None]])[-1][0],
+            # the three evaluations the page could not previously report
+            strict=_lppls_summary((lp or {}).get('random_baseline_strict')),
+            negative=_lppls_summary((lp or {}).get('random_baseline_negative')),
+            critical_time=(lp or {}).get('critical_time_test'),
+            strict_spec_scored=bool((lp or {}).get('random_baseline_strict')) and 'error' not in ((lp or {}).get('random_baseline_strict') or {}),
             detail='/tools/bitcoin-indicator-autopsy',
             note=f"random-block p = {rb.get('p_random_at_least_observed')}"))
 
