@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-09T15:09:49+00:00",
+ "generated_at": "2026-09-09T16:46:04+00:00",
  "as_of": "2026-09-09",
  "price_points": 5867,
  "horizon_days": 365,
@@ -240,6 +240,150 @@
    "verdict": "Not enough episodes to score"
   },
   {
+   "episodes": 6,
+   "censored": 1,
+   "pending_since": "2025-11-23",
+   "hit_rate": 50.0,
+   "hit_rate_ci90": [
+    22.1,
+    77.9
+   ],
+   "baseline_rate": 42.3,
+   "baseline_days": 2326,
+   "eligible_days": 4750,
+   "key": "site_composite_cheap",
+   "name": "Our composite reads cheap (below 30)",
+   "claim": "When our own valuation composite is in its cheap band, a doubling follows.",
+   "direction": "bottom",
+   "detail": "/tools/bitcoin-market-context",
+   "firing_today": false,
+   "last_fired": "2026-08-20",
+   "as_of_day": "2026-09-09",
+   "own": true,
+   "difference": 7.7,
+   "verdict": "Not enough episodes to score"
+  },
+  {
+   "episodes": 9,
+   "censored": 0,
+   "pending_since": null,
+   "hit_rate": 33.3,
+   "hit_rate_ci90": [
+    14.2,
+    60.2
+   ],
+   "baseline_rate": 27.1,
+   "baseline_days": 2563,
+   "eligible_days": 4750,
+   "key": "site_composite_dear",
+   "name": "Our composite reads dear (above 70)",
+   "claim": "When our own valuation composite is in its dear band, a 40% fall follows.",
+   "direction": "top",
+   "detail": "/tools/bitcoin-market-context",
+   "firing_today": false,
+   "last_fired": "2025-08-14",
+   "as_of_day": "2026-09-09",
+   "own": true,
+   "difference": 6.2,
+   "verdict": "Not enough episodes to score"
+  },
+  {
+   "episodes": 4,
+   "censored": 0,
+   "pending_since": null,
+   "hit_rate": 50.0,
+   "hit_rate_ci90": [
+    18.2,
+    81.8
+   ],
+   "baseline_rate": 52.2,
+   "baseline_days": 3467,
+   "eligible_days": 4750,
+   "key": "site_composite_floor",
+   "name": "Our composite reads very cheap (below 10)",
+   "claim": "When our composite is in its lowest band, a doubling follows.",
+   "direction": "bottom",
+   "detail": "/tools/bitcoin-market-context",
+   "firing_today": false,
+   "last_fired": "2022-11-30",
+   "as_of_day": "2026-09-09",
+   "own": true,
+   "difference": -2.2,
+   "verdict": "Not enough episodes to score"
+  },
+  {
+   "episodes": 3,
+   "censored": 0,
+   "pending_since": null,
+   "hit_rate": 0.0,
+   "hit_rate_ci90": [
+    0.0,
+    47.4
+   ],
+   "baseline_rate": 31.0,
+   "baseline_days": 3835,
+   "eligible_days": 4750,
+   "key": "site_composite_ceiling",
+   "name": "Our composite reads very dear (above 90)",
+   "claim": "When our composite is in its highest band, a 40% fall follows.",
+   "direction": "top",
+   "detail": "/tools/bitcoin-market-context",
+   "firing_today": false,
+   "last_fired": "2021-04-17",
+   "as_of_day": "2026-09-09",
+   "own": true,
+   "difference": -31.0,
+   "verdict": "Not enough episodes to score"
+  },
+  {
+   "episodes": 5,
+   "censored": 2,
+   "pending_since": "2026-02-06",
+   "hit_rate": 60.0,
+   "hit_rate_ci90": [
+    27.2,
+    85.7
+   ],
+   "baseline_rate": 47.5,
+   "baseline_days": 3035,
+   "eligible_days": 4750,
+   "key": "site_powerlaw_low",
+   "name": "Price in the power-law model's bottom fifth",
+   "claim": "When price sits in the lowest fifth of its power-law deviation history, a doubling follows.",
+   "direction": "bottom",
+   "detail": "/tools/bitcoin-power-law-monitor",
+   "firing_today": false,
+   "last_fired": "2026-08-20",
+   "as_of_day": "2026-09-09",
+   "own": true,
+   "difference": 12.5,
+   "verdict": "Not enough episodes to score"
+  },
+  {
+   "episodes": 3,
+   "censored": 0,
+   "pending_since": null,
+   "hit_rate": 0.0,
+   "hit_rate_ci90": [
+    0.0,
+    47.4
+   ],
+   "baseline_rate": 23.7,
+   "baseline_days": 3355,
+   "eligible_days": 4750,
+   "key": "site_powerlaw_high",
+   "name": "Price in the power-law model's top fifth",
+   "claim": "When price sits in the highest fifth of its power-law deviation history, a 40% fall follows.",
+   "direction": "top",
+   "detail": "/tools/bitcoin-power-law-monitor",
+   "firing_today": false,
+   "last_fired": "2021-11-30",
+   "as_of_day": "2026-09-09",
+   "own": true,
+   "difference": -23.7,
+   "verdict": "Not enough episodes to score"
+  },
+  {
    "episodes": 5,
    "censored": 1,
    "pending_since": "2025-11-08",
@@ -356,56 +500,10 @@
    "firing_today": false,
    "last_fired": "2024-05-03",
    "as_of_day": "2026-09-09",
-   "strict": {
-    "signal_days": 0,
-    "runs": 0,
-    "note": "never fires at confidence 0.5"
-   },
-   "negative": {
-    "signal_days": 35,
-    "runs": 2,
-    "hit_rate": 97.1,
-    "baseline_rate": 53.0,
-    "random_p5": 0.0,
-    "random_p95": 100.0,
-    "p": 0.4465,
-    "direction": "bottom"
-   },
-   "critical_time": {
-    "rule": "one trial per signal run: at its first day, did the highest close of the following 365 days fall within the tolerance of the fitted t_c; baseline = random start days with t_c offsets resampled from the runs",
-    "runs": 18,
-    "trials": 16,
-    "median_tc_days_ahead": 96.75,
-    "draws": 10000,
-    "seed": 2026,
-    "by_tolerance": {
-     "15": {
-      "hit_rate_signal": 0.0625,
-      "hits": 1,
-      "random_mean": 0.07625,
-      "random_p5": 0.0,
-      "random_p95": 0.1875,
-      "p_random_at_least_observed": 0.7224
-     },
-     "30": {
-      "hit_rate_signal": 0.0625,
-      "hits": 1,
-      "random_mean": 0.13521875,
-      "random_p5": 0.0,
-      "random_p95": 0.3125,
-      "p_random_at_least_observed": 0.9009
-     },
-     "60": {
-      "hit_rate_signal": 0.0625,
-      "hits": 1,
-      "random_mean": 0.24425,
-      "random_p5": 0.0625,
-      "random_p95": 0.4375,
-      "p_random_at_least_observed": 0.9904
-     }
-    }
-   },
-   "strict_spec_scored": true,
+   "strict": null,
+   "negative": null,
+   "critical_time": null,
+   "strict_spec_scored": false,
    "detail": "/tools/bitcoin-indicator-autopsy",
    "note": "random-block p = 0.678",
    "difference": -6.6,
