@@ -56,6 +56,20 @@ def merge_series(old: Dict[str, List], new: Dict[str, List]) -> Dict[str, List]:
         out[k] = sorted([[d, v] for d, v in m.items() if v is not None])
     return out
 
+# Sources whose value for TODAY is a running intraday figure rather than a
+# completed day. Blockchain.com's market-price chart publishes today's average
+# while today is still happening; fetched at 16:41 UTC it is the average of
+# two-thirds of a day. Every layer that read it treated it as a close, and the
+# golden cross fired on an $88.80 margin from it - a margin the full day may
+# or may not confirm. The protection used to live only in the cron schedule
+# (06:15 UTC, after the day rolls); a manual run at any other hour evaluated
+# the site on a partial day. For these sources today's point is dropped at
+# ingest, so nothing downstream can see it. Coin Metrics is NOT in this set:
+# its leading point is a completed day shifted at ingest, verified to land
+# within 0.02% of Blockchain.com's eventual value.
+INTRADAY_TODAY = {'blockchain'}
+
+
 def save(name, source_url, series: Dict[str, List], note=''):
     old = load_existing(name)
     merged = merge_series(old['series'] if old else {}, series)
@@ -65,13 +79,17 @@ def save(name, source_url, series: Dict[str, List], note=''):
     # drifting into the future reports as current forever. This also truncates
     # any phantom tail an earlier run left behind.
     _today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    _max = _today
+    if name in INTRADAY_TODAY:
+        _max = (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)).isoformat()
     _dropped = 0
     for _k, _v in merged.items():
-        _keep = [p for p in _v if str(p[0])[:10] <= _today]
+        _keep = [p for p in _v if str(p[0])[:10] <= _max]
         _dropped += len(_v) - len(_keep)
         merged[_k] = _keep
     if _dropped:
-        print(f'  !!  {name}: dropped {_dropped} future-dated points (max allowed {_today})',
+        print(f'  !!  {name}: dropped {_dropped} point(s) dated after {_max}'
+              + (' (intraday source: today is not a complete day)' if name in INTRADAY_TODAY else ' (future-dated)'),
               file=sys.stderr)
     doc = {'schema_version': SCHEMA_VERSION, 'source': name, 'source_url': source_url, 'fetched_at': NOW, 'note': note, 'series': merged}
     with open(os.path.join(OUT, name + '.json'), 'w') as f: json.dump(doc, f, separators=(',', ':'))

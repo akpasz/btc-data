@@ -503,7 +503,7 @@ class TestNoFutureDates:
 
     def test_save_truncates_future_dated_points(self):
         src = open(self._m().__file__, encoding='utf-8').read()
-        assert 'future-dated points' in src, 'save() must drop points dated after today'
+        assert 'future-dated' in src and '_max' in src, 'save() must drop points dated after today'
 
     def test_the_shift_happens_at_ingest_not_on_stored_files(self):
         """align.py mutating the stored file was the bug: save() rebuilds each
@@ -943,3 +943,59 @@ class TestForwardRecord:
         direct = scorecard.score(days, px, f, e, 'bottom')
         assert out['rules'][0]['full_history']['episodes'] == direct['episodes']
         assert abs((out['rules'][0]['full_history']['hit_rate'] or 0) - (direct['hit_rate'] or 0)) < 1e-9
+
+
+class TestIntradaySourcesAndLedgerFreezing:
+    """Round-5 audit: Blockchain.com publishes a running value for today,
+    which every layer took as a completed day and the golden cross fired on
+    an $88.80 margin from it. Today is now dropped at ingest for that source.
+    And the ledger froze nothing: a renamed or flipped rule would have changed
+    a historical verdict. Direction and name are now stored on the row."""
+
+    def test_blockchain_today_is_dropped_at_ingest(self, tmp_path, monkeypatch):
+        import json, datetime as dt, fetch_all
+        monkeypatch.setattr(fetch_all, 'OUT', str(tmp_path))
+        fetch_all.manifest.clear() if hasattr(fetch_all, 'manifest') else None
+        today = dt.datetime.now(dt.timezone.utc).date(); y = (today - dt.timedelta(days=1)).isoformat()
+        fetch_all.save('blockchain', 'u', {'price': [[y, 100.0], [today.isoformat(), 101.0]]})
+        out = json.load(open(tmp_path / 'blockchain.json'))
+        assert [p[0] for p in out['series']['price']] == [y], 'today must be dropped for an intraday source'
+
+    def test_other_sources_keep_today(self, tmp_path, monkeypatch):
+        import json, datetime as dt, fetch_all
+        monkeypatch.setattr(fetch_all, 'OUT', str(tmp_path))
+        today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+        fetch_all.save('coinmetrics', 'u', {'PriceUSD': [[today, 100.0]]})
+        out = json.load(open(tmp_path / 'coinmetrics.json'))
+        assert [p[0] for p in out['series']['PriceUSD']] == [today]
+
+    def test_ledger_freezes_direction_and_name(self, tmp_path):
+        import json, datetime as dt, ledger
+        days = [(dt.date(2025, 1, 1) + dt.timedelta(i)).isoformat() for i in range(400)]
+        (tmp_path / 'blockchain.json').write_text(json.dumps({'series': {'price': [[d, 100.0] for d in days]}}))
+        (tmp_path / 'kpis.json').write_text(json.dumps({'as_of': days[-1], 'price_close': 100.0, 'powerlaw': {}, 'realised': {}}))
+        (tmp_path / 'scorecard.json').write_text(json.dumps({'as_of': days[-1], 'rules': [{'key': 'x', 'direction': 'top', 'name': 'X rule', 'firing_today': True}]}))
+        ledger.OUT = str(tmp_path); ledger.main()
+        row = json.load(open(tmp_path / 'ledger.json'))['rows'][-1]
+        assert row['firing'] == [{'key': 'x', 'direction': 'top', 'name': 'X rule'}]
+        assert row['date'] == days[-1], 'stamped with the scorecard day'
+
+    def test_ledger_scores_from_the_frozen_direction_not_todays_scorecard(self, tmp_path):
+        import json, datetime as dt, ledger
+        days = [(dt.date(2024, 1, 1) + dt.timedelta(i)).isoformat() for i in range(800)]
+        px = [100.0 if i < 400 else 50.0 for i in range(800)]
+        (tmp_path / 'blockchain.json').write_text(json.dumps({'series': {'price': [[d, p] for d, p in zip(days, px)]}}))
+        (tmp_path / 'kpis.json').write_text(json.dumps({'as_of': days[-1], 'price_close': 50.0, 'powerlaw': {}, 'realised': {}}))
+        # today's scorecard has FLIPPED the rule to bottom; the frozen row says top
+        (tmp_path / 'scorecard.json').write_text(json.dumps({'as_of': days[-1], 'rules': [{'key': 'x', 'direction': 'bottom', 'name': 'X', 'firing_today': False}]}))
+        (tmp_path / 'ledger.json').write_text(json.dumps({'schema_version': '1.0', 'began': days[100], 'horizon_days': 365,
+            'rows': [{'date': days[100], 'price': 100.0, 'firing': [{'key': 'x', 'direction': 'top', 'name': 'X'}], 'scored': None}]}))
+        ledger.OUT = str(tmp_path); ledger.main()
+        row = next(r for r in json.load(open(tmp_path / 'ledger.json'))['rows'] if r['date'] == days[100])
+        assert row['scored']['rules_right']['x'] is True, 'a 40% fall happened; the frozen TOP direction must be used'
+
+    def test_weekend_rows_are_filtered_before_the_stored_dump(self):
+        import etf
+        src = open(etf.__file__, encoding='utf-8').read()
+        i = src.find('hold = _drop_weekend_rows(hold)'); j = src.find("with open(hold_p, 'w')")
+        assert 0 < i < j, 'the filter must run before the stored file is written'

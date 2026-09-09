@@ -37,10 +37,10 @@ DATE_ASSERTED = set()
 def _drop_weekend_rows(series):
     """Remove holdings dated to a Saturday or Sunday.
 
-    Two survive from before the last-business-day fix - BITB on 2026-09-05 and
-    06 - because merges preserve every date ever written. No issuer discloses at
-    the weekend, so any such row is an artefact, and net_flow_usd shows them as
-    zero-flow days. This clears them once and prevents any recurrence.
+    No issuer discloses at the weekend, so any such row is an artefact. Applied
+    to the stored holdings file before it is written AND to the presentation
+    output; an earlier version applied it only to the latter, so two BITB rows
+    from before the last-business-day fix persisted in the stored file.
     """
     out, dropped = {}, 0
     for name, pts in (series or {}).items():
@@ -238,6 +238,12 @@ def run(out_dir, price_by_date):
             status[tk] = {'status': 'ok', 'name': name, 'date': d, 'btc': btc}
         except Exception as e:
             status[tk] = {'status': 'error', 'name': name, 'error': str(e)[:200], 'kept_previous': tk in hold}
+    # Filter BEFORE the stored file is written. The docstring on
+    # _drop_weekend_rows said it "clears them once"; it was applied only to the
+    # presentation output, so the two BITB weekend rows survived in
+    # etf_holdings.json across four audit rounds. This is the stored-vs-
+    # presented gap the session learnings warn about, and this line closes it.
+    hold = _drop_weekend_rows(hold)
     with open(hold_p, 'w') as f: json.dump(hold, f, separators=(',', ':'))
     # flows: per issuer, daily change in BTC held x price; total across issuers by date
     flows = {}

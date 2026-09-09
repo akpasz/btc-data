@@ -47,9 +47,22 @@ def main():
         'schema_version': SCHEMA_VERSION, 'began': K['as_of'], 'horizon_days': HORIZON, 'rows': [],
         'note': ('One row per day: what every instrument on the site was saying. Rows older than the horizon are '
                  'scored against what price then did, and never rewritten. The git history of this file is the audit trail.')}
-    today = K['as_of']
-    firing = sorted(r['key'] for r in S['rules'] if r.get('firing_today'))
-    directions = {r['key']: r.get('direction') for r in S['rules']}
+    # The row records what the SCORECARD said, so it is stamped with the
+    # scorecard's day. The first version stamped it with kpis' as_of while the
+    # firing list came from a scorecard run on a later partial day - a row
+    # that said a golden cross was firing on a day no cross occurred. With
+    # intraday points dropped at ingest the two dates now agree; this makes
+    # the row honest even if they ever diverge again.
+    today = S.get('as_of') or K['as_of']
+    # Each firing rule is stored WITH its direction and name, frozen at write
+    # time. An earlier version looked both up from today's scorecard when
+    # scoring a year-old row, so a renamed key, a flipped direction or a
+    # retired rule would have changed or silently erased a historical verdict.
+    # For a layer whose entire value is immunity to later edits, the row must
+    # carry everything its scoring will need.
+    firing = sorted(({'key': r['key'], 'direction': r.get('direction'), 'name': r.get('name')}
+                     for r in S['rules'] if r.get('firing_today')), key=lambda x: x['key'])
+    directions = {r['key']: r.get('direction') for r in S['rules']}   # fallback for pre-freeze rows only
     comp_state = (C or {}).get('today', {}).get('state')
     row = {'date': today, 'price': K.get('price_close'),
            'firing': firing,
@@ -57,6 +70,21 @@ def main():
            'powerlaw_pct': (K.get('powerlaw') or {}).get('percentile_close'),
            'mvrv': (K.get('realised') or {}).get('mvrv_close'),
            'scored': None}
+    # One-time correction. The row dated 2026-09-08 was written with a firing
+    # list from a scorecard that had read a partial 2026-09-09 price; it said a
+    # golden cross was firing on 09-08 when, on the complete day, the 50-day
+    # average was $124 BELOW the 200-day. The row is unscored, so it may be
+    # corrected - but not silently. The original list is kept on the row with
+    # the reason, and the git history holds every version.
+    for r in L['rows']:
+        if r['date'] == '2026-09-08' and r.get('scored') is None and not r.get('corrected'):
+            orig = r.get('firing', []); keys = [x['key'] if isinstance(x, dict) else x for x in orig]
+            if 'golden_cross' in keys:
+                r['corrected'] = {'on': dt.datetime.now(dt.timezone.utc).date().isoformat(),
+                                  'original_firing': keys,
+                                  'reason': ('firing list came from a scorecard run that had ingested an incomplete '
+                                             '2026-09-09 price; on the complete 2026-09-08 day no golden cross had occurred')}
+                r['firing'] = [x for x in orig if (x['key'] if isinstance(x, dict) else x) != 'golden_cross']
     # replace today's unscored row if present; never touch a scored one
     L['rows'] = [r for r in L['rows'] if not (r['date'] == today and r.get('scored') is None)]
     if not any(r['date'] == today for r in L['rows']):
@@ -78,8 +106,9 @@ def main():
         mx, mn = max(w), min(w)
         fell40 = mn <= r['price'] * 0.60; doubled = mx >= r['price'] * 2.0
         verdicts = {}
-        for k in r.get('firing', []):
-            dr = directions.get(k)
+        for item in r.get('firing', []):
+            k = item['key'] if isinstance(item, dict) else item
+            dr = item.get('direction') if isinstance(item, dict) else directions.get(k)
             if dr == 'top': verdicts[k] = bool(fell40)
             elif dr == 'bottom': verdicts[k] = bool(doubled)
         r['scored'] = {'on': days[-1], 'max_365': round(mx, 2), 'min_365': round(mn, 2),
@@ -98,9 +127,13 @@ def main():
         for k, ok in r['scored']['rules_right'].items():
             per_rule.setdefault(k, {'days_firing': 0, 'right': 0})
             per_rule[k]['days_firing'] += 1; per_rule[k]['right'] += 1 if ok else 0
+    frozen = {}
+    for r in L['rows']:
+        for item in r.get('firing', []):
+            if isinstance(item, dict): frozen[item['key']] = item
     for k, v in per_rule.items():
-        v['name'] = next((x['name'] for x in S['rules'] if x['key'] == k), k)
-        v['direction'] = directions.get(k)
+        v['name'] = frozen.get(k, {}).get('name') or next((x['name'] for x in S['rules'] if x['key'] == k), k)
+        v['direction'] = frozen.get(k, {}).get('direction') or directions.get(k)
     by_state = {}
     for r in sc:
         st = r.get('composite_state') or 'unknown'
