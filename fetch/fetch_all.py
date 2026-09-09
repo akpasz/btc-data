@@ -545,15 +545,23 @@ def src_lppls():
     # the baseline is recomputed weekly (Mondays) or when absent; it is deterministic (seeded) and takes ~30s
     # weekly, or whenever any evaluation is missing - so a newly added one is
     # computed on the first run after it ships rather than waiting for Monday
-    _need = any(k not in (existing or {}) for k in
-                ('random_baseline', 'random_baseline_strict', 'random_baseline_negative', 'critical_time_test'))
+    # Present-and-usable, not merely present. A key can exist while holding
+    # None or an {'error': ...} left by a failed attempt, and the old test -
+    # "is the key there" - then skipped the recomputation forever. That is how
+    # the published file came to carry the primary baseline and none of the
+    # three further tests, so the LPPLS page lost a whole section quietly.
+    def _usable(doc_, k):
+        v = (doc_ or {}).get(k)
+        return isinstance(v, dict) and v and 'error' not in v
+    _need = not all(_usable(existing, k) for k in
+                    ('random_baseline', 'random_baseline_strict', 'random_baseline_negative', 'critical_time_test'))
     # If build_history discarded the stored history (spec or input hash
     # changed), it discarded the baselines with it - and the decision below
     # used to look at the OLD file, see a baseline there, and skip. The
     # pipeline then published LPPLS with no baseline, the scorecard dropped
     # the rule, and the site build refused a 14-claim site. The document
     # that came back is the authority, not the file that went in.
-    _discarded = doc.get('random_baseline') is None
+    _discarded = not _usable(doc, 'random_baseline')
     if prior is None or _need or _discarded or dt.datetime.now(dt.timezone.utc).weekday() == 0:
         base = lppls.random_baseline(dates, prices, doc['series']['lppls_pos'])
         doc['random_baseline'] = base
@@ -571,6 +579,10 @@ def src_lppls():
             doc['critical_time_test'] = lppls.critical_time_test(dates, prices, doc['series']['lppls_pos'], doc['series']['lppls_tc_days'])
         except Exception as e:
             doc['critical_time_test'] = {'error': str(e)[:200]}
+        _bad = [k for k in ('random_baseline', 'random_baseline_strict', 'random_baseline_negative', 'critical_time_test')
+                if not _usable(doc, k)]
+        if _bad:
+            print(f'  !!  lppls: evaluations missing or failed after recomputation: {_bad}', file=sys.stderr)
         with open(os.path.join(OUT, 'lppls.json'), 'w') as fh: json.dump(doc, fh, separators=(',', ':'))
     n_pos = len(doc['series']['lppls_pos'])
     manifest['lppls'] = {'status': 'ok', 'fetched_at': NOW, 'source_url': 'computed from the blockchain.com daily price series',

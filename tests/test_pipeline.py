@@ -1054,7 +1054,7 @@ class TestLpplBaselineAfterRebuild:
     def test_recompute_decision_reads_the_returned_document(self):
         import os
         src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
-        i = src.find("_discarded = doc.get('random_baseline') is None")
+        i = src.find("_discarded = not _usable(doc, 'random_baseline')")
         assert i > 0
         assert 'or _discarded or' in src[i:i+400]
 
@@ -1094,3 +1094,26 @@ class TestOpenForecasts:
         import os
         src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'flows.py'), encoding='utf-8').read()
         assert 'supply_on(target_date' in src, 'an open forecast needs supply at a date that has not arrived'
+
+
+class TestLpplEvaluationsUsable:
+    """A key that exists but holds None or an error is not a result. The old
+    'is the key present' test skipped recomputation forever, and the published
+    file carried the primary baseline with none of the three further tests -
+    so the claim page silently lost its 'Three further tests' section."""
+
+    def test_need_checks_usability_not_presence(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+        assert 'def _usable(' in src
+        assert "_need = not all(_usable(existing, k)" in src
+
+    def test_usable_rejects_none_and_error(self):
+        def _usable(doc_, k):
+            v = (doc_ or {}).get(k)
+            return isinstance(v, dict) and v and 'error' not in v
+        assert _usable({'a': {'runs': 3}}, 'a')
+        assert not _usable({'a': None}, 'a')
+        assert not _usable({'a': {}}, 'a')
+        assert not _usable({'a': {'error': 'boom'}}, 'a')
+        assert not _usable({}, 'a')
