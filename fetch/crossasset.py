@@ -191,8 +191,13 @@ def main():
                   'baseline_rate': round(100 * pooled_bh / pooled_bt, 1) if pooled_bt else None, 'baseline_days': pooled_bt}
         diff = (pooled['hit_rate'] - pooled['baseline_rate']) if (pooled['hit_rate'] is not None and pooled['baseline_rate'] is not None) else None
         pooled['difference'] = round(diff, 1) if diff is not None else None
+        ci = pooled.get('hit_rate_ci90'); b = pooled.get('baseline_rate')
+        pooled['interval_clears_baseline'] = None if not (ci and b is not None) else ('above' if ci[0] > b else 'below' if ci[1] < b else 'no')
+        pooled['evaluation_type'] = 'episode_binomial_percentile_outcome'
         pooled['verdict'] = ('Not enough episodes to score' if pooled_tot < MIN_EPISODES else 'Not scored' if diff is None
-                             else 'Beats the baseline' if diff >= 5 else 'Worse than the baseline' if diff <= -5 else 'Indistinguishable')
+                             else 'Beats the baseline' if (diff >= 5 and pooled['interval_clears_baseline'] == 'above')
+                             else 'Worse than the baseline' if (diff <= -5 and pooled['interval_clears_baseline'] == 'below')
+                             else 'Indistinguishable')
         # Does the effect run the same way in every asset, or does the pooled
         # figure average a win in one market against a loss in another? This
         # is a SIGN check on assets with at least five episodes - not a

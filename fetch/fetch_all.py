@@ -716,6 +716,15 @@ def main():
     # Put every source on one date convention BEFORE anything derives from
     # them. Coin Metrics labelled a close one day earlier than Blockchain.com,
     # so MVRV was computed against a price a day away from the one published.
+    # Sources that failed or are stale keep their last good file in place by
+    # design, so a downstream layer reading the file cannot tell. Record the
+    # degraded set in the manifest so every consumer - and the site's
+    # validator - can see it, and each derived output names the inputs it
+    # ran on that were not current.
+    manifest_doc['degraded_sources'] = sorted(k for k, v in manifest.items()
+                                              if isinstance(v, dict) and (v.get('status') != 'ok' or v.get('freshness') not in (None, 'current')))
+    if manifest_doc['degraded_sources']:
+        print('  !!  derived layers ran with degraded sources:', ', '.join(manifest_doc['degraded_sources']), file=sys.stderr)
     try:
         import align; align.OUT = OUT; align.main(); manifest_doc['align'] = 'ok'
     except Exception as e:
@@ -748,6 +757,15 @@ def main():
         import flows; flows.OUT = OUT; flows.main(); manifest_doc['flows'] = 'ok'
     except Exception as e:
         manifest_doc['flows'] = 'error: ' + str(e)[:300]; print('  ERR flows:', str(e)[:200], file=sys.stderr)
+    # The scorecard runs BEFORE anything that reads scorecard.json. It used to
+    # run last, so the ledger recorded the PREVIOUS run's scorecard - which is
+    # how a row dated 09-09 came to carry a golden cross the fixed scorecard
+    # had already withdrawn. Order: ... flows -> scorecard -> registry ->
+    # portfolio -> ledger (last, reads everything).
+    try:
+        import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
+    except Exception as e:
+        manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
     try:
         import registry; registry.OUT = OUT; registry.main(); manifest_doc['registry'] = 'ok'
     except Exception as e:
@@ -760,10 +778,6 @@ def main():
         import ledger; ledger.OUT = OUT; ledger.main(); manifest_doc['ledger'] = 'ok'
     except Exception as e:
         manifest_doc['ledger'] = 'error: ' + str(e)[:300]; print('  ERR ledger:', str(e)[:200], file=sys.stderr)
-    try:
-        import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
-    except Exception as e:
-        manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
     with open(os.path.join(OUT, 'manifest.json'), 'w') as f: json.dump(manifest_doc, f, indent=1)
     print('Done. ok:', manifest_doc['ok'], 'errors:', manifest_doc['errors'])
     return 0

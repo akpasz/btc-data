@@ -370,17 +370,33 @@ def main():
             negative=_lppls_summary((lp or {}).get('random_baseline_negative')),
             critical_time=(lp or {}).get('critical_time_test'),
             strict_spec_scored=bool((lp or {}).get('random_baseline_strict')) and 'error' not in ((lp or {}).get('random_baseline_strict') or {}),
+            evaluation_type='random_block_signal_days',
             detail='/tools/bitcoin-indicator-autopsy',
             note=f"random-block p = {rb.get('p_random_at_least_observed')}"))
 
     for x in RULES:
         h,b=x.get('hit_rate'),x.get('baseline_rate')
         x['difference']=None if (h is None or b is None) else round(h-b,1)
+        # Every rule names the statistical design it was scored under, so the
+        # renderer never applies one design's wording to another's result.
+        x.setdefault('evaluation_type', 'episode_binomial')
+        # The verdict is now an inferential statement, not a point-estimate
+        # gap. "Beats the baseline" requires the 90% interval on the hit rate
+        # to sit entirely above the baseline rate; "Worse" entirely below. A
+        # +5-point gap whose interval straddles the baseline is
+        # "Indistinguishable" - which is what it is. This makes the page's
+        # multiple-testing sentence ("one in ten clears its interval by
+        # chance") literally true of the verdict it describes. The baseline
+        # rate is from thousands of days and treated as known; the interval
+        # is on the rule's own proportion, so this is a one-sided comparison,
+        # conservative in the direction that protects against false claims.
+        ci=x.get('hit_rate_ci90')
+        x['interval_clears_baseline']=None if not (ci and b is not None) else ('above' if ci[0]>b else 'below' if ci[1]<b else 'no')
         if x.get('episodes',0) is None or x.get('episodes',0)<MIN_EPISODES:
             x['verdict']='Not enough episodes to score'
         elif x['difference'] is None: x['verdict']='Not scored'
-        elif x['difference']>=5: x['verdict']='Beats the baseline'
-        elif x['difference']<=-5: x['verdict']='Worse than the baseline'
+        elif x['difference']>=5 and x['interval_clears_baseline']=='above': x['verdict']='Beats the baseline'
+        elif x['difference']<=-5 and x['interval_clears_baseline']=='below': x['verdict']='Worse than the baseline'
         else: x['verdict']='Indistinguishable'
         for k in ('hit_rate','baseline_rate'):
             if x.get(k) is not None: x[k]=round(x[k],1)

@@ -17,8 +17,28 @@ jobs:
       - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
       - run: pip install -r fetch/requirements.txt
+      # The test suite gates publication. tests.yml said "so daily.yml can
+      # require this before publishing" and daily.yml never did; a red suite
+      # and a green snapshot could coexist. A failing test now stops the run
+      # before a byte of data is fetched or committed.
+      - name: Tests must pass before anything is published
+        run: python -m pytest tests/ -q
       - run: python fetch/fetch_all.py
         env: { SEC_CONTACT: "${{ vars.SEC_CONTACT }}" }
+      # And the pipeline's own manifest must report no layer errors; a layer
+      # that failed leaves its last good file in place by design, but a run
+      # that ends with errors is not published as if it were clean.
+      - name: No layer may have failed
+        run: |
+          python - <<'EOF'
+          import json, sys
+          m = json.load(open('data/manifest.json'))
+          bad = [k for k, v in m.items() if isinstance(v, str) and v.startswith('error')]
+          errs = m.get('errors') or []
+          if bad or errs:
+              print('FAILED LAYERS:', bad, errs); sys.exit(1)
+          print('all layers ok')
+          EOF
       - name: Commit data
         run: |
           git config user.name "snapshot-bot"

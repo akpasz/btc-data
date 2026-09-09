@@ -139,11 +139,40 @@ def reading(logp, i):
             'best': {k: round(best_pos[k], 4) for k in ('m', 'w', 'B', 'C', 'c_over_b', 'damping', 'osc', 'r2', 'rel_rmse')} if best_pos else None}
 
 
+def spec_hash():
+    """A digest of everything that determines a fit: the windows, the filters,
+    the grid constants. The stored history is only reusable while this is
+    unchanged; a changed specification forces a full recomputation rather
+    than extending an incrementally-built series that no longer matches."""
+    import hashlib, json as _j
+    spec = {'windows': WINDOWS, 'tc_eps': TC_EPS, 'filters': FILTERS, 'filters_strict': FILTERS_STRICT,
+            'recompute_trailing_days': RECOMPUTE_TRAILING_DAYS}
+    return hashlib.sha256(_j.dumps(spec, sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
+def input_hash(dates, prices):
+    """A digest of the price history the fits were made on. If the provider
+    revises history, the stored fits were made on data that no longer exists."""
+    import hashlib
+    h = hashlib.sha256()
+    for d, p in zip(dates, prices):
+        h.update(f'{d}:{float(p):.6f};'.encode())
+    return h.hexdigest()[:16]
+
+
 def build_history(dates, prices, out_path, existing=None, log=print, baseline=None):
     """Compute the DAILY confidence series from 2013, reusing anything already stored. Returns the document."""
     logp = np.log(np.asarray(prices, dtype=float))
     n = len(logp)
     have = {}
+    _spec = spec_hash()
+    # The input hash excludes the trailing span that is recomputed every run,
+    # so a revised recent daily average does not force a full rebuild.
+    _inp = input_hash(dates[:-RECOMPUTE_TRAILING_DAYS], prices[:-RECOMPUTE_TRAILING_DAYS])
+    if existing and (existing.get('spec_hash') != _spec or existing.get('input_hash') != _inp):
+        log(f'  lppls: stored history was built under spec {existing.get("spec_hash")} / input {existing.get("input_hash")}; '
+            f'now {_spec} / {_inp} - discarding it and recomputing in full')
+        existing = None; baseline = None
     if existing:
         for d, v in existing.get('series', {}).get('lppls_pos', []):
             have[d] = True
@@ -173,6 +202,7 @@ def build_history(dates, prices, out_path, existing=None, log=print, baseline=No
            'specification_note': 'the primary specification is the published Gerlach-Demos-Sornette (2019) rule set, fixed before evaluation; the strict set is a sensitivity analysis and is never used to select a result',
            'history_note': 'daily from 2013-01-01, computed point-in-time on daily-average prices',
            'random_baseline': baseline,
+           'spec_hash': _spec, 'input_hash': _inp,
            'today': today, 'series': series}
     tmp = out_path + '.tmp'
     with open(tmp, 'w') as f:

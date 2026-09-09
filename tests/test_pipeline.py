@@ -999,3 +999,28 @@ class TestIntradaySourcesAndLedgerFreezing:
         src = open(etf.__file__, encoding='utf-8').read()
         i = src.find('hold = _drop_weekend_rows(hold)'); j = src.find("with open(hold_p, 'w')")
         assert 0 < i < j, 'the filter must run before the stored file is written'
+
+
+class TestPipelineOrder:
+    """Sixth audit: the scorecard ran LAST, so the ledger read the previous
+    run's scorecard. Every consumer of scorecard.json must run after it."""
+
+    def test_scorecard_runs_before_its_consumers(self):
+        import re, os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+        order = re.findall(r"^\s+import ([a-z_]+);", src, re.M)
+        assert order.index('scorecard') < order.index('registry')
+        assert order.index('scorecard') < order.index('ledger')
+        assert order[-1] == 'ledger', 'the ledger records what every other layer said, so it runs last'
+
+    def test_okx_open_interest_is_dollars_not_coins(self):
+        """OKX's open-interest-volume endpoint returns USD. A unit change
+        would show as a value three or four orders of magnitude smaller."""
+        import json, os
+        p = os.path.join(os.environ.get('DATA_DIR', 'data'), 'derivatives.json')
+        if not os.path.exists(p):
+            import pytest; pytest.skip('no derivatives.json')
+        s = json.load(open(p))['series'].get('okx_open_interest_usd') or []
+        v = [x[1] for x in s if x[1]]
+        if v:
+            assert 5e8 < v[-1] < 5e10, f'OKX OI {v[-1]:,.0f} is not a plausible USD figure'
