@@ -251,11 +251,11 @@ def main():
                'means': "even River's low case is not arriving"})
     tw.append({'name': 'Buyer mix has changed', 'check_by': (D[-1] + dt.timedelta(days=365)).isoformat(),
                'condition': 'tracked ETF + treasury + sovereign share above 12% of supply',
-               'reads_now': holders['tracked_total']['pct_supply'],
+               'reads_now': f"{holders['tracked_total']['pct_supply']}%",
                'status': 'crossed' if holders['tracked_total']['pct_supply'] > 12 else 'not yet',
                'means': 'structurally new holders at scale; the historical deceleration may not apply'})
     tw.append({'name': 'Endpoint timing assumption', 'check_by': horizon_date.isoformat(),
-               'condition': 'MVRV outside 1.3-2.2 at the horizon', 'reads_now': round(mvrv_now, 2),
+               'condition': 'MVRV outside 1.3-2.2 at the horizon', 'reads_now': round(mvrv_now, 3),
                'status': 'pending until horizon',
                'means': 'every published range that held MVRV near constant was wrong about timing'})
 
