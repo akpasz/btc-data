@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-09T11:22:52+00:00",
+ "generated_at": "2026-09-09T11:52:12+00:00",
  "as_of": "2026-09-09",
  "price_points": 5867,
  "horizon_days": 365,
@@ -26,6 +26,9 @@
    "claim": "The 111-day average crossing above twice the 350-day average marks a cycle top.",
    "direction": "top",
    "detail": "/tools/bitcoin-indicator-autopsy",
+   "firing_today": false,
+   "last_fired": "2021-04-23",
+   "as_of_day": "2026-09-09",
    "difference": 74.0,
    "verdict": "Not enough episodes to score"
   },
@@ -46,6 +49,9 @@
    "claim": "Price at 2.4x its 200-day average is an overheated market.",
    "direction": "top",
    "detail": "/tools/bitcoin-technical-signals",
+   "firing_today": false,
+   "last_fired": "2021-03-14",
+   "as_of_day": "2026-09-09",
    "difference": -1.4,
    "verdict": "Not enough episodes to score"
   },
@@ -66,6 +72,9 @@
    "claim": "Price under its 200-week average is a generational buying zone.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-indicator-autopsy",
+   "firing_today": false,
+   "last_fired": "2026-08-17",
+   "as_of_day": "2026-09-09",
    "difference": 29.0,
    "verdict": "Not enough episodes to score"
   },
@@ -86,6 +95,9 @@
    "claim": "The 2-year moving average multiplier marks the accumulation band.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-indicator-autopsy",
+   "firing_today": true,
+   "last_fired": "2026-09-09",
+   "as_of_day": "2026-09-09",
    "difference": -19.9,
    "verdict": "Not enough episodes to score"
   },
@@ -106,6 +118,9 @@
    "claim": "The 50-day crossing above the 200-day average starts a bull phase.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-technical-signals",
+   "firing_today": true,
+   "last_fired": "2026-09-09",
+   "as_of_day": "2026-09-09",
    "difference": 9.7,
    "verdict": "Not enough episodes to score"
   },
@@ -126,6 +141,9 @@
    "claim": "The 50-day crossing below the 200-day average starts a bear phase.",
    "direction": "top",
    "detail": "/tools/bitcoin-technical-signals",
+   "firing_today": false,
+   "last_fired": "2025-11-17",
+   "as_of_day": "2026-09-09",
    "difference": 29.8,
    "verdict": "Not enough episodes to score"
   },
@@ -146,6 +164,9 @@
    "claim": "An overbought RSI precedes a fall.",
    "direction": "top",
    "detail": "/tools/bitcoin-technical-signals",
+   "firing_today": false,
+   "last_fired": "2026-09-04",
+   "as_of_day": "2026-09-09",
    "difference": -8.6,
    "verdict": "Worse than the baseline"
   },
@@ -166,6 +187,9 @@
    "claim": "An oversold RSI precedes a rally.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-technical-signals",
+   "firing_today": false,
+   "last_fired": "2026-06-11",
+   "as_of_day": "2026-09-09",
    "difference": -12.2,
    "verdict": "Worse than the baseline"
   },
@@ -186,6 +210,9 @@
    "claim": "An MVRV above 3.7 marks the top of the cycle.",
    "direction": "top",
    "detail": "/tools/bitcoin-realised-value-monitor",
+   "firing_today": false,
+   "last_fired": "2021-03-14",
+   "as_of_day": "2026-09-09",
    "difference": -8.1,
    "verdict": "Not enough episodes to score"
   },
@@ -206,6 +233,9 @@
    "claim": "An MVRV below 1 means the average holder is under water: a bottom.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-realised-value-monitor",
+   "firing_today": false,
+   "last_fired": "2023-01-13",
+   "as_of_day": "2026-09-09",
    "difference": 5.2,
    "verdict": "Not enough episodes to score"
   },
@@ -226,6 +256,9 @@
    "claim": "Extreme fear means the market has capitulated and it is time to buy.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-flows-positioning-monitor",
+   "firing_today": false,
+   "last_fired": "2026-07-08",
+   "as_of_day": "2026-09-09",
    "difference": -31.8,
    "verdict": "Not enough episodes to score"
   },
@@ -246,6 +279,9 @@
    "claim": "Extreme greed means the market is euphoric and due to fall.",
    "direction": "top",
    "detail": "/tools/bitcoin-flows-positioning-monitor",
+   "firing_today": false,
+   "last_fired": "2025-01-22",
+   "as_of_day": "2026-09-09",
    "difference": 0.9,
    "verdict": "Not enough episodes to score"
   },
@@ -266,6 +302,9 @@
    "claim": "When the 30-day hash rate falls below the 60-day, miners are capitulating and a bottom is near.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-miners-monitor",
+   "firing_today": false,
+   "last_fired": "2026-08-16",
+   "as_of_day": "2026-09-09",
    "difference": 6.7,
    "verdict": "Not enough episodes to score"
   },
@@ -286,6 +325,9 @@
    "claim": "Bitcoin trades below its scarcity-implied value and will revert to it.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-indicator-autopsy",
+   "firing_today": true,
+   "last_fired": "2026-09-09",
+   "as_of_day": "2026-09-09",
    "difference": 46.4,
    "verdict": "Not enough episodes to score"
   },
@@ -303,18 +345,70 @@
    ],
    "interval_kind": "random-signal 90% range, 10,000 draws",
    "baseline_rate": 34.5,
-   "baseline_days": 4632,
-   "eligible_days": 4632,
+   "baseline_days": 4634,
+   "eligible_days": 4634,
    "doubling_after_signal": 64.0,
    "doubling_baseline": 53.0,
    "median_run_days": 9,
    "longest_run_days": 109,
    "signal_days": 561,
    "confidence_threshold": 0.5,
-   "strict_spec_scored": false,
+   "firing_today": false,
+   "last_fired": "2024-05-03",
+   "as_of_day": "2026-09-09",
+   "strict": {
+    "signal_days": 0,
+    "runs": 0,
+    "note": "never fires at confidence 0.5"
+   },
+   "negative": {
+    "signal_days": 35,
+    "runs": 2,
+    "hit_rate": 97.1,
+    "baseline_rate": 53.0,
+    "random_p5": 0.0,
+    "random_p95": 100.0,
+    "p": 0.4465,
+    "direction": "bottom"
+   },
+   "critical_time": {
+    "rule": "one trial per signal run: at its first day, did the highest close of the following 365 days fall within the tolerance of the fitted t_c; baseline = random start days with t_c offsets resampled from the runs",
+    "runs": 18,
+    "trials": 16,
+    "median_tc_days_ahead": 96.75,
+    "draws": 10000,
+    "seed": 2026,
+    "by_tolerance": {
+     "15": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.07625,
+      "random_p5": 0.0,
+      "random_p95": 0.1875,
+      "p_random_at_least_observed": 0.7224
+     },
+     "30": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.13521875,
+      "random_p5": 0.0,
+      "random_p95": 0.3125,
+      "p_random_at_least_observed": 0.9009
+     },
+     "60": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.24425,
+      "random_p5": 0.0625,
+      "random_p95": 0.4375,
+      "p_random_at_least_observed": 0.9904
+     }
+    }
+   },
+   "strict_spec_scored": true,
    "detail": "/tools/bitcoin-indicator-autopsy",
-   "note": "random-block p = 0.6749",
-   "difference": -6.5,
+   "note": "random-block p = 0.678",
+   "difference": -6.6,
    "verdict": "Not enough episodes to score"
   }
  ]
