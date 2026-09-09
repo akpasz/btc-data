@@ -781,3 +781,43 @@ class TestCapitalFlows:
         t = open(treasuries.__file__, encoding='utf-8').read()
         assert 'addressbalance' in t, 'sovereign balance must be read on chain when one is listed'
         assert 'companyfacts' in t, 'treasury holdings must come from SEC XBRL'
+
+
+class TestBaseRates:
+    """The base-rate page is the denominator under every scorecard figure, so
+    its outcome definitions must be IDENTICAL to the scorecard's."""
+
+    def test_outcome_definitions_match_the_scorecard(self):
+        import os
+        b = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'baserate.py'), encoding='utf-8').read()
+        s = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'scorecard.py'), encoding='utf-8').read()
+        assert 'P[i] * 0.60' in b and 'px[i]*0.60' in s, 'a 40% fall is min <= 0.60 x start in both'
+        assert 'P[i] * 2.0' in b and 'px[i]*2.0' in s, 'a doubling is max >= 2.0 x start in both'
+        assert 'P[i + 1:i + 366]' in b and 'i+HORIZON+1' in s, 'both look at the 365 days AFTER the start day'
+
+    def test_halving_dates_are_the_protocol_dates(self):
+        import baserate, datetime as dt
+        assert dt.date(2012, 11, 28) in baserate.HALVINGS
+        assert dt.date(2016, 7, 9) in baserate.HALVINGS
+        assert dt.date(2020, 5, 11) in baserate.HALVINGS
+        assert dt.date(2024, 4, 20) in baserate.HALVINGS
+
+    def test_months_since_halving(self):
+        import baserate, datetime as dt
+        m = baserate.months_since_halving(dt.date(2024, 10, 20))
+        assert 5.9 < m < 6.1
+        assert baserate.months_since_halving(dt.date(2012, 1, 1)) is None
+
+    def test_synthetic_doubling_rate(self, tmp_path):
+        """A series that doubles every 200 days must show a 100% doubling rate
+        and a 0% fall rate within a year."""
+        import json, datetime as dt, baserate
+        n = 2000
+        days = [(dt.date(2013, 1, 1) + dt.timedelta(i)).isoformat() for i in range(n)]
+        px = [100.0 * (2 ** (i / 200)) for i in range(n)]
+        (tmp_path / 'blockchain.json').write_text(json.dumps({'series': {'price': [[d, p] for d, p in zip(days, px)]}}))
+        baserate.OUT = str(tmp_path)
+        baserate.main()
+        out = json.load(open(tmp_path / 'baserate.json'))
+        assert out['outcomes']['double_within_365d']['rate_pct'] == 100.0
+        assert out['outcomes']['fall_40pct_within_365d']['rate_pct'] == 0.0

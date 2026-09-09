@@ -715,6 +715,10 @@ def main():
     except Exception as e:
         manifest_doc['slim'] = 'error: ' + str(e)[:300]; print('  ERR slim:', str(e)[:200], file=sys.stderr)
     try:
+        import baserate; baserate.OUT = OUT; baserate.main(); manifest_doc['baserate'] = 'ok'
+    except Exception as e:
+        manifest_doc['baserate'] = 'error: ' + str(e)[:300]; print('  ERR baserate:', str(e)[:200], file=sys.stderr)
+    try:
         import treasuries; treasuries.OUT = OUT; treasuries.main(); manifest_doc['treasuries'] = 'ok'
     except Exception as e:
         manifest_doc['treasuries'] = 'error: ' + str(e)[:300]; print('  ERR treasuries:', str(e)[:200], file=sys.stderr)
