@@ -731,9 +731,17 @@ def main():
     except Exception as e:
         manifest_doc['flows'] = 'error: ' + str(e)[:300]; print('  ERR flows:', str(e)[:200], file=sys.stderr)
     try:
+        import registry; registry.OUT = OUT; registry.main(); manifest_doc['registry'] = 'ok'
+    except Exception as e:
+        manifest_doc['registry'] = 'error: ' + str(e)[:300]; print('  ERR registry:', str(e)[:200], file=sys.stderr)
+    try:
         import portfolio; portfolio.OUT = OUT; portfolio.main(); manifest_doc['portfolio'] = 'ok'
     except Exception as e:
         manifest_doc['portfolio'] = 'error: ' + str(e)[:300]; print('  ERR portfolio:', str(e)[:200], file=sys.stderr)
+    try:
+        import ledger; ledger.OUT = OUT; ledger.main(); manifest_doc['ledger'] = 'ok'
+    except Exception as e:
+        manifest_doc['ledger'] = 'error: ' + str(e)[:300]; print('  ERR ledger:', str(e)[:200], file=sys.stderr)
     try:
         import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
     except Exception as e:

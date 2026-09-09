@@ -1,0 +1,42 @@
+name: Register a rule
+description: Pre-register a trading rule. It will be scored daily by the same engine as the scorecard, and its record kept in public whether it works or not.
+title: "[rule] "
+labels: ["rule-registration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A rule registered here is a **prediction**: its record from today forward is scored separately from its history, and only the forward record is evidence. Choose the rule before looking at what it would have done. There is no approval on merit - a rule that fails is a result, and the register keeps it.
+  - type: dropdown
+    id: ind
+    attributes:
+      label: Indicator
+      options: [mayer, p200w, p2y, p50v200, pi, rsi, mvrv, fg, hashrib, ath]
+    validations: { required: true }
+  - type: dropdown
+    id: op
+    attributes:
+      label: Operator
+      options: [above, below, crosses_above, crosses_below]
+    validations: { required: true }
+  - type: input
+    id: thr
+    attributes:
+      label: Threshold
+      description: A number. Units are the indicator's own (a multiple, an index value, or a percentage for drawdown).
+    validations: { required: true }
+  - type: dropdown
+    id: dir
+    attributes:
+      label: Which outcome does it predict?
+      options: [bottom (a doubling within a year), top (a 40% fall within a year)]
+    validations: { required: true }
+  - type: input
+    id: claim
+    attributes:
+      label: The claim, in one sentence
+    validations: { required: true }
+  - type: input
+    id: by
+    attributes:
+      label: Your name or handle (optional, shown on the register)

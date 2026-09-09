@@ -881,3 +881,65 @@ class TestCrossAsset:
         assert btc['episodes'] == 3 and btc['censored'] == 1
         assert btc['hit_rate'] == 100.0
         assert btc['baseline_rate'] < 25.0
+
+
+class TestForwardRecord:
+    """The ledger writes what the site said each day and scores it a year on;
+    the register scores pre-registered rules through the scorecard engine."""
+
+    def test_ledger_scores_a_row_once_it_is_a_year_old(self, tmp_path):
+        import json, datetime as dt, ledger
+        days = [(dt.date(2024, 1, 1) + dt.timedelta(i)).isoformat() for i in range(800)]
+        px = [100.0 if i < 400 else 50.0 for i in range(800)]        # halves at day 400
+        (tmp_path / 'blockchain.json').write_text(json.dumps({'series': {'price': [[d, p] for d, p in zip(days, px)]}}))
+        (tmp_path / 'kpis.json').write_text(json.dumps({'as_of': days[-1], 'price_close': 50.0, 'powerlaw': {}, 'realised': {}}))
+        (tmp_path / 'scorecard.json').write_text(json.dumps({'rules': [{'key': 'r_top', 'direction': 'top', 'firing_today': False, 'name': 'T'}]}))
+        (tmp_path / 'ledger.json').write_text(json.dumps({'schema_version': '1.0', 'began': days[100], 'horizon_days': 365,
+            'rows': [{'date': days[100], 'price': 100.0, 'firing': ['r_top'], 'composite_state': 'dear', 'scored': None}]}))
+        ledger.OUT = str(tmp_path); ledger.main()
+        L = json.load(open(tmp_path / 'ledger.json'))
+        old = next(r for r in L['rows'] if r['date'] == days[100])
+        assert old['scored'] is not None
+        assert old['scored']['fell_40pct'] is True and old['scored']['doubled'] is False
+        assert old['scored']['rules_right']['r_top'] is True
+        assert L['per_rule']['r_top']['right'] == 1
+
+    def test_ledger_never_rewrites_a_scored_row(self, tmp_path):
+        import json, datetime as dt, ledger
+        days = [(dt.date(2024, 1, 1) + dt.timedelta(i)).isoformat() for i in range(800)]
+        (tmp_path / 'blockchain.json').write_text(json.dumps({'series': {'price': [[d, 100.0] for d in days]}}))
+        (tmp_path / 'kpis.json').write_text(json.dumps({'as_of': days[-1], 'price_close': 100.0, 'powerlaw': {}, 'realised': {}}))
+        (tmp_path / 'scorecard.json').write_text(json.dumps({'rules': []}))
+        frozen = {'date': days[10], 'price': 1.0, 'firing': [], 'scored': {'on': 'x', 'fell_40pct': False, 'doubled': True, 'rules_right': {}}}
+        (tmp_path / 'ledger.json').write_text(json.dumps({'schema_version': '1.0', 'began': days[10], 'horizon_days': 365, 'rows': [frozen]}))
+        ledger.OUT = str(tmp_path); ledger.main()
+        L = json.load(open(tmp_path / 'ledger.json'))
+        assert next(r for r in L['rows'] if r['date'] == days[10])['scored']['on'] == 'x'
+
+    def test_registry_uses_the_full_price_series(self):
+        """A first version started at 2013 and lost early episodes to the
+        moving-average warm-up. The register must read the whole series."""
+        import registry
+        src = open(registry.__file__, encoding='utf-8').read()
+        assert 'FROM' not in src.split('def main')[1].split('pr = [')[0] or "d >= FROM" not in src
+
+    def test_registry_scores_since_registration_separately(self):
+        import registry
+        src = open(registry.__file__, encoding='utf-8').read()
+        assert 'elig_since' in src and "dates[i] >= reg" in src
+
+    def test_registry_reproduces_a_scorecard_rule(self, tmp_path):
+        import json, datetime as dt, registry, scorecard
+        n = 3000
+        days = [(dt.date(2015, 1, 1) + dt.timedelta(i)).isoformat() for i in range(n)]
+        import math
+        px = [100.0 * math.exp(0.0006 * i) * (1 + 0.3 * math.sin(i / 60.0)) for i in range(n)]
+        (tmp_path / 'blockchain.json').write_text(json.dumps({'series': {'price': [[d, p] for d, p in zip(days, px)], 'hash_rate': []}}))
+        (tmp_path / 'registry.json').write_text(json.dumps({'rules': [{'id': 'r', 'ind': 'rsi', 'op': 'below', 'thr': 30, 'dir': 'bottom', 'registered': days[0]}]}))
+        registry.OUT = str(tmp_path); registry.main()
+        out = json.load(open(tmp_path / 'registry_scores.json'))
+        r = scorecard.rsi(px, 14)
+        e = [x is not None for x in r]; f = [bool(e[i] and r[i] < 30) for i in range(n)]
+        direct = scorecard.score(days, px, f, e, 'bottom')
+        assert out['rules'][0]['full_history']['episodes'] == direct['episodes']
+        assert abs((out['rules'][0]['full_history']['hit_rate'] or 0) - (direct['hit_rate'] or 0)) < 1e-9

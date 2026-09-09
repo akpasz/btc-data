@@ -239,6 +239,42 @@ def main():
         'bottom',[bool(e[i] and mvrv[i]<1.0) for i in range(n)],e,'/tools/bitcoin-realised-value-monitor')
 
 
+    # ---- the site's own instruments ------------------------------------
+    # The scorecard held fifteen external claims to a standard the site had
+    # not applied to itself. These score the site's own composite and its
+    # power-law percentile as rules, through the same engine, with the same
+    # floor and the same interval. The cuts are the composite's own published
+    # bands (10/30/70/90), fixed on the Where Things Stand page before this
+    # test existed - but they were still chosen by us, after seeing history,
+    # and the page says so.
+    co = load('composite')
+    if co and co.get('rows'):
+        cols = co['columns']; ci_ = cols.index('composite'); pi_ = cols.index('powerlaw_pct')
+        comp = {r[0]: r[ci_] for r in co['rows']}; plp = {r[0]: r[pi_] for r in co['rows']}
+        cs = [comp.get(d) for d in dates]; ps = [plp.get(d) for d in dates]
+        e = [cs[i] is not None for i in range(n)]
+        add('site_composite_cheap', 'Our composite reads cheap (below 30)',
+            'When our own valuation composite is in its cheap band, a doubling follows.',
+            'bottom', [bool(e[i] and cs[i] < 30) for i in range(n)], e, '/tools/bitcoin-market-context')
+        add('site_composite_dear', 'Our composite reads dear (above 70)',
+            'When our own valuation composite is in its dear band, a 40% fall follows.',
+            'top', [bool(e[i] and cs[i] > 70) for i in range(n)], e, '/tools/bitcoin-market-context')
+        add('site_composite_floor', 'Our composite reads very cheap (below 10)',
+            'When our composite is in its lowest band, a doubling follows.',
+            'bottom', [bool(e[i] and cs[i] < 10) for i in range(n)], e, '/tools/bitcoin-market-context')
+        add('site_composite_ceiling', 'Our composite reads very dear (above 90)',
+            'When our composite is in its highest band, a 40% fall follows.',
+            'top', [bool(e[i] and cs[i] > 90) for i in range(n)], e, '/tools/bitcoin-market-context')
+        e = [ps[i] is not None for i in range(n)]
+        add('site_powerlaw_low', 'Price in the power-law model\'s bottom fifth',
+            'When price sits in the lowest fifth of its power-law deviation history, a doubling follows.',
+            'bottom', [bool(e[i] and ps[i] < 20) for i in range(n)], e, '/tools/bitcoin-power-law-monitor')
+        add('site_powerlaw_high', 'Price in the power-law model\'s top fifth',
+            'When price sits in the highest fifth of its power-law deviation history, a 40% fall follows.',
+            'top', [bool(e[i] and ps[i] > 80) for i in range(n)], e, '/tools/bitcoin-power-law-monitor')
+        for x in RULES:
+            if x['key'].startswith('site_'): x['own'] = True
+
     # ---- sentiment ----------------------------------------------------
     fgv = {d: v for d, v in series(fg, 'index')} if fg else {}
     fgs = [fgv.get(d) for d in dates]

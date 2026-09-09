@@ -1,0 +1,151 @@
+{
+ "schema_version": "1.0",
+ "began": "2026-09-10",
+ "note": "The register. Each entry is a rule in the rule builder's vocabulary with the date it was registered. The pipeline scores every entry daily and separates the record since registration from the full history. Entries marked seeded are the site's own fifteen: their thresholds were chosen after seeing history, so they are NOT pre-registered predictions; they are here so their forward record runs on the same terms as everyone else's from the register's start.",
+ "how_to_register": "Open a GitHub issue using the \"Register a rule\" template at github.com/akpasz/btc-data/issues/new/choose.",
+ "rules": [
+  {
+   "id": "rsi_cold",
+   "ind": "rsi",
+   "op": "below",
+   "thr": 30,
+   "dir": "bottom",
+   "claim": "An oversold RSI precedes a rally.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "rsi_hot",
+   "ind": "rsi",
+   "op": "above",
+   "thr": 70,
+   "dir": "top",
+   "claim": "An overbought RSI precedes a fall.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "mayer_high",
+   "ind": "mayer",
+   "op": "above",
+   "thr": 2.4,
+   "dir": "top",
+   "claim": "Price at 2.4x its 200-day average is an overheated market.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "below_200w",
+   "ind": "p200w",
+   "op": "below",
+   "thr": 1.0,
+   "dir": "bottom",
+   "claim": "Price under its 200-week average is a generational buying zone.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "two_year_ma",
+   "ind": "p2y",
+   "op": "below",
+   "thr": 1.0,
+   "dir": "bottom",
+   "claim": "The 2-year moving average marks the accumulation band.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "golden_cross",
+   "ind": "p50v200",
+   "op": "crosses_above",
+   "thr": 1.0,
+   "dir": "bottom",
+   "claim": "The 50-day crossing above the 200-day starts a bull phase.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "death_cross",
+   "ind": "p50v200",
+   "op": "crosses_below",
+   "thr": 1.0,
+   "dir": "top",
+   "claim": "The 50-day crossing below the 200-day starts a bear phase.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "pi_cycle",
+   "ind": "pi",
+   "op": "above",
+   "thr": 1.0,
+   "dir": "top",
+   "claim": "The 111-day average crossing twice the 350-day marks a cycle top.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "mvrv_high",
+   "ind": "mvrv",
+   "op": "above",
+   "thr": 3.7,
+   "dir": "top",
+   "claim": "An MVRV above 3.7 marks the top of the cycle.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "mvrv_low",
+   "ind": "mvrv",
+   "op": "below",
+   "thr": 1.0,
+   "dir": "bottom",
+   "claim": "An MVRV below 1 means the average holder is under water: a bottom.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "fear_extreme",
+   "ind": "fg",
+   "op": "below",
+   "thr": 20.0001,
+   "dir": "bottom",
+   "claim": "Extreme fear means the market has capitulated.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "greed_extreme",
+   "ind": "fg",
+   "op": "above",
+   "thr": 79.9999,
+   "dir": "top",
+   "claim": "Extreme greed means the market is euphoric and due to fall.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  },
+  {
+   "id": "hash_ribbon",
+   "ind": "hashrib",
+   "op": "below",
+   "thr": 1.0,
+   "dir": "bottom",
+   "claim": "When the 30-day hash rate falls below the 60-day, miners are capitulating.",
+   "registered": "2026-09-10",
+   "by": "cryptoexponentials.com",
+   "seeded": true
+  }
+ ]
+}
