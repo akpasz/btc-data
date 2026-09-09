@@ -63,14 +63,7 @@ PUBLISHED = [
 
 # Sovereign and treasury holders the pipeline can read from a PRIMARY source.
 # Anything that is only "widely reported" is deliberately absent.
-SOVEREIGN_ADDRESSES = {
-    # El Salvador publishes its reserve address; the balance is read on chain
-    'El Salvador': {'address': '32ixEdVJWo3kmvJGMTZq5jAQVZZeuwnqzo', 'source': 'bitcoin.gob.sv'},
-}
-TREASURY_CIKS = {
-    # XBRL concept us-gaap:CryptoAssetNumberOfUnits, same route as the ETFs
-    'Strategy (MSTR)': 1050446,
-}
+# Holder lists live in treasuries.py; this layer only reads what it produced.
 
 
 def _q(v, p):

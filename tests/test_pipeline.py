@@ -779,5 +779,5 @@ class TestCapitalFlows:
         assert 'widely reported' in src.lower() or 'primary source' in src.lower()
         import treasuries
         t = open(treasuries.__file__, encoding='utf-8').read()
-        assert 'addressbalance' in t, 'sovereign balance must be read on chain'
+        assert 'addressbalance' in t, 'sovereign balance must be read on chain when one is listed'
         assert 'companyfacts' in t, 'treasury holdings must come from SEC XBRL'

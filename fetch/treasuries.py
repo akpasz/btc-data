@@ -27,12 +27,20 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 TREASURIES = {
     # ticker: (CIK, name)
+    # Strategy's filings do not expose bitcoin under any of the three XBRL
+    # elements edgar.find_bitcoin_quantity knows (CryptoAssetNumberOfUnits,
+    # InvestmentOwnedBalanceShares, InvestmentOwnedBalanceContracts). The first
+    # live run returned "no unit-count concept". They almost certainly use a
+    # custom extension; it has to be read from a 10-Q and added to edgar.py.
+    # Left in so the status stays visible on the page rather than vanishing.
     'MSTR': (1050446, 'Strategy Inc'),
 }
-SOVEREIGNS = {
-    'El Salvador': {'address': '32ixEdVJWo3kmvJGMTZq5jAQVZZeuwnqzo',
-                    'source': 'https://bitcoin.gob.sv/ - published reserve address'},
-}
+# Empty, deliberately. The first version carried an El Salvador address written
+# from memory; the chain reported a zero balance, which means it was wrong. An
+# address goes in here only after it has been read from the holder's own
+# publication and its balance checked by hand. Until then no sovereign is
+# listed, and the flow page says so.
+SOVEREIGNS = {}
 
 
 def _now():
