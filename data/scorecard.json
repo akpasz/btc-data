@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-09T12:34:50+00:00",
+ "generated_at": "2026-09-09T15:09:49+00:00",
  "as_of": "2026-09-09",
  "price_points": 5867,
  "horizon_days": 365,
@@ -356,10 +356,56 @@
    "firing_today": false,
    "last_fired": "2024-05-03",
    "as_of_day": "2026-09-09",
-   "strict": null,
-   "negative": null,
-   "critical_time": null,
-   "strict_spec_scored": false,
+   "strict": {
+    "signal_days": 0,
+    "runs": 0,
+    "note": "never fires at confidence 0.5"
+   },
+   "negative": {
+    "signal_days": 35,
+    "runs": 2,
+    "hit_rate": 97.1,
+    "baseline_rate": 53.0,
+    "random_p5": 0.0,
+    "random_p95": 100.0,
+    "p": 0.4465,
+    "direction": "bottom"
+   },
+   "critical_time": {
+    "rule": "one trial per signal run: at its first day, did the highest close of the following 365 days fall within the tolerance of the fitted t_c; baseline = random start days with t_c offsets resampled from the runs",
+    "runs": 18,
+    "trials": 16,
+    "median_tc_days_ahead": 96.75,
+    "draws": 10000,
+    "seed": 2026,
+    "by_tolerance": {
+     "15": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.07625,
+      "random_p5": 0.0,
+      "random_p95": 0.1875,
+      "p_random_at_least_observed": 0.7224
+     },
+     "30": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.13521875,
+      "random_p5": 0.0,
+      "random_p95": 0.3125,
+      "p_random_at_least_observed": 0.9009
+     },
+     "60": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.24425,
+      "random_p5": 0.0625,
+      "random_p95": 0.4375,
+      "p_random_at_least_observed": 0.9904
+     }
+    }
+   },
+   "strict_spec_scored": true,
    "detail": "/tools/bitcoin-indicator-autopsy",
    "note": "random-block p = 0.678",
    "difference": -6.6,
