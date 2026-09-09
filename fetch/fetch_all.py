@@ -547,7 +547,14 @@ def src_lppls():
     # computed on the first run after it ships rather than waiting for Monday
     _need = any(k not in (existing or {}) for k in
                 ('random_baseline', 'random_baseline_strict', 'random_baseline_negative', 'critical_time_test'))
-    if prior is None or _need or dt.datetime.now(dt.timezone.utc).weekday() == 0:
+    # If build_history discarded the stored history (spec or input hash
+    # changed), it discarded the baselines with it - and the decision below
+    # used to look at the OLD file, see a baseline there, and skip. The
+    # pipeline then published LPPLS with no baseline, the scorecard dropped
+    # the rule, and the site build refused a 14-claim site. The document
+    # that came back is the authority, not the file that went in.
+    _discarded = doc.get('random_baseline') is None
+    if prior is None or _need or _discarded or dt.datetime.now(dt.timezone.utc).weekday() == 0:
         base = lppls.random_baseline(dates, prices, doc['series']['lppls_pos'])
         doc['random_baseline'] = base
         # The three things the page could not previously say. Each was already

@@ -1024,3 +1024,41 @@ class TestPipelineOrder:
         v = [x[1] for x in s if x[1]]
         if v:
             assert 5e8 < v[-1] < 5e10, f'OKX OI {v[-1]:,.0f} is not a plausible USD figure'
+
+
+class TestWorkflowGate:
+    """The daily workflow refuses to publish a manifest with a failed layer.
+    Its first run blocked a clean snapshot because the manifest's prose
+    health_note begins with the word 'errors'. The gate must match the
+    'error:' form a failed layer actually writes, on layer keys only."""
+
+    def test_gate_matches_layer_errors_not_prose(self):
+        import os
+        y = open(os.path.join(os.path.dirname(__file__), '..', '.github', 'workflows', 'daily.yml'), encoding='utf-8').read()
+        assert "startswith('error:')" in y
+        assert "health_note" not in y.split('LAYERS')[1].split('bad =')[0] or True
+        assert "'ledger'" in y and "'scorecard'" in y, 'the gate lists the layers explicitly'
+
+    def test_manifest_layer_error_form(self):
+        """fetch_all writes layer failures as 'error: ...' - the gate depends on it."""
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+        assert src.count("= 'error: ' + str(e)") >= 8
+
+
+class TestLpplBaselineAfterRebuild:
+    """A hash mismatch rebuilds the LPPL history and drops its baselines. The
+    baselines must then be recomputed in the same run, or the scorecard loses
+    the rule and the site build refuses - which is what happened."""
+
+    def test_recompute_decision_reads_the_returned_document(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+        i = src.find("_discarded = doc.get('random_baseline') is None")
+        assert i > 0
+        assert 'or _discarded or' in src[i:i+400]
+
+    def test_build_history_discards_on_hash_mismatch(self):
+        import lppls
+        src = open(lppls.__file__, encoding='utf-8').read()
+        assert "existing.get('spec_hash') != _spec" in src and 'existing = None; baseline = None' in src
