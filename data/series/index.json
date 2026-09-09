@@ -40,8 +40,8 @@
   },
   {
    "name": "price",
-   "points": 6458,
-   "bytes": 142669,
+   "points": 6459,
+   "bytes": 142693,
    "url": "series/price.json"
   },
   {
@@ -52,8 +52,8 @@
   },
   {
    "name": "supply",
-   "points": 6453,
-   "bytes": 160601,
+   "points": 6454,
+   "bytes": 160628,
    "url": "series/supply.json"
   },
   {
