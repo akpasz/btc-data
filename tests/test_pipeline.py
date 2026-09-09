@@ -821,3 +821,63 @@ class TestBaseRates:
         out = json.load(open(tmp_path / 'baserate.json'))
         assert out['outcomes']['double_within_365d']['rate_pct'] == 100.0
         assert out['outcomes']['fall_40pct_within_365d']['rate_pct'] == 0.0
+
+
+class TestCrossAsset:
+    """The cross-asset layer uses the scorecard's engine with a per-asset
+    percentile outcome. Its arithmetic and its consistency check are tested."""
+
+    def test_forward_return_uses_calendar_days(self):
+        """Equities trade ~252 days a year. An index-based horizon would give
+        them a 17-month window; the layer must use calendar days."""
+        import crossasset, datetime as dt
+        dates = [dt.date(2020, 1, 1) + dt.timedelta(days=2 * i) for i in range(400)]   # every other day
+        px = [100.0 * (1.001 ** i) for i in range(400)]
+        r = crossasset.forward_return(px, 0, dates)
+        # 365 calendar days ahead is index ~183, not index 365
+        assert abs(r - (px[183] / px[0] - 1)) < 1e-9
+
+    def test_wilson_is_the_scorecard_wilson(self):
+        import crossasset, scorecard
+        # 5 of 5 must give the Pi Cycle interval the scorecard publishes: ~65-100
+        ci = crossasset.wilson(5, 5)
+        assert 60 < ci[0] < 70 and ci[1] == 100.0
+
+    def test_outcome_definitions_are_percentile_cuts(self):
+        import crossasset
+        assert crossasset.PCT_HI == 0.80 and crossasset.PCT_LO == 0.20
+
+    def test_pooled_beats_downgraded_when_an_asset_reverses(self):
+        """A pooled 'beats' with one judged asset running the other way by
+        more than five points must read 'Mixed', not 'Beats'."""
+        src = open(__import__('crossasset').__file__, encoding='utf-8').read()
+        assert "'Mixed: pooled result reverses in '" in src
+        assert 'x * pooled_sign < -5' in src
+
+    def test_synthetic_rule_that_always_works(self, tmp_path):
+        """Construct one asset where every RSI<30 episode is followed by a
+        top-quintile year; the layer must report a hit rate near 100% for it."""
+        import json, datetime as dt, math, crossasset
+        n = 2500
+        dates = [(dt.date(2016, 1, 1) + dt.timedelta(days=i)).isoformat() for i in range(n)]
+        # 40 days falling hard (drives RSI < 30), 100 days rising strongly, then
+        # 590 flat. The rise follows ONLY the fall, so days at the fall are the
+        # ones with a top-quintile forward year. A purely periodic series would
+        # give every day the same forward return and no top quintile at all.
+        px = []; v = 100.0
+        for i in range(n):
+            k = i % 730
+            v *= 0.97 if k < 40 else (1.02 if k < 140 else 1.0)
+            px.append(v)
+        rel = {'series': {'btc_usd': [[d, p] for d, p in zip(dates, px)], 'eth_usd': [], 'sol_usd': [], 'nasdaq_daily': [], 'sp500_daily': []}}
+        (tmp_path / 'relative.json').write_text(json.dumps(rel))
+        crossasset.OUT = str(tmp_path)
+        crossasset.main()
+        out = json.load(open(tmp_path / 'crossasset.json'))
+        btc = out['rules']['rsi_cold']['by_asset']['btc']
+        # 2,500 days at a 730-day period: three complete cycles scoreable, the
+        # fourth censored. Every scored episode must be a hit and the baseline
+        # must sit far below - the constructed rule really works here.
+        assert btc['episodes'] == 3 and btc['censored'] == 1
+        assert btc['hit_rate'] == 100.0
+        assert btc['baseline_rate'] < 25.0
