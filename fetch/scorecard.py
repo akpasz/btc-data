@@ -283,9 +283,27 @@ def main():
             claim='A log-periodic power-law fit identifies a bubble approaching its critical time.',
             direction='top',episodes=rb.get('runs'),censored=0,
             hit_rate=100*float(rb.get('hit_rate_signal',0)),
+            # This rule's interval is the range a RANDOM signal firing on the
+            # same number of days produces, from 10,000 seeded draws - a
+            # permutation test, which is the right instrument here and a
+            # stronger one than Wilson. The claim page used to say "not
+            # computed" for this row while the pipeline had already computed
+            # something better.
+            hit_rate_ci90=[round(100*float(rb['random_p5']),1), round(100*float(rb['random_p95']),1)]
+                          if rb.get('random_p5') is not None else None,
+            interval_kind='random-signal 90% range, 10,000 draws',
             baseline_rate=100*float(rb.get('hit_rate_all_days',0)),
             baseline_days=rb.get('eligible_days'),
             eligible_days=rb.get('eligible_days'),
+            # what happened AFTER a top signal, measured against the bottom
+            # rule's outcome: doubling within a year. A bubble signal should
+            # be followed by doubling LESS often than baseline. It was not.
+            doubling_after_signal=round(100*float(rb['doubling_rate_signal']),1) if rb.get('doubling_rate_signal') is not None else None,
+            doubling_baseline=round(100*float(rb['doubling_rate_all_days']),1) if rb.get('doubling_rate_all_days') is not None else None,
+            median_run_days=rb.get('median_run_days'), longest_run_days=rb.get('longest_run_days'),
+            signal_days=rb.get('signal_days'),
+            confidence_threshold=0.5,
+            strict_spec_scored=False,
             detail='/tools/bitcoin-indicator-autopsy',
             note=f"random-block p = {rb.get('p_random_at_least_observed')}"))
 

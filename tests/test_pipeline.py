@@ -643,3 +643,34 @@ class TestEtfDatesAreNotInvented:
         assert 'align_report.json' in src, \
             'the convention fit must be published, not only logged'
         assert 'mean_abs_pct_at_zero' in src
+
+
+class TestLpplsScorecardEntry:
+    """The LPPL rule bypasses score() and reads the pipeline's own permutation
+    baseline. Its claim page said "interval not computed" while the pipeline
+    had already computed a random-signal range - a stronger instrument than
+    Wilson - and had measured that price doubled after the signal MORE often
+    than baseline. Both now travel through the scorecard."""
+
+    def _src(self):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'scorecard.py'),
+                    encoding='utf-8').read()
+
+    def test_lppls_publishes_the_random_range_as_its_interval(self):
+        src = self._src()
+        i = src.find("key='lppls'")
+        assert 'hit_rate_ci90' in src[i:i+2500], 'the random p5/p95 range must be published'
+        assert 'interval_kind' in src[i:i+2500], 'and labelled as a permutation range, not Wilson'
+
+    def test_lppls_publishes_doubling_after_signal(self):
+        src = self._src()
+        i = src.find("key='lppls'")
+        assert 'doubling_after_signal' in src[i:i+2500]
+        assert 'doubling_baseline' in src[i:i+2500]
+
+    def test_lppls_admits_the_strict_spec_is_unscored(self):
+        src = self._src()
+        i = src.find("key='lppls'")
+        assert 'strict_spec_scored=False' in src[i:i+2500], \
+            'two filter sets are defined and one is scored; the page must say so'
