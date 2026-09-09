@@ -1,19 +1,19 @@
 {
  "schema_version": "1.0",
- "generated_at": "2026-09-09T12:01:07+00:00",
+ "generated_at": "2026-09-09T12:07:43+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
-    "tx_volume_usd": 5834,
-    "fees_usd": 6437,
-    "unique_addresses": 6422,
     "supply": 6454,
     "hash_rate": 6448,
-    "transactions": 6434,
+    "tx_volume_usd": 5834,
+    "unique_addresses": 6422,
     "price": 6459,
-    "utxo_count": 6438
+    "fees_usd": 6437,
+    "utxo_count": 6438,
+    "transactions": 6434
    },
    "last_date": "2026-09-09",
    "source_url": "https://api.blockchain.info/charts/",
@@ -23,18 +23,18 @@
   },
   "coinmetrics": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
-    "PriceUSD": 5897,
-    "ROI30d": 5867,
-    "HashRate": 5898,
-    "AdrBalCnt": 5898,
-    "TxCnt": 5898,
-    "SplyCur": 5898,
-    "AdrActCnt": 5898,
     "CapMrktCurUSD": 5897,
+    "IssTotUSD": 5897,
+    "TxCnt": 5898,
+    "AdrActCnt": 5898,
+    "AdrBalCnt": 5898,
+    "ROI30d": 5867,
     "CapMVRVCur": 5897,
-    "IssTotUSD": 5897
+    "HashRate": 5898,
+    "PriceUSD": 5897,
+    "SplyCur": 5898
    },
    "last_date": "2026-09-09",
    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
@@ -44,7 +44,7 @@
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
     "spot": 9
    },
@@ -56,7 +56,7 @@
   },
   "offshore_spot": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
     "close_usdt": 307
    },
@@ -68,11 +68,11 @@
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
+    "difficulty": 80,
     "fee_fastest_sat_vb": 9,
-    "hash_rate_ehs": 1104,
-    "difficulty": 80
+    "hash_rate_ehs": 1104
    },
    "last_date": "2026-09-09",
    "source_url": "https://mempool.space/api/v1/",
@@ -82,7 +82,7 @@
   },
   "stablecoins": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
     "total_usd": 3207
    },
@@ -94,16 +94,16 @@
   },
   "fred": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
+    "treasury_10y": 4422,
+    "m2": 211,
     "rrp_on": 3250,
     "tga": 922,
-    "m2": 211,
     "real_yield_10y": 4422,
-    "walcl": 922,
     "dollar_index_broad": 4402,
     "fed_funds_effective": 6459,
-    "treasury_10y": 4422
+    "walcl": 922
    },
    "last_date": "2026-09-08",
    "source_url": "https://fred.stlouisfed.org/",
@@ -113,7 +113,7 @@
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
     "index": 3139
    },
@@ -125,7 +125,7 @@
   },
   "coingecko_global": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
     "btc_dominance_pct": 8
    },
@@ -137,24 +137,24 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
-    "cme_btc_open_interest_contracts": 2,
-    "deribit_basis_90d_ann_pct": 8,
-    "deribit_funding_8h_daily_mean": 369,
     "deribit_term_slope_30_180_pts": 7,
-    "deribit_atm_iv_180d": 7,
-    "deribit_atm_iv_7d": 7,
+    "cme_btc_open_interest_contracts": 2,
+    "cme_btc_leveraged_net": 2,
+    "deribit_atm_iv_90d": 7,
     "deribit_putcall_oi_ratio": 8,
-    "deribit_butterfly_25d_pts": 8,
+    "cme_btc_leveraged_short": 2,
+    "deribit_atm_iv_30d": 8,
+    "deribit_skew_25d_pts": 8,
+    "deribit_basis_90d_ann_pct": 8,
     "okx_open_interest_usd": 187,
     "deribit_dvol_close": 1008,
+    "deribit_butterfly_25d_pts": 8,
+    "deribit_atm_iv_180d": 7,
+    "deribit_atm_iv_7d": 7,
     "cme_btc_leveraged_long": 2,
-    "deribit_atm_iv_90d": 7,
-    "cme_btc_leveraged_short": 2,
-    "cme_btc_leveraged_net": 2,
-    "deribit_atm_iv_30d": 8,
-    "deribit_skew_25d_pts": 8
+    "deribit_funding_8h_daily_mean": 369
    },
    "last_date": "2026-09-09",
    "source_url": "Deribit, OKX, CFTC public endpoints",
@@ -162,54 +162,54 @@
    "age_days": 0,
    "expected_max_age_days": 2,
    "term_structure": {
-    "as_of": "2026-09-09T12:01:07+00:00",
+    "as_of": "2026-09-09T12:07:43+00:00",
     "curve": [
      {
       "expiry": "2026-09-12",
       "days": 2.8,
-      "atm_iv": 45.64,
+      "atm_iv": 45.88,
       "n_strikes": 54
      },
      {
       "expiry": "2026-09-13",
       "days": 3.8,
-      "atm_iv": 40.9,
-      "n_strikes": 52
+      "atm_iv": 41.08,
+      "n_strikes": 54
      },
      {
       "expiry": "2026-09-18",
       "days": 8.8,
-      "atm_iv": 41.83,
+      "atm_iv": 42.02,
       "n_strikes": 42
      },
      {
       "expiry": "2026-09-25",
       "days": 15.8,
-      "atm_iv": 39.98,
+      "atm_iv": 40.08,
       "n_strikes": 132
      },
      {
       "expiry": "2026-10-30",
       "days": 50.8,
-      "atm_iv": 38.63,
+      "atm_iv": 38.64,
       "n_strikes": 106
      },
      {
       "expiry": "2026-11-27",
       "days": 78.8,
-      "atm_iv": 39.73,
+      "atm_iv": 39.75,
       "n_strikes": 90
      },
      {
       "expiry": "2026-12-25",
       "days": 106.8,
-      "atm_iv": 39.93,
+      "atm_iv": 39.95,
       "n_strikes": 118
      },
      {
       "expiry": "2027-03-26",
       "days": 197.8,
-      "atm_iv": 40.49,
+      "atm_iv": 40.5,
       "n_strikes": 102
      },
      {
@@ -220,27 +220,27 @@
      }
     ],
     "at_tenor": {
-     "7": 41.5,
-     "30": 39.43,
-     "90": 39.81,
-     "180": 40.38
+     "7": 41.68,
+     "30": 39.5,
+     "90": 39.83,
+     "180": 40.39
     },
     "note": "ATM IV per listed expiry (50-delta by interpolation, r=0); tenor values interpolated in days, never extrapolated. Slope is 180-day minus 30-day ATM IV in vol points: positive is the normal contango of a calm surface, negative (inverted) marks stress."
    }
   },
   "relative": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
-    "silver_usd_monthly": 212,
-    "sp500_daily": 2516,
     "btc_usd": 4070,
-    "eth_usd": 3765,
-    "gold_usd_monthly": 212,
-    "sol_usd": 1911,
     "sp500_monthly": 212,
+    "sp500_daily": 2516,
+    "silver_usd_monthly": 212,
+    "nasdaq_daily": 4448,
+    "sol_usd": 1911,
     "paxg_usd": 490,
-    "nasdaq_daily": 4448
+    "gold_usd_monthly": 212,
+    "eth_usd": 3765
    },
    "last_date": "2026-09-09",
    "source_url": "Coinbase Exchange, FRED, World Bank",
@@ -272,7 +272,7 @@
    "issuers_error": [],
    "pending": [],
    "note": "flows derive from daily differences and start accumulating from the first successful run",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "source_url": "issuer disclosures",
    "freshness": "current",
    "age_days": 0,
@@ -291,7 +291,7 @@
    ],
    "errors": [],
    "last_date": "2026-06-30",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/",
    "freshness": "current",
    "age_days": 71,
@@ -299,17 +299,17 @@
   },
   "macro": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "metrics": {
-    "vix_daily": 4227,
-    "m2_monthly": 199,
-    "treasury_2y": 4172,
-    "hy_spread_daily": 790,
-    "rrp_daily": 3247,
-    "breakeven_10y_daily": 4173,
+    "tga_weekly": 870,
     "fed_assets_weekly": 870,
-    "fed_funds_daily": 6094,
-    "tga_weekly": 870
+    "treasury_2y": 4172,
+    "breakeven_10y_daily": 4173,
+    "hy_spread_daily": 790,
+    "m2_monthly": 199,
+    "vix_daily": 4227,
+    "rrp_daily": 3247,
+    "fed_funds_daily": 6094
    },
    "last_date": "2026-09-08",
    "source_url": "https://fred.stlouisfed.org/",
@@ -331,7 +331,7 @@
   },
   "lppls": {
    "status": "ok",
-   "fetched_at": "2026-09-09T12:01:07+00:00",
+   "fetched_at": "2026-09-09T12:07:43+00:00",
    "source_url": "computed from the blockchain.com daily price series",
    "last_date": "2026-09-09",
    "points": 5000,
