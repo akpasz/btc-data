@@ -169,11 +169,19 @@ def main():
     #    model is worth, stated before any number from it.
     wf = []
     Y = HORIZON_YEARS
+    # Origins whose three-year target has NOT yet arrived are computed too and
+    # kept as open forecasts. The table used to stop at the last scoreable
+    # origin with no sign the method was still running, and readers concluded
+    # the page was stale. An open row shows what the method says now and the
+    # date its answer is due - which makes the reason the scored rows end
+    # self-evident rather than something the page has to explain.
     for oi in range(0, len(days), 30):                       # monthly origins
         od = D[oi]
         j = _after(D, oi, Y)
-        if j is None:
-            break
+        try:
+            target_date = od.replace(year=od.year + Y)
+        except ValueError:
+            target_date = od.replace(year=od.year + Y, day=28)
         train_lo = od.replace(year=od.year - Y - 4); train_hi = od.replace(year=od.year - Y)
         draws = []
         for i in range(len(days)):
@@ -182,16 +190,28 @@ def main():
             k = _after(D, i, Y)
             if k is None or D[k] > od:
                 continue
-            draws.append(RC[days[oi]] * (RC[days[k]] / RC[days[i]]) * MV[days[k]] / SP[days[j]])
+            # supply at the target date: known from the schedule even when the
+            # target has not arrived, so an open forecast can still be made
+            _sup = SP[days[j]] if j is not None else supply_on(target_date, SP[days[-1]], D[-1])
+            draws.append(RC[days[oi]] * (RC[days[k]] / RC[days[i]]) * MV[days[k]] / _sup)
         if len(draws) < 100:
             continue
-        actual = PR[days[j]]
         lo, med, hi = _q(draws, .25), _q(draws, .5), _q(draws, .75)
-        wf.append({'origin': days[oi], 'target': days[j], 'p25': round(lo), 'median': round(med), 'p75': round(hi),
-                   'actual': round(actual), 'inside_iqr': bool(lo <= actual <= hi),
-                   'log_error': round(math.log10(actual / med), 3)})
-    wf_cov = sum(1 for w in wf if w['inside_iqr']) / len(wf) if wf else None
-    wf_bias = sum(w['log_error'] for w in wf) / len(wf) if wf else None
+        row = {'origin': days[oi], 'target': target_date.isoformat(),
+               'p25': round(lo), 'median': round(med), 'p75': round(hi)}
+        if j is None:
+            # still running: the forecast exists, its answer does not
+            row.update({'open': True, 'actual': None, 'inside_iqr': None, 'log_error': None,
+                        'price_at_origin': round(PR[days[oi]])})
+        else:
+            actual = PR[days[j]]
+            row.update({'open': False, 'target': days[j], 'actual': round(actual),
+                        'inside_iqr': bool(lo <= actual <= hi), 'log_error': round(math.log10(actual / med), 3)})
+        wf.append(row)
+    scored = [w for w in wf if not w.get('open')]
+    open_rows = [w for w in wf if w.get('open')]
+    wf_cov = sum(1 for w in scored if w['inside_iqr']) / len(scored) if scored else None
+    wf_bias = sum(w['log_error'] for w in scored) / len(scored) if scored else None
 
     # 5. the surface: inflow across, endpoint MVRV down, at the horizon
     horizon_date = D[-1].replace(year=D[-1].year + Y)
@@ -265,13 +285,16 @@ def main():
            'now': {'price': round(price_now, 2), 'realised_cap': round(rc_now), 'mvrv': round(mvrv_now, 3),
                    'supply': round(sply_now), 'market_cap': round(MC[today])},
            'windows': windows, 'mvrv_distribution': mvrv_dist,
-           'walk_forward': {'horizon_years': Y, 'origins': len(wf), 'iqr_coverage': round(wf_cov, 3) if wf_cov is not None else None,
+           'walk_forward': {'horizon_years': Y, 'origins': len(scored), 'open_forecasts': len(open_rows),
+                            'iqr_coverage': round(wf_cov, 3) if wf_cov is not None else None,
                             'mean_log_error': round(wf_bias, 3) if wf_bias is not None else None,
                             'note': ('Forecast at every monthly origin using only windows from the preceding four '
                                      'years that had completed by then. A calibrated model puts the actual inside '
                                      'its interquartile range half the time. Mean log error below zero means the '
                                      'model forecast too high.'),
-                            'rows': wf[-24:]},
+                            # the 18 most recent scored rows, then every open
+                            # forecast, so the table runs to the present day
+                            'rows': scored[-18:] + open_rows},
            'surface': surface, 'published_forecasts': PUBLISHED, 'holders': holders, 'tripwires': tw,
            'realised_cap_series': [[d, round(RC[d])] for d in days[::7]],
            'note': ('Realised cap is derived as market cap / MVRV; the reconciliation block shows it. '

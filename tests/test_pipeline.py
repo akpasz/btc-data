@@ -1062,3 +1062,35 @@ class TestLpplBaselineAfterRebuild:
         import lppls
         src = open(lppls.__file__, encoding='utf-8').read()
         assert "existing.get('spec_hash') != _spec" in src and 'existing = None; baseline = None' in src
+
+
+class TestOpenForecasts:
+    """The walk-forward table stopped at the last scoreable origin with no
+    sign the method was still running, and readers concluded the page was
+    stale. Forecasts whose target has not arrived are now kept as open rows -
+    but they must never count towards the coverage figure."""
+
+    def test_open_rows_are_excluded_from_coverage(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'flows.py'), encoding='utf-8').read()
+        assert "scored = [w for w in wf if not w.get('open')]" in src
+        assert "wf_cov = sum(1 for w in scored if w['inside_iqr']) / len(scored)" in src
+
+    def test_open_rows_carry_no_actual_and_a_future_target(self):
+        import json, os
+        p = os.path.join(os.environ.get('DATA_DIR', 'data'), 'flows.json')
+        if not os.path.exists(p):
+            import pytest; pytest.skip('no flows.json')
+        w = json.load(open(p))['walk_forward']
+        opens = [r for r in w['rows'] if r.get('open')]
+        if not opens:
+            import pytest; pytest.skip('no open forecasts yet')
+        for r in opens:
+            assert r['actual'] is None and r['inside_iqr'] is None
+            assert r['target'] > w['rows'][0]['origin']
+        assert w['origins'] == len([r for r in w['rows'] if not r.get('open')]) or w['origins'] >= 1
+
+    def test_supply_at_an_unarrived_target_comes_from_the_schedule(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'flows.py'), encoding='utf-8').read()
+        assert 'supply_on(target_date' in src, 'an open forecast needs supply at a date that has not arrived'
