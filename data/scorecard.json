@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-09T18:07:44+00:00",
+ "generated_at": "2026-09-09T19:49:00+00:00",
  "as_of": "2026-09-08",
  "price_points": 5866,
  "horizon_days": 365,
@@ -30,6 +30,8 @@
    "last_fired": "2021-04-23",
    "as_of_day": "2026-09-08",
    "difference": 74.0,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "above",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -53,6 +55,8 @@
    "last_fired": "2021-03-14",
    "as_of_day": "2026-09-08",
    "difference": -1.4,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -76,6 +80,8 @@
    "last_fired": "2026-08-17",
    "as_of_day": "2026-09-08",
    "difference": 29.0,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -99,6 +105,8 @@
    "last_fired": "2026-09-08",
    "as_of_day": "2026-09-08",
    "difference": -19.9,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -122,6 +130,8 @@
    "last_fired": "2025-05-23",
    "as_of_day": "2026-09-08",
    "difference": 9.7,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -145,6 +155,8 @@
    "last_fired": "2025-11-17",
    "as_of_day": "2026-09-08",
    "difference": 29.8,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "above",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -168,7 +180,9 @@
    "last_fired": "2026-09-04",
    "as_of_day": "2026-09-08",
    "difference": -8.6,
-   "verdict": "Worse than the baseline"
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
+   "verdict": "Indistinguishable"
   },
   {
    "episodes": 21,
@@ -191,7 +205,9 @@
    "last_fired": "2026-06-11",
    "as_of_day": "2026-09-08",
    "difference": -12.2,
-   "verdict": "Worse than the baseline"
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
+   "verdict": "Indistinguishable"
   },
   {
    "episodes": 5,
@@ -214,6 +230,8 @@
    "last_fired": "2021-03-14",
    "as_of_day": "2026-09-08",
    "difference": -8.0,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -237,6 +255,8 @@
    "last_fired": "2023-01-13",
    "as_of_day": "2026-09-08",
    "difference": 5.2,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -261,6 +281,8 @@
    "as_of_day": "2026-09-08",
    "own": true,
    "difference": 7.7,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -285,6 +307,8 @@
    "as_of_day": "2026-09-08",
    "own": true,
    "difference": 6.2,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -309,6 +333,8 @@
    "as_of_day": "2026-09-08",
    "own": true,
    "difference": -2.2,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -333,6 +359,8 @@
    "as_of_day": "2026-09-08",
    "own": true,
    "difference": -31.0,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -357,6 +385,8 @@
    "as_of_day": "2026-09-08",
    "own": true,
    "difference": 12.4,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -381,6 +411,8 @@
    "as_of_day": "2026-09-08",
    "own": true,
    "difference": -23.6,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -404,6 +436,8 @@
    "last_fired": "2026-07-08",
    "as_of_day": "2026-09-08",
    "difference": -31.8,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -427,6 +461,8 @@
    "last_fired": "2025-01-22",
    "as_of_day": "2026-09-08",
    "difference": 0.9,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -450,6 +486,8 @@
    "last_fired": "2026-08-16",
    "as_of_day": "2026-09-08",
    "difference": 6.7,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
   },
   {
@@ -473,86 +511,8 @@
    "last_fired": "2026-09-08",
    "as_of_day": "2026-09-08",
    "difference": 46.4,
-   "verdict": "Not enough episodes to score"
-  },
-  {
-   "key": "lppls",
-   "name": "LPPLS bubble model",
-   "claim": "A log-periodic power-law fit identifies a bubble approaching its critical time.",
-   "direction": "top",
-   "episodes": 18,
-   "censored": 0,
-   "hit_rate": 28.0,
-   "hit_rate_ci90": [
-    13.9,
-    55.8
-   ],
-   "interval_kind": "random-signal 90% range, 10,000 draws",
-   "baseline_rate": 34.5,
-   "baseline_days": 4633,
-   "eligible_days": 4633,
-   "doubling_after_signal": 64.0,
-   "doubling_baseline": 53.0,
-   "median_run_days": 9,
-   "longest_run_days": 109,
-   "signal_days": 561,
-   "confidence_threshold": 0.5,
-   "firing_today": false,
-   "last_fired": "2024-05-03",
-   "as_of_day": "2026-09-09",
-   "strict": {
-    "signal_days": 0,
-    "runs": 0,
-    "note": "never fires at confidence 0.5"
-   },
-   "negative": {
-    "signal_days": 35,
-    "runs": 2,
-    "hit_rate": 97.1,
-    "baseline_rate": 53.0,
-    "random_p5": 0.0,
-    "random_p95": 100.0,
-    "p": 0.4465,
-    "direction": "bottom"
-   },
-   "critical_time": {
-    "rule": "one trial per signal run: at its first day, did the highest close of the following 365 days fall within the tolerance of the fitted t_c; baseline = random start days with t_c offsets resampled from the runs",
-    "runs": 18,
-    "trials": 16,
-    "median_tc_days_ahead": 96.75,
-    "draws": 10000,
-    "seed": 2026,
-    "by_tolerance": {
-     "15": {
-      "hit_rate_signal": 0.0625,
-      "hits": 1,
-      "random_mean": 0.076225,
-      "random_p5": 0.0,
-      "random_p95": 0.1875,
-      "p_random_at_least_observed": 0.7216
-     },
-     "30": {
-      "hit_rate_signal": 0.0625,
-      "hits": 1,
-      "random_mean": 0.1351625,
-      "random_p5": 0.0,
-      "random_p95": 0.3125,
-      "p_random_at_least_observed": 0.9036
-     },
-     "60": {
-      "hit_rate_signal": 0.0625,
-      "hits": 1,
-      "random_mean": 0.2441875,
-      "random_p5": 0.0625,
-      "random_p95": 0.4375,
-      "p_random_at_least_observed": 0.9894
-     }
-    }
-   },
-   "strict_spec_scored": true,
-   "detail": "/tools/bitcoin-indicator-autopsy",
-   "note": "random-block p = 0.6754",
-   "difference": -6.5,
+   "evaluation_type": "episode_binomial",
+   "interval_clears_baseline": "above",
    "verdict": "Not enough episodes to score"
   }
  ]
