@@ -40,8 +40,8 @@
   },
   {
    "name": "price",
-   "points": 6459,
-   "bytes": 142693,
+   "points": 6458,
+   "bytes": 142669,
    "url": "series/price.json"
   },
   {
@@ -52,8 +52,8 @@
   },
   {
    "name": "supply",
-   "points": 6454,
-   "bytes": 160628,
+   "points": 6453,
+   "bytes": 160601,
    "url": "series/supply.json"
   },
   {
@@ -82,8 +82,8 @@
   },
   {
    "name": "utxo_count",
-   "points": 6438,
-   "bytes": 152389,
+   "points": 6437,
+   "bytes": 152364,
    "url": "series/utxo_count.json"
   }
  ]
