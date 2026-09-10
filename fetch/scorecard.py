@@ -190,6 +190,32 @@ def main():
     r=rsi(px,14)
     mv={d:v for d,v in series(cm,'CapMVRVCur')}
     mvrv=[mv.get(d) for d in dates]
+    # series behind the wider bull-bear indicators, aligned to the price
+    # calendar. Each may be absent; every rule below guards on its own inputs.
+    st=load('stablecoins'); at=load('attention')
+    _mc={d:v for d,v in series(cm,'CapMrktCurUSD')}
+    _iss={d:v for d,v in series(cm,'IssTotUSD')}
+    _sply={d:v for d,v in series(cm,'SplyCur')}
+    _fees={d:v for d,v in series(bc,'fees_usd')}
+    _stbl={d:v for d,v in series(st,'total_usd')} if st else {}
+    mc=[_mc.get(d) for d in dates]
+    iss=[_iss.get(d) for d in dates]
+    sply=[_sply.get(d) for d in dates]
+    fees=[_fees.get(d) for d in dates]
+    # realised cap = market cap / MVRV, the identity the flow monitor publishes
+    rc=[(mc[i]/mvrv[i]) if (mc[i] and mvrv[i]) else None for i in range(n)]
+    # stablecoin supply and monthly attention are carried forward to daily
+    def _ffill(m):
+        out=[]; last=None
+        for d in dates:
+            if d in m and m[d]: last=m[d]
+            out.append(last)
+        return out
+    stbl=_ffill(_stbl) if _stbl else None
+    _att={}
+    if at:
+        for d,v in (at.get('series',{}).get('bitcoin') or []): _att[d]=v
+    att=_ffill(_att) if _att else None
 
     def el(*arrs):
         return [all(a[i] is not None for a in arrs) for i in range(n)]
@@ -238,6 +264,132 @@ def main():
     add('mvrv_low','MVRV below 1','An MVRV below 1 means the average holder is under water: a bottom.',
         'bottom',[bool(e[i] and mvrv[i]<1.0) for i in range(n)],e,'/tools/bitcoin-realised-value-monitor')
 
+
+    # ---- indicators from the wider bull-bear tally -----------------------
+    # Fourteen indicators people quote when arguing the cycle, each computed
+    # from series this pipeline already publishes and scored the same way as
+    # every other rule. Adding them is not endorsement: it is the only way to
+    # say whether "the Puell multiple marks cycle lows" is a claim with a
+    # record or a claim with an anecdote. The thresholds are the ones the
+    # people making the claims use, not thresholds fitted here.
+    cum = []
+    _t = 0.0
+    for v in (iss or []):
+        _t += (v or 0.0); cum.append(_t)
+    thermo = cum                                     # cumulative miner revenue
+    iss365 = sma(iss, 365) if iss else [None]*n
+    puell = [(iss[i]/iss365[i]) if (iss365 and iss365[i]) else None for i in range(n)]
+    e = [puell[i] is not None for i in range(n)]
+    add('puell_low', 'Puell multiple below 0.4',
+        'Miner revenue far below its yearly average marks a cycle low.',
+        'bottom', [bool(e[i] and puell[i] < 0.4) for i in range(n)], e, '/tools/bitcoin-miners-monitor')
+    add('puell_high', 'Puell multiple above 4',
+        'Miner revenue far above its yearly average marks a cycle top.',
+        'top', [bool(e[i] and puell[i] > 4.0) for i in range(n)], e, '/tools/bitcoin-miners-monitor')
+
+    # MVRV Z: (market cap - realised cap) / standard deviation of market cap
+    if mc and rc:
+        zs = []
+        for i in range(n):
+            if mc[i] is None or rc[i] is None or i < 365: zs.append(None); continue
+            w = [x for x in mc[max(0,i-364):i+1] if x is not None]
+            if len(w) < 100: zs.append(None); continue
+            mu = sum(w)/len(w); sd = (sum((x-mu)**2 for x in w)/len(w))**0.5
+            zs.append((mc[i]-rc[i])/sd if sd else None)
+        e = [zs[i] is not None for i in range(n)]
+        add('mvrvz_low', 'MVRV Z-score below zero',
+            'Market value below realised value, in standard deviations, marks the bottom.',
+            'bottom', [bool(e[i] and zs[i] < 0) for i in range(n)], e, '/tools/bitcoin-realised-value-monitor')
+        add('mvrvz_high', 'MVRV Z-score above 5',
+            'An extreme Z-score marks the top of the cycle.',
+            'top', [bool(e[i] and zs[i] > 5) for i in range(n)], e, '/tools/bitcoin-realised-value-monitor')
+        # market cap / thermocap
+        mt = [(mc[i]/thermo[i]) if (i < len(thermo) and thermo[i] and mc[i]) else None for i in range(n)]
+        e = [mt[i] is not None for i in range(n)]
+        add('mcap_thermo_low', 'Market cap under 10x thermocap',
+            'Market value close to everything ever paid to miners marks a cycle low.',
+            'bottom', [bool(e[i] and mt[i] < 10) for i in range(n)], e, '/tools/bitcoin-miners-monitor')
+        # price / realised price, as its own rule
+        e = [rc[i] is not None and mc[i] is not None for i in range(n)]
+        add('below_realised', 'Price below realised price',
+            'When price falls under what the average holder paid, the bottom is in.',
+            'bottom', [bool(e[i] and mc[i] < rc[i]) for i in range(n)], e, '/tools/bitcoin-realised-value-monitor')
+        # balanced price = realised price - transferred price, approximated as
+        # realised price x (1 - realised/market): published as an approximation
+        bal = [(rc[i]/sply[i]) * (rc[i]/mc[i]) if (rc[i] and mc[i] and sply and sply[i]) else None for i in range(n)]
+        e = [bal[i] is not None for i in range(n)]
+        add('below_balanced', 'Price below the balanced price',
+            'A deeper floor than realised price, reached only in the worst bear markets.',
+            'bottom', [bool(e[i] and px[i] < bal[i]) for i in range(n)], e, '/tools/bitcoin-realised-value-monitor')
+
+    # stablecoin supply ratio: market cap / stablecoin supply
+    if mc and stbl:
+        ssr = [(mc[i]/stbl[i]) if (stbl[i] and mc[i]) else None for i in range(n)]
+        w = [x for x in ssr if x is not None]
+        if len(w) > 400:
+            lo = sorted(w)[int(0.10*(len(w)-1))]
+            e = [ssr[i] is not None for i in range(n)]
+            add('ssr_low', 'Stablecoin supply ratio in its lowest tenth',
+                'Plenty of dry powder relative to market value precedes a rally.',
+                'bottom', [bool(e[i] and ssr[i] <= lo) for i in range(n)], e, '/tools/bitcoin-flows-positioning-monitor')
+
+    # weekly and monthly RSI, on resampled closes carried back to daily
+    def _resample_rsi(step_days):
+        idx = list(range(0, n, step_days))
+        closes = [px[i] for i in idx]
+        rr = rsi(closes, 14)
+        out = [None]*n
+        for k, i in enumerate(idx):
+            j = idx[k+1] if k+1 < len(idx) else n
+            for t in range(i, j): out[t] = rr[k]
+        return out
+    wrsi = _resample_rsi(7); mrsi = _resample_rsi(30)
+    e = [wrsi[i] is not None for i in range(n)]
+    add('rsi_weekly_low', 'Weekly RSI below 30',
+        'An oversold weekly RSI marks the bottom of a bear market.',
+        'bottom', [bool(e[i] and wrsi[i] < 30) for i in range(n)], e, '/tools/bitcoin-technical-signals')
+    e = [mrsi[i] is not None for i in range(n)]
+    add('rsi_monthly_low', 'Monthly RSI below 40',
+        'A monthly RSI at bear-market levels marks the bottom.',
+        'bottom', [bool(e[i] and mrsi[i] < 40) for i in range(n)], e, '/tools/bitcoin-technical-signals')
+
+    # one-year trailing return
+    roi = [(px[i]/px[i-365]-1) if i >= 365 and px[i-365] else None for i in range(n)]
+    e = [roi[i] is not None for i in range(n)]
+    add('roi1y_low', 'One-year return below -50%',
+        'A full reset of the trailing year marks the capitulation low.',
+        'bottom', [bool(e[i] and roi[i] < -0.5) for i in range(n)], e, '/tools/bitcoin-cycle-monitor')
+
+    # 50-week (350-day) moving average recapture
+    ma350 = sma(px, 350)
+    e = [ma350[i] is not None for i in range(n)]
+    add('reclaim_50w', 'Price reclaims the 50-week average',
+        'A convincing close back above the 50-week average confirms the low is in.',
+        'bottom', [bool(e[i] and i > 0 and ma350[i-1] is not None and px[i] > ma350[i]*1.02 and px[i-1] <= ma350[i-1]*1.02) for i in range(n)],
+        e, '/tools/bitcoin-technical-signals')
+
+    # transaction fees at a multi-year low
+    if fees:
+        fw = [x for x in fees if x is not None]
+        if len(fw) > 400:
+            flo = sorted(fw)[int(0.05*(len(fw)-1))]
+            e = [fees[i] is not None for i in range(n)]
+            add('fees_low', 'Transaction fees in their lowest twentieth',
+                'Fees as low as at previous bottoms mean the chain is as quiet as it gets.',
+                'bottom', [bool(e[i] and fees[i] <= flo) for i in range(n)], e, '/tools/bitcoin-miners-monitor')
+
+    # public attention at a multi-year low, and at an extreme
+    if att:
+        aw = [x for x in att if x is not None]
+        if len(aw) > 300:
+            alo = sorted(aw)[int(0.15*(len(aw)-1))]; ahi = sorted(aw)[int(0.90*(len(aw)-1))]
+            e = [att[i] is not None for i in range(n)]
+            add('attention_low', 'Public attention in its lowest sixth',
+                'Nobody is looking: the condition that precedes a recovery.',
+                'bottom', [bool(e[i] and att[i] <= alo) for i in range(n)], e, '/tools/bitcoin-market-context')
+            add('attention_high', 'Public attention in its highest tenth',
+                'Everybody is looking: the condition that marks a top.',
+                'top', [bool(e[i] and att[i] >= ahi) for i in range(n)], e, '/tools/bitcoin-market-context')
 
     # ---- the site's own instruments ------------------------------------
     # The scorecard held fifteen external claims to a standard the site had

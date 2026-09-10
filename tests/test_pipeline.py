@@ -1117,3 +1117,52 @@ class TestLpplEvaluationsUsable:
         assert not _usable({'a': {}}, 'a')
         assert not _usable({'a': {'error': 'boom'}}, 'a')
         assert not _usable({}, 'a')
+
+
+class TestWiderIndicators:
+    """Fourteen indicators from the widely-quoted bull-bear tally, each
+    computed from series already published and scored by the same engine.
+    Adding them is not endorsement: it is how a claim like 'the Puell
+    multiple marks cycle lows' gets a record instead of an anecdote."""
+
+    def _src(self):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'scorecard.py'), encoding='utf-8').read()
+
+    def test_all_fourteen_are_present(self):
+        src = self._src()
+        for k in ('puell_low', 'puell_high', 'mvrvz_low', 'mvrvz_high', 'mcap_thermo_low', 'below_realised',
+                  'below_balanced', 'ssr_low', 'rsi_weekly_low', 'rsi_monthly_low', 'roi1y_low',
+                  'reclaim_50w', 'fees_low', 'attention_low', 'attention_high'):
+            assert f"'{k}'" in src, k
+
+    def test_thermocap_is_cumulative_issuance(self):
+        src = self._src()
+        i = src.find('cum = []')
+        assert '_t += (v or 0.0); cum.append(_t)' in src[i:i+200]
+        assert 'thermo = cum' in src
+
+    def test_puell_is_revenue_over_its_yearly_average(self):
+        src = self._src()
+        assert 'iss365 = sma(iss, 365)' in src
+        assert 'puell = [(iss[i]/iss365[i])' in src
+
+    def test_every_new_rule_guards_on_its_own_inputs(self):
+        """A missing source must skip its rules, not crash the scorecard."""
+        src = self._src()
+        for guard in ('if mc and rc:', 'if mc and stbl:', 'if fees:', 'if att:'):
+            assert guard in src, guard
+
+    def test_attention_refuses_a_short_series(self):
+        import os
+        a = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'attention.py'), encoding='utf-8').read()
+        assert 'len(pts) < 24' in a, 'a truncated pageviews response must not be published'
+        assert 'User-Agent' in a, 'Wikimedia rejects generic agents'
+
+    def test_weekly_rsi_is_resampled_not_smoothed(self):
+        """Weekly RSI means RSI of weekly closes, not a rolling mean of the
+        daily series - a different number with a different meaning."""
+        src = self._src()
+        i = src.find('def _resample_rsi')
+        assert 'closes = [px[i] for i in idx]' in src[i:i+400]
+        assert 'rr = rsi(closes, 14)' in src[i:i+400]

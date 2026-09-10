@@ -765,6 +765,10 @@ def main():
     except Exception as e:
         manifest_doc['baserate'] = 'error: ' + str(e)[:300]; print('  ERR baserate:', str(e)[:200], file=sys.stderr)
     try:
+        import attention; attention.OUT = OUT; attention.main(); manifest_doc['attention'] = 'ok'
+    except Exception as e:
+        manifest_doc['attention'] = 'error: ' + str(e)[:300]; print('  ERR attention:', str(e)[:200], file=sys.stderr)
+    try:
         import crossasset; crossasset.OUT = OUT; crossasset.main(); manifest_doc['crossasset'] = 'ok'
     except Exception as e:
         manifest_doc['crossasset'] = 'error: ' + str(e)[:300]; print('  ERR crossasset:', str(e)[:200], file=sys.stderr)
