@@ -1166,3 +1166,37 @@ class TestWiderIndicators:
         i = src.find('def _resample_rsi')
         assert 'closes = [px[i] for i in idx]' in src[i:i+400]
         assert 'rr = rsi(closes, 14)' in src[i:i+400]
+
+
+class TestTreasuryLookup:
+    """Strategy DOES tag its coin count: us-gaap:CryptoAssetNumberOfUnits,
+    with the custom unit key 'Bitcoin' and a null label. The site reported
+    'no unit-count concept' for months because the failure branch treated a
+    reason string as a list of rows and swallowed the real cause."""
+
+    def test_null_label_and_custom_unit_resolve(self):
+        import edgar
+        rows = [{'end': '2024-12-31', 'val': 447470, 'form': '10-K', 'filed': '2026-02-19'},
+                {'end': '2025-12-31', 'val': 672500, 'form': '10-K', 'filed': '2026-02-19'}]
+        facts = {'us-gaap': {'CryptoAssetNumberOfUnits': {'label': None, 'description': None,
+                                                         'units': {'Bitcoin': rows}}}}
+        key, got = edgar.find_bitcoin_quantity(facts)
+        assert key == 'us-gaap:CryptoAssetNumberOfUnits:Bitcoin'
+        # the function normalises the coin count to 'btc'; reading 'val'
+        # dropped every row and produced a false "no concept" for months
+        assert len(got) == 2 and max(r['btc'] for r in got) == 672500
+
+    def test_failure_reason_is_recorded_not_swallowed(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'treasuries.py'), encoding='utf-8').read()
+        assert 'if key is None:' in src, 'the (None, reason) form must be handled before filtering'
+        assert "'reason': str(rows)[:400]" in src, 'the reason must reach the published file'
+        assert 'type(e).__name__' in src, 'a fetch failure must be distinguishable from a missing concept'
+
+    def test_a_reason_string_is_never_filtered_as_rows(self):
+        """The bug: [r for r in rows if r.get('val')] over a string."""
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'treasuries.py'), encoding='utf-8').read()
+        assert 'isinstance(r, dict)' in src
+        assert "r.get('btc')" in src, "the value key is 'btc', not 'val'"
+        assert "float(last['val'])" not in src

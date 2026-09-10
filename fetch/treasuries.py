@@ -64,17 +64,33 @@ def treasuries():
             facts = edgar._get(f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json',
                                headers=edgar.UA).json().get('facts', {})
             key, rows = edgar.find_bitcoin_quantity(facts)
-            rows = [r for r in rows if r.get('val') is not None]
+            # On failure find_bitcoin_quantity returns (None, reason) - a
+            # STRING, not a list. Filtering it as a list swallowed the reason
+            # and reported "no unit-count concept" for every kind of failure,
+            # including a 403 from SEC. The reason is now recorded verbatim,
+            # which is how this was finally diagnosed.
+            if key is None:
+                out['companies'][tk] = {'name': name, 'cik': cik, 'status': 'no unit-count concept',
+                                        'reason': str(rows)[:400]}
+                continue
+            # find_bitcoin_quantity normalises the coin count to 'btc', not
+            # 'val' - reading 'val' dropped every row, which is the whole of
+            # why Strategy showed "no unit-count concept" for months while its
+            # figure sat in the API under the standard element.
+            rows = [r for r in rows if isinstance(r, dict) and r.get('btc') is not None]
             if not rows:
-                out['companies'][tk] = {'name': name, 'cik': cik, 'status': 'no unit-count concept'}
+                out['companies'][tk] = {'name': name, 'cik': cik, 'status': 'concept found but no usable rows',
+                                        'concept': key}
                 continue
             last = max(rows, key=lambda r: r['end'])
             out['companies'][tk] = {'name': name, 'cik': cik, 'status': 'ok', 'concept': key,
-                                    'btc': float(last['val']), 'as_of': last['end'],
+                                    'btc': float(last['btc']), 'as_of': last['end'],
                                     'form': last.get('form'), 'filed': last.get('filed'),
-                                    'quarters': [{'end': r['end'], 'btc': float(r['val'])} for r in sorted(rows, key=lambda r: r['end'])][-12:]}
+                                    'quarters': [{'end': r['end'], 'btc': float(r['btc'])} for r in sorted(rows, key=lambda r: r['end'])][-12:]}
         except Exception as e:
-            out['companies'][tk] = {'name': name, 'cik': cik, 'status': f'error: {str(e)[:120]}'}
+            # the fetch itself failing is a different fact from the concept
+            # being absent, and used to be indistinguishable on the page
+            out['companies'][tk] = {'name': name, 'cik': cik, 'status': f'error: {type(e).__name__}: {str(e)[:200]}'}
     _write('treasuries', out)
     ok = [k for k, v in out['companies'].items() if v.get('status') == 'ok']
     print(f'  treasuries: {len(ok)} of {len(TREASURIES)} resolved ({", ".join(ok) or "none"})')
