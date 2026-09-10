@@ -1335,3 +1335,25 @@ class TestIntradayCommitGuard:
         assert 6 not in hours, 'hour 6 belongs to the full daily run'
         gaps = [(hours[(i + 1) % len(hours)] - h) % 24 for i, h in enumerate(hours)]
         assert max(gaps) == 6, 'the 6 -> 9 gap is the daily run; no gap may exceed six hours'
+
+
+class TestIntradayManifestMerge:
+    """An intraday run touches five sources. Writing its manifest out whole
+    deleted the provenance for the other ten - the methods page then reported
+    'Sources in the snapshot: 5'. A partial run must merge, not replace."""
+
+    def test_intraday_merges_the_previous_manifest(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+        i = src.find("if intraday:\n        try:\n            prev = json.load")
+        assert i > 0, 'the intraday branch must read the previous manifest'
+        assert 'merged.update(manifest_doc' in src
+        assert "manifest_doc['refreshed_this_run']" in src, 'the record should say which five were actually refreshed'
+
+    def test_merge_keeps_untouched_sources(self):
+        prev = {'sources': {'blockchain': {'status': 'ok'}, 'coinbase': {'status': 'ok', 'last_date': 'old'}}}
+        now = {'sources': {'coinbase': {'status': 'ok', 'last_date': 'new'}}}
+        merged = dict(prev['sources']); merged.update(now['sources'])
+        assert set(merged) == {'blockchain', 'coinbase'}
+        assert merged['coinbase']['last_date'] == 'new', 'a refreshed source wins'
+        assert merged['blockchain']['status'] == 'ok', 'an untouched source is kept'

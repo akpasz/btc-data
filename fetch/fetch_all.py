@@ -757,6 +757,23 @@ def main(mode='full'):
     # validator - can see it, and each derived output names the inputs it
     # ran on that were not current.
     manifest_doc['run_mode'] = 'intraday' if intraday else 'full'
+    # An intraday run touches five sources, so `manifest` holds only those
+    # five - and writing it out as-is DELETED the provenance for the other ten.
+    # The manifest is the record of where every figure came from; a partial run
+    # must merge into the previous one, not replace it. The ten it did not
+    # fetch keep their last entry, which is exactly what they still describe.
+    if intraday:
+        try:
+            prev = json.load(io.open(os.path.join(OUT, 'manifest.json'), encoding='utf-8'))
+            merged = dict(prev.get('sources') or {})
+            merged.update(manifest_doc.get('sources') or {})
+            manifest_doc['sources'] = merged
+            for k, v in prev.items():
+                if k not in manifest_doc and k not in ('generated_at', 'run_mode', 'sources'):
+                    manifest_doc[k] = v
+            manifest_doc['refreshed_this_run'] = sorted(INTRADAY_SOURCES)
+        except Exception as e:
+            print('  !!  manifest merge failed, writing the partial run:', str(e)[:120], file=sys.stderr)
     manifest_doc['degraded_sources'] = sorted(k for k, v in manifest.items()
                                               if isinstance(v, dict) and (v.get('status') != 'ok' or v.get('freshness') not in (None, 'current')))
     if manifest_doc['degraded_sources']:
