@@ -1,0 +1,94 @@
+# Intraday refresh.
+#
+# The daily run at 06:15 UTC does everything. This one refreshes only the five
+# sources whose value genuinely changes within a day - funding, open interest
+# and implied volatility from Deribit and OKX, spot, the mempool, the Fear and
+# Greed index, and dominance - and the three layers they feed: align, kpis and
+# the front page's view.
+#
+# It deliberately does NOT run LPPLS, the scorecard, base rates, cross-asset,
+# the register, the portfolio or the ledger. Those are daily-close arithmetic:
+# at noon they would recompute the same completed day and write byte-identical
+# files, and committing them four times a day would quadruple the repository's
+# growth for no new information. The ledger in particular must write one row
+# per day, and the day it describes has not changed.
+name: Intraday refresh
+
+on:
+  schedule:
+    - cron: '15 0,3,9,12,15,18,21 * * *'   # every 3h; hour 6 belongs to the full daily run
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # never overlap with the daily run, which writes the same files
+  group: btc-data-pipeline
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r fetch/requirements.txt
+      - name: Tests must pass before anything is published
+        run: python -m pytest tests/ -q
+      - run: python fetch/fetch_all.py intraday
+        env: { SEC_CONTACT: "${{ vars.SEC_CONTACT }}" }
+      - name: No layer may have failed
+        run: |
+          python - <<'EOF'
+          import json, sys
+          m = json.load(open('data/manifest.json'))
+          LAYERS = ('align','kpis','glance')
+          bad = [k for k in LAYERS if str(m.get(k, '')).startswith('error:')]
+          if bad:
+              print('FAILED LAYERS:', bad); sys.exit(1)
+          print('intraday layers ok, run_mode =', m.get('run_mode'))
+          EOF
+      - name: Commit only if a VALUE changed, not just a timestamp
+        run: |
+          # Every file carries fetched_at / generated_at, so git sees a change
+          # on every run whether or not a number moved. A plain "git diff
+          # --quiet" guard therefore never fires and commits 213 KB three
+          # times a day for nothing. This compares each file against HEAD with
+          # the timestamp fields stripped, and commits only if something else
+          # differs. On a quiet night the run costs nothing at all.
+          python - <<'EOF'
+          import json, subprocess, sys, pathlib
+          VOLATILE = {'fetched_at', 'generated_at', 'as_of_run', 'run_mode'}
+          def strip(o):
+              if isinstance(o, dict):
+                  return {k: strip(v) for k, v in o.items() if k not in VOLATILE}
+              if isinstance(o, list):
+                  return [strip(v) for v in o]
+              return o
+          changed = []
+          for p in sorted(pathlib.Path('data').rglob('*.json')):
+              try:
+                  new = strip(json.loads(p.read_text()))
+              except Exception:
+                  changed.append(str(p)); continue
+              try:
+                  old_raw = subprocess.run(['git', 'show', f'HEAD:{p}'], capture_output=True, text=True, check=True).stdout
+                  old = strip(json.loads(old_raw))
+              except Exception:
+                  changed.append(str(p)); continue
+              if new != old:
+                  changed.append(str(p))
+          pathlib.Path('.changed').write_text('\n'.join(changed))
+          print(f'{len(changed)} file(s) changed beyond their timestamps' + (': ' + ', '.join(changed[:6]) if changed else ''))
+          EOF
+          if [ ! -s .changed ]; then
+            echo "no values moved - not committing"; rm -f .changed; exit 0
+          fi
+          rm -f .changed
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data
+          git commit -m "Intraday refresh $(date -u +'%Y-%m-%dT%H:%MZ')"
+          git push

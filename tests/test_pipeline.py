@@ -1239,3 +1239,99 @@ class TestGlanceLayer:
             import pytest; pytest.skip('no glance.json')
         kb = os.path.getsize(p) / 1024
         assert kb < 60, f'glance.json is {kb:.0f} KB; it exists to be small, so something is being copied wholesale'
+
+
+class TestIntradayMode:
+    """An intraday run refreshes only what changes within a day. Everything
+    else is daily-close arithmetic: at noon it would recompute the same
+    completed day and write identical files, and committing those four times
+    a day would quadruple the repository's growth for no new information."""
+
+    def _src(self):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+
+    def test_only_genuinely_intraday_sources_are_listed(self):
+        import fetch_all
+        assert set(fetch_all.INTRADAY_SOURCES) == {'coinbase', 'mempool', 'fear_greed', 'coingecko_global', 'derivatives'}
+        # blockchain and coinmetrics are daily closes; refreshing them intraday
+        # is the partial-day defect this pipeline spent a day removing
+        assert 'blockchain' not in fetch_all.INTRADAY_SOURCES
+        assert 'coinmetrics' not in fetch_all.INTRADAY_SOURCES
+
+    def test_expensive_and_daily_layers_are_skipped(self):
+        src = self._src()
+        import re
+        for name in ('slim', 'baserate', 'crossasset', 'flows', 'scorecard', 'registry', 'portfolio', 'ledger', 'attention', 'treasuries'):
+            i = src.find(f'import {name}; ')
+            line_start = src.rfind('\n', 0, i) + 1
+            indent = len(src[line_start:i]) - len(src[line_start:i].lstrip())
+            assert indent >= 12, f'{name} must be gated behind "if not intraday"'
+
+    def test_the_three_layers_the_front_page_needs_always_run(self):
+        src = self._src()
+        for name in ('align', 'kpis', 'glance'):
+            i = src.find(f'import {name}; ')
+            line_start = src.rfind('\n', 0, i) + 1
+            indent = len(src[line_start:i]) - len(src[line_start:i].lstrip())
+            assert indent == 8, f'{name} must run in both modes'
+
+    def test_the_ledger_never_runs_intraday(self):
+        """It writes one row per day, and an intraday run has not changed the
+        day it describes."""
+        src = self._src()
+        i = src.find('import ledger; ')
+        assert 'if not intraday' in src[max(0, i - 400):i]
+
+    def test_manifest_records_which_kind_of_run_wrote_it(self):
+        assert "manifest_doc['run_mode']" in self._src()
+
+    def test_the_two_workflows_cannot_overlap(self):
+        import os
+        d = os.path.join(os.path.dirname(__file__), '..', '.github', 'workflows')
+        intra = open(os.path.join(d, 'intraday.yml'), encoding='utf-8').read()
+        assert 'concurrency' in intra and 'btc-data-pipeline' in intra
+        # the schedule itself, not the comment beside it: the daily run is at
+        # minute 15 of hour 6, so hour 6 must not appear in the intraday hours
+        import re as _r
+        cron = _r.search(r"cron:\s*'([^']+)'", intra).group(1)
+        hours = cron.split()[1]
+        assert '6' not in hours.replace('18', '').split(','), f'intraday hours {hours} collide with the 06:15 daily run'
+        assert 'pytest' in intra, 'the intraday run is gated on tests like the daily one'
+
+
+class TestIntradayCommitGuard:
+    """"Commit only if something changed" was decorative: every file carries a
+    fetched_at, so git saw a change on every run and committed 213 KB whether
+    or not a number had moved. The guard compares values with the timestamp
+    fields stripped, so a quiet night costs nothing."""
+
+    def _yml(self):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', '.github', 'workflows', 'intraday.yml'), encoding='utf-8').read()
+
+    def test_guard_strips_timestamps_before_comparing(self):
+        y = self._yml()
+        assert 'VOLATILE' in y and 'fetched_at' in y and 'generated_at' in y
+        assert 'git diff --cached --quiet' not in y, 'the naive guard never fires'
+
+    def test_guard_logic(self):
+        VOLATILE = {'fetched_at', 'generated_at', 'as_of_run', 'run_mode'}
+        def strip(o):
+            if isinstance(o, dict): return {k: strip(v) for k, v in o.items() if k not in VOLATILE}
+            if isinstance(o, list): return [strip(v) for v in o]
+            return o
+        a = {'fetched_at': 'T1', 'series': {'oi': [['d', 1.0]]}}
+        b = {'fetched_at': 'T2', 'series': {'oi': [['d', 1.0]]}}
+        c = {'fetched_at': 'T2', 'series': {'oi': [['d', 2.0]]}}
+        assert strip(a) == strip(b), 'a new clock reading is not a new fact'
+        assert strip(a) != strip(c), 'a moved value must still commit'
+
+    def test_cadence_is_three_hourly_and_avoids_the_daily_hour(self):
+        import re
+        cron = re.search(r"cron:\s*'([^']+)'", self._yml()).group(1)
+        hours = sorted(int(h) for h in cron.split()[1].split(','))
+        assert hours == [0, 3, 9, 12, 15, 18, 21], hours
+        assert 6 not in hours, 'hour 6 belongs to the full daily run'
+        gaps = [(hours[(i + 1) % len(hours)] - h) % 24 for i, h in enumerate(hours)]
+        assert max(gaps) == 6, 'the 6 -> 9 gap is the daily run; no gap may exceed six hours'

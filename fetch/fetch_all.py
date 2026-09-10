@@ -713,9 +713,25 @@ def src_etf_quarterly():
 SOURCES = [('blockchain', src_blockchain), ('coinmetrics', src_coinmetrics), ('coinbase', src_coinbase), ('offshore_spot', src_offshore_spot), ('mempool', src_mempool),
            ('stablecoins', src_stablecoins), ('fred', src_fred), ('fear_greed', src_fng), ('coingecko_global', src_coingecko_global), ('derivatives', src_derivatives), ('relative', src_relative), ('etf_flows', src_etf), ('etf_quarterly', src_etf_quarterly), ('macro', src_macro), ('lppls', src_lppls)]
 
-def main():
-    os.makedirs(OUT, exist_ok=True); print('Snapshot at', NOW)
-    for name, fn in SOURCES:
+# Sources whose value genuinely changes within a day. Everything else is
+# bound to a daily close: a run at noon fetches the same completed day as the
+# 06:15 run and writes byte-identical output. Refreshing those four times a
+# day would quadruple the repository's growth for no new information.
+INTRADAY_SOURCES = ('coinbase', 'mempool', 'fear_greed', 'coingecko_global', 'derivatives')
+
+# The layers those sources feed, and nothing further. LPPLS is excluded
+# deliberately: it is the expensive one, and it reads only the daily close.
+# The scorecard, base rates, cross-asset, the ledger, the register and the
+# portfolio are all daily-close arithmetic and would produce identical files.
+INTRADAY_LAYERS = ('align', 'kpis', 'glance')
+
+
+def main(mode='full'):
+    os.makedirs(OUT, exist_ok=True)
+    intraday = mode == 'intraday'
+    print(('Intraday refresh at ' if intraday else 'Snapshot at '), NOW)
+    srcs = [(n, f) for n, f in SOURCES if n in INTRADAY_SOURCES] if intraday else SOURCES
+    for name, fn in srcs:
         try: fn()
         except Exception as e: fail(name, e)
     ok = sorted(k for k, v in manifest.items() if v['status'] in ('ok', 'partial'))
@@ -740,6 +756,7 @@ def main():
     # degraded set in the manifest so every consumer - and the site's
     # validator - can see it, and each derived output names the inputs it
     # ran on that were not current.
+    manifest_doc['run_mode'] = 'intraday' if intraday else 'full'
     manifest_doc['degraded_sources'] = sorted(k for k, v in manifest.items()
                                               if isinstance(v, dict) and (v.get('status') != 'ok' or v.get('freshness') not in (None, 'current')))
     if manifest_doc['degraded_sources']:
@@ -756,58 +773,73 @@ def main():
     # Derived layers. Each is isolated: a failure records a reason in the
     # manifest and leaves the previous file in place. Both read the source
     # files off disk, so they must run after the SOURCES loop.
-    try:
-        import slim; slim.OUT = OUT; slim.main(); manifest_doc['slim'] = 'ok'
-    except Exception as e:
-        manifest_doc['slim'] = 'error: ' + str(e)[:300]; print('  ERR slim:', str(e)[:200], file=sys.stderr)
-    try:
-        import baserate; baserate.OUT = OUT; baserate.main(); manifest_doc['baserate'] = 'ok'
-    except Exception as e:
-        manifest_doc['baserate'] = 'error: ' + str(e)[:300]; print('  ERR baserate:', str(e)[:200], file=sys.stderr)
-    try:
-        import attention; attention.OUT = OUT; attention.main(); manifest_doc['attention'] = 'ok'
-    except Exception as e:
-        manifest_doc['attention'] = 'error: ' + str(e)[:300]; print('  ERR attention:', str(e)[:200], file=sys.stderr)
-    try:
-        import crossasset; crossasset.OUT = OUT; crossasset.main(); manifest_doc['crossasset'] = 'ok'
-    except Exception as e:
-        manifest_doc['crossasset'] = 'error: ' + str(e)[:300]; print('  ERR crossasset:', str(e)[:200], file=sys.stderr)
-    try:
-        import treasuries; treasuries.OUT = OUT; treasuries.main(); manifest_doc['treasuries'] = 'ok'
-    except Exception as e:
-        manifest_doc['treasuries'] = 'error: ' + str(e)[:300]; print('  ERR treasuries:', str(e)[:200], file=sys.stderr)
-    try:
-        import flows; flows.OUT = OUT; flows.main(); manifest_doc['flows'] = 'ok'
-    except Exception as e:
-        manifest_doc['flows'] = 'error: ' + str(e)[:300]; print('  ERR flows:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import slim; slim.OUT = OUT; slim.main(); manifest_doc['slim'] = 'ok'
+        except Exception as e:
+            manifest_doc['slim'] = 'error: ' + str(e)[:300]; print('  ERR slim:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import baserate; baserate.OUT = OUT; baserate.main(); manifest_doc['baserate'] = 'ok'
+        except Exception as e:
+            manifest_doc['baserate'] = 'error: ' + str(e)[:300]; print('  ERR baserate:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import attention; attention.OUT = OUT; attention.main(); manifest_doc['attention'] = 'ok'
+        except Exception as e:
+            manifest_doc['attention'] = 'error: ' + str(e)[:300]; print('  ERR attention:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import crossasset; crossasset.OUT = OUT; crossasset.main(); manifest_doc['crossasset'] = 'ok'
+        except Exception as e:
+            manifest_doc['crossasset'] = 'error: ' + str(e)[:300]; print('  ERR crossasset:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import treasuries; treasuries.OUT = OUT; treasuries.main(); manifest_doc['treasuries'] = 'ok'
+        except Exception as e:
+            manifest_doc['treasuries'] = 'error: ' + str(e)[:300]; print('  ERR treasuries:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import flows; flows.OUT = OUT; flows.main(); manifest_doc['flows'] = 'ok'
+        except Exception as e:
+            manifest_doc['flows'] = 'error: ' + str(e)[:300]; print('  ERR flows:', str(e)[:200], file=sys.stderr)
     # The scorecard runs BEFORE anything that reads scorecard.json. It used to
     # run last, so the ledger recorded the PREVIOUS run's scorecard - which is
     # how a row dated 09-09 came to carry a golden cross the fixed scorecard
     # had already withdrawn. Order: ... flows -> scorecard -> registry ->
     # portfolio -> ledger (last, reads everything).
-    try:
-        import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
-    except Exception as e:
-        manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
-    try:
-        import registry; registry.OUT = OUT; registry.main(); manifest_doc['registry'] = 'ok'
-    except Exception as e:
-        manifest_doc['registry'] = 'error: ' + str(e)[:300]; print('  ERR registry:', str(e)[:200], file=sys.stderr)
-    try:
-        import portfolio; portfolio.OUT = OUT; portfolio.main(); manifest_doc['portfolio'] = 'ok'
-    except Exception as e:
-        manifest_doc['portfolio'] = 'error: ' + str(e)[:300]; print('  ERR portfolio:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import scorecard; scorecard.DATA = OUT; scorecard.main(); manifest_doc['scorecard'] = 'ok'
+        except Exception as e:
+            manifest_doc['scorecard'] = 'error: ' + str(e)[:300]; print('  ERR scorecard:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import registry; registry.OUT = OUT; registry.main(); manifest_doc['registry'] = 'ok'
+        except Exception as e:
+            manifest_doc['registry'] = 'error: ' + str(e)[:300]; print('  ERR registry:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import portfolio; portfolio.OUT = OUT; portfolio.main(); manifest_doc['portfolio'] = 'ok'
+        except Exception as e:
+            manifest_doc['portfolio'] = 'error: ' + str(e)[:300]; print('  ERR portfolio:', str(e)[:200], file=sys.stderr)
     try:
         # last but one: reads every layer above, writes the front page's view
         import glance; glance.OUT = OUT; glance.main(); manifest_doc['glance'] = 'ok'
     except Exception as e:
         manifest_doc['glance'] = 'error: ' + str(e)[:300]; print('  ERR glance:', str(e)[:200], file=sys.stderr)
-    try:
-        import ledger; ledger.OUT = OUT; ledger.main(); manifest_doc['ledger'] = 'ok'
-    except Exception as e:
-        manifest_doc['ledger'] = 'error: ' + str(e)[:300]; print('  ERR ledger:', str(e)[:200], file=sys.stderr)
+    if not intraday:   # daily-close layer: identical output on an intraday run
+        try:
+            import ledger; ledger.OUT = OUT; ledger.main(); manifest_doc['ledger'] = 'ok'
+        except Exception as e:
+            manifest_doc['ledger'] = 'error: ' + str(e)[:300]; print('  ERR ledger:', str(e)[:200], file=sys.stderr)
     with open(os.path.join(OUT, 'manifest.json'), 'w') as f: json.dump(manifest_doc, f, indent=1)
     print('Done. ok:', manifest_doc['ok'], 'errors:', manifest_doc['errors'])
     return 0
 
-if __name__ == '__main__': sys.exit(main())
+if __name__ == '__main__':
+    # `python fetch/fetch_all.py intraday` refreshes only the sources whose
+    # value changes within a day, and only the layers they feed. Everything
+    # else keeps its last good file, which is what the freshness states are
+    # for. The daily run is unchanged.
+    sys.exit(main('intraday' if len(sys.argv) > 1 and sys.argv[1] == 'intraday' else 'full'))
