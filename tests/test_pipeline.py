@@ -1357,3 +1357,29 @@ class TestIntradayManifestMerge:
         assert set(merged) == {'blockchain', 'coinbase'}
         assert merged['coinbase']['last_date'] == 'new', 'a refreshed source wins'
         assert merged['blockchain']['status'] == 'ok', 'an untouched source is kept'
+
+
+class TestWorkflowsCannotCollide:
+    """A daily run did five minutes of work and had its push rejected because
+    an intraday run finished first. Both declared a concurrency group, but
+    under different names - "snapshot" and "btc-data-pipeline" - so they never
+    queued against each other."""
+
+    def _yml(self, name):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', '.github', 'workflows', name), encoding='utf-8').read()
+
+    def test_both_workflows_share_one_concurrency_group(self):
+        import re
+        g = []
+        for f in ('daily.yml', 'intraday.yml'):
+            m = re.search(r'concurrency:.*?group:\s*(\S+)', self._yml(f), re.S)
+            assert m, f'{f} declares no concurrency group'
+            g.append(m.group(1))
+        assert g[0] == g[1], f'groups differ: {g} - they will not queue against each other'
+
+    def test_both_retry_a_rejected_push(self):
+        for f in ('daily.yml', 'intraday.yml'):
+            y = self._yml(f)
+            assert 'push rejected, rebasing' in y, f'{f} must recover from a race, not fail on it'
+            assert 'git pull --rebase --autostash' in y

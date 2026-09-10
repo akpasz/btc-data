@@ -6,8 +6,13 @@ on:
 permissions:
   contents: write
   pages: write
+# Both workflows write the same files. This group was called "snapshot" while
+# the intraday one called its group "btc-data-pipeline" - different names, so
+# they never queued against each other, and a daily run did five minutes of
+# work only to have its push rejected by an intraday run that finished first.
+# The name must match on both.
 concurrency:
-  group: snapshot
+  group: btc-data-pipeline
   cancel-in-progress: false
 jobs:
   snapshot:
@@ -33,6 +38,9 @@ jobs:
           python - <<'EOF'
           import json, sys
           m = json.load(open('data/manifest.json'))
+          # a failed layer is written as 'error: <reason>'; the manifest also
+          # carries a prose health_note that begins "errors are sources..." and
+          # matched a looser test on the first run, blocking a clean snapshot
           LAYERS = ('align','kpis','slim','baserate','crossasset','treasuries','flows','scorecard','registry','portfolio','ledger')
           bad = [k for k in LAYERS if str(m.get(k, '')).startswith('error:')]
           errs = m.get('errors') or []
@@ -46,6 +54,16 @@ jobs:
           git config user.email "snapshot-bot@users.noreply.github.com"
           git add data/
           git diff --cached --quiet || git commit -m "snapshot $(date -u +%F)"
+          # A push can still be rejected if anything else landed while this run
+          # was working - the concurrency group prevents the common case, but a
+          # commit made by hand does not pass through it. Rebasing onto the
+          # remote and retrying is safe here: this job only ever writes data/,
+          # and its files are regenerated wholesale rather than edited.
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected, rebasing onto origin/main (attempt $i)"
+            git pull --rebase --autostash origin main || exit 1
+          done
           git push
       - name: Request Pages build
         env: { GH_TOKEN: "${{ github.token }}" }
