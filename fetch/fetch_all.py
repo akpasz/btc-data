@@ -798,6 +798,11 @@ def main():
     except Exception as e:
         manifest_doc['portfolio'] = 'error: ' + str(e)[:300]; print('  ERR portfolio:', str(e)[:200], file=sys.stderr)
     try:
+        # last but one: reads every layer above, writes the front page's view
+        import glance; glance.OUT = OUT; glance.main(); manifest_doc['glance'] = 'ok'
+    except Exception as e:
+        manifest_doc['glance'] = 'error: ' + str(e)[:300]; print('  ERR glance:', str(e)[:200], file=sys.stderr)
+    try:
         import ledger; ledger.OUT = OUT; ledger.main(); manifest_doc['ledger'] = 'ok'
     except Exception as e:
         manifest_doc['ledger'] = 'error: ' + str(e)[:300]; print('  ERR ledger:', str(e)[:200], file=sys.stderr)

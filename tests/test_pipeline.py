@@ -1200,3 +1200,42 @@ class TestTreasuryLookup:
         assert 'isinstance(r, dict)' in src
         assert "r.get('btc')" in src, "the value key is 'btc', not 'val'"
         assert "float(last['val'])" not in src
+
+
+class TestGlanceLayer:
+    """At a glance fetched eleven files totalling 2.46 MB - blockchain.json
+    alone was 1.34 MB for one price line. glance.json is a ~10 KB view the
+    pipeline writes from layers that already computed everything in it."""
+
+    def test_glance_is_a_view_never_a_source(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'glance.py'), encoding='utf-8').read()
+        # no arithmetic on series: every value is copied from a computed layer
+        for forbidden in ('def sma', 'def rsi', 'def score', 'for i in range(n)'):
+            assert forbidden not in src, f'glance must not compute {forbidden}; it would be a second implementation'
+
+    def test_glance_runs_after_every_layer_it_reads(self):
+        import re, os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+        order = re.findall(r"^\s+import ([a-z_]+);", src, re.M)
+        for dep in ('kpis', 'scorecard', 'baserate', 'crossasset', 'flows'):
+            assert order.index(dep) < order.index('glance'), f'glance reads {dep} and must run after it'
+
+    def test_glance_carries_the_whole_rule_grid(self):
+        import os, json
+        p = os.path.join(os.environ.get('DATA_DIR', 'data'), 'glance.json')
+        if not os.path.exists(p):
+            import pytest; pytest.skip('no glance.json')
+        g = json.load(open(p))
+        rules = (g.get('scorecard') or {}).get('rules') or []
+        assert len(rules) == g['scorecard']['count'], 'the evidence grid draws every rule, so every rule must be here'
+        for r in rules:
+            assert 'verdict' in r and 'episodes' in r
+
+    def test_glance_stays_small(self):
+        import os
+        p = os.path.join(os.environ.get('DATA_DIR', 'data'), 'glance.json')
+        if not os.path.exists(p):
+            import pytest; pytest.skip('no glance.json')
+        kb = os.path.getsize(p) / 1024
+        assert kb < 60, f'glance.json is {kb:.0f} KB; it exists to be small, so something is being copied wholesale'
