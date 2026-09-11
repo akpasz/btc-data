@@ -869,3 +869,98 @@ class TestASkippedCheckAnnouncesItself:
         m = q['qualifying'][0]
         assert m['reconciled'] is False
         assert 'unchecked, not' in (m.get('supply_flag') or '')
+
+
+class TestTheIndexAppliesItsOwnChecks:
+    """The reconciliation lived in the universe sweep and the index never
+    called it. A registry entry went straight into the weights unexamined, so
+    CleanSpark's 1,719,000 bitcoin - excluded correctly from the universe -
+    was still on course to be roughly 60% of the published index."""
+
+    def test_a_company_whose_numbers_disagree_is_excluded(self):
+        cs = [{'ticker': 'BAD', 'name': 'Bad', 'claims_populated': True,
+               'reconciliation_failures': [{'token': 'BTC', 'period': '2026-06-30',
+                                            'reason': 'implies $58.53 a unit; mis-tagged'}],
+               'rows': [{'filed': 'd', 'gross_nav_usd': 100e9, 'market_cap_usd': 5e9}]},
+              {'ticker': 'OK', 'name': 'Ok', 'claims_populated': True, 'reconciliation_failures': [],
+               'rows': [{'filed': 'd', 'gross_nav_usd': 1e9, 'market_cap_usd': 2e9}]}]
+        ix = T.build_cti(cs)
+        assert [m['ticker'] for m in ix['members']] == ['OK']
+        assert any(e['ticker'] == 'BAD' and e.get('needs_verification') for e in ix['excluded'])
+
+    def test_a_documented_mis_tag_excludes_even_without_a_carrying_value(self):
+        """Where the filer publishes no fair value there is nothing to
+        reconcile against, so the registry's verified figure has to carry it."""
+        cs = [{'ticker': 'CLSK', 'name': 'CleanSpark', 'claims_populated': False,
+               'registry_excluded': 'registry records a mis-tagged unit count: 1,719,000 against 13,703',
+               'rows': [{'filed': 'd', 'gross_nav_usd': 100e9, 'market_cap_usd': 5e9}]}]
+        ix = T.build_cti(cs)
+        assert not ix['members']
+        assert '13,703' in ix['excluded'][0]['reason']
+
+    def test_the_bad_figure_would_otherwise_dominate(self):
+        """The size of what was nearly published."""
+        cs = [{'ticker': 'BAD', 'name': 'Bad', 'claims_populated': True,
+               'rows': [{'filed': 'd', 'gross_nav_usd': 100e9, 'market_cap_usd': 5e9}]},
+              {'ticker': 'MSTR', 'name': 'Strategy', 'claims_populated': True,
+               'rows': [{'filed': 'd', 'gross_nav_usd': 53.7e9, 'market_cap_usd': 80e9}]}]
+        ix = T.build_cti(cs)
+        bad = next(m for m in ix['members'] if m['ticker'] == 'BAD')
+        assert bad['raw_weight'] > 0.6, 'unchecked, it is the majority of the index'
+
+
+class TestTheUniverseFeedsTheIndex:
+    """Discovery, qualification and the index were three things running beside
+    each other: the sweep verified 7 filers and the index read a hand-list of 6.
+    The verification was worth nothing to the index because nothing consumed
+    it."""
+
+    U = {'qualification': {'qualifying': [
+        {'cik': 1050446, 'name': 'Strategy Inc', 'token': 'BTC',
+         'token_from': 'xbrl unit', 'reconciled': True},
+        {'cik': 1889123, 'name': 'Fold Holdings, Inc.', 'token': 'BTC',
+         'token_from': 'xbrl unit', 'reconciled': True},
+        {'cik': 2027708, 'name': 'Cantor Equity Partners I', 'token': 'BTC',
+         'token_from': 'xbrl unit', 'reconciled': False}]}}
+
+    def _write(self, tmp_path):
+        p = tmp_path / 'u.json'
+        p.write_text(__import__('json').dumps(self.U))
+        return str(p)
+
+    def test_a_qualified_filer_becomes_a_candidate(self, tmp_path):
+        reg = {'companies': [{'ticker': 'MSTR', 'cik': 1050446}]}
+        reg2, gen = T.registry_from_universe(reg, self._write(tmp_path))
+        assert gen['added'] == 2
+        assert {c['cik'] for c in reg2['companies']} == {1050446, 1889123, 2027708}
+
+    def test_a_hand_written_entry_always_wins(self):
+        """It carries judgment a sweep cannot have: a declared token, recorded
+        claims, a documented mis-tag."""
+        reg = {'companies': [{'ticker': 'MSTR', 'cik': 1050446, 'claims': [{'x': 1}]}]}
+        import tempfile, json as j, os
+        p = os.path.join(tempfile.mkdtemp(), 'u.json')
+        open(p, 'w').write(j.dumps(self.U))
+        reg2, _ = T.registry_from_universe(reg, p)
+        mstr = [c for c in reg2['companies'] if c['cik'] == 1050446]
+        assert len(mstr) == 1 and mstr[0].get('claims') == [{'x': 1}]
+
+    def test_a_generated_entry_says_it_is_generated(self, tmp_path):
+        reg = {'companies': []}
+        reg2, _ = T.registry_from_universe(reg, self._write(tmp_path))
+        g = [c for c in reg2['companies'] if c.get('generated')]
+        assert len(g) == 3
+        assert all(c['claims'] == [] for c in g)
+        assert all('gross' in c['source_note'] for c in g)
+
+    def test_an_unreconciled_filer_carries_lower_confidence(self, tmp_path):
+        reg = {'companies': []}
+        reg2, _ = T.registry_from_universe(reg, self._write(tmp_path))
+        cep = next(c for c in reg2['companies'] if c['cik'] == 2027708)
+        assert cep['confidence'] == 'low' and 'NOT reconciled' in cep['source_note']
+
+    def test_a_missing_universe_file_is_not_fatal(self):
+        reg = {'companies': [{'ticker': 'MSTR', 'cik': 1050446}]}
+        reg2, gen = T.registry_from_universe(reg, '/nonexistent/u.json')
+        assert gen['added'] == 0 and 'run --discover' in gen['reason']
+        assert len(reg2['companies']) == 1

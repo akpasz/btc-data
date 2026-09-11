@@ -43,6 +43,8 @@ their figures.
 """
 import io, json, os, sys, datetime as dt, urllib.request
 
+from rules import is_fund, fund_reason
+
 SEC = 'https://data.sec.gov'
 UA = os.environ.get('SEC_CONTACT', 'research contact@example.com')
 OUT = 'data'
@@ -458,6 +460,21 @@ def company(reg, prices, equities=None, today=None):
             'shares_as_of': sh_meta['filed'] if sh_meta else None,
         })
     claims_done = bool(reg.get('claims'))
+    # RECONCILE EVERY COMPANY, not only those whose token was declared. The
+    # check lived in the universe sweep and the index never called it, so a
+    # registry entry went straight into the weights unexamined - which is how
+    # a 1,719,000 bitcoin mis-tag came within one command of being 60% of a
+    # published index.
+    fv_all = fair_value_series(facts)
+    failures = []
+    for t, srs in per_token.items():
+        for r in srs:
+            v = fv_all.get(r['end']) or _nearest_fair_value(fv_all, r['end'])
+            if not v:
+                continue
+            bad = price_plausible(t, r['units'], v['usd'], prices, r['end'])
+            if bad:
+                failures.append({'token': t, 'period': r['end'], 'reason': bad})
     recon = {}
     if declared:
         fv = fair_value_series(facts)
@@ -465,9 +482,18 @@ def company(reg, prices, equities=None, today=None):
             r = reconcile_token(srs, fv, prices, t)
             if r:
                 recon[t] = r
+    mis = reg.get('xbrl_mis_tag')
     return {'ticker': reg['ticker'], 'name': reg.get('name'), 'cik': reg.get('cik'),
             'source': 'sec-xbrl', 'tokens': tokens, 'rows': rows,
+            # a documented mis-tag keeps the company out even where the filer
+            # publishes no carrying value to reconcile against
+            'registry_excluded': (
+                f'registry records a mis-tagged unit count: {mis.get("reported"):,.0f} reported '
+                f'against a verified {mis.get("actual_reference"):,} '
+                f'({mis.get("actual_source", "")[:90]})') if mis else None,
             'token_declared': declared, 'fair_value_reconciliation': recon,
+            'reconciliation_failures': failures,
+            'index_eligible': not failures,
             'claims_populated': claims_done,
             'nav_basis': 'net' if claims_done else 'GROSS - no claims recorded yet',
             'accretion': accretion(rows),
@@ -877,6 +903,15 @@ def build_cti(companies, rules=None):
             excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
                              'reason': c.get('status') or 'no point-in-time holding series'})
             continue
+        if c.get('reconciliation_failures'):
+            f = c['reconciliation_failures'][-1]
+            excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
+                             'reason': f['reason'], 'needs_verification': True})
+            continue
+        if c.get('registry_excluded'):
+            excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
+                             'reason': c['registry_excluded']})
+            continue
         last = rows[-1]
         nav = last.get('gross_nav_usd') or 0
         mcap = last.get('market_cap_usd')
@@ -1243,9 +1278,9 @@ def qualify_universe(universe, registry=None, min_units=1e-9, prices=None, facts
         name = (c.get('name') or '').lower()
         unit = str(c.get('unit_label') or '').lower()
         cik = int(c.get('cik'))
-        if any(m in f' {name} ' for m in TRUST_MARKERS):
-            drop.append({**c, 'reason': 'trust or ETF: holds crypto for its shareholders, which '
-                                        'is custody and not issuer treasury (§19)'})
+        marker = is_fund(c.get('name'))
+        if marker:
+            drop.append({**c, 'reason': fund_reason(marker)})
             continue
         if not c.get('units') or c['units'] < min_units:
             drop.append({**c, 'reason': f'reports {c.get("units")} units'})
@@ -1321,6 +1356,47 @@ def _summarise(reasons):
     return out
 
 
+def registry_from_universe(reg, universe_path=f'{OUT}/treasury_universe.json'):
+    """Every QUALIFIED filer becomes an index candidate, whether or not a person
+    has written it into the registry.
+
+    Discovery, qualification and the index were three things running beside each
+    other: the sweep found 33 filers and verified 7, and the index read a
+    hand-list of 6. The verification was worth nothing to the index because
+    nothing consumed it.
+
+    A hand-written entry always WINS, because it carries judgment a sweep cannot
+    have - a declared token, recorded claims, a documented mis-tag. A generated
+    entry carries none of that and says so, so the two are never mistaken for
+    each other.
+    """
+    try:
+        u = json.load(io.open(universe_path, encoding='utf-8'))
+    except Exception:
+        return reg, {'added': 0, 'reason': 'no universe file; run --discover first'}
+    q = (u.get('qualification') or {}).get('qualifying') or []
+    have = {int(c['cik']) for c in reg.get('companies', []) if c.get('cik')}
+    added = []
+    for c in q:
+        cik = int(c['cik'])
+        if cik in have:
+            continue
+        reg.setdefault('companies', []).append({
+            'ticker': f'CIK{cik}', 'name': c.get('name'), 'cik': cik,
+            'tokens': [c.get('token')] if c.get('token') else ['BTC'],
+            'token_declared': c.get('token_from') == 'registry declaration',
+            'confidence': 'medium' if c.get('reconciled') else 'low',
+            'source_note': (
+                f'generated from the qualified universe on the {c.get("token_from")}; '
+                f'{"reconciled against the issuer\u2019s own carrying value" if c.get("reconciled") else "NOT reconciled - the filer reports no carrying value for this period"}. '
+                f'No claims have been read for this company, so its value is gross.'),
+            'generated': True,
+            'claims': [],
+        })
+        added.append(c.get('name'))
+    return reg, {'added': len(added), 'names': added}
+
+
 def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
          relative_path='data/relative.json'):
     # default to the pipeline's own price file rather than making the caller
@@ -1335,9 +1411,11 @@ def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
         raise SystemExit('price file carries no `convention`: state the source, timestamp and '
                          'timezone, and align it with the equity close (see §7 and finding 5)')
     reg = json.load(io.open(registry_path, encoding='utf-8'))
+    reg, gen = registry_from_universe(reg)
     equities = load_equity_prices(reg)
     out = {'schema_version': 1, 'generated_at': dt.datetime.now(dt.timezone.utc).isoformat(),
-           'price_convention': conv, 'equity_convention': equities.get('convention'),
+           'price_convention': conv, 'generated_from_universe': gen,
+           'equity_convention': equities.get('convention'),
            'equity_coverage': equities.get('series'), 'companies': []}
     for c in reg.get('companies', []):
         try:
@@ -1359,6 +1437,11 @@ def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
             d = c['diagnosis']
             print(f'  treasury: {c["ticker"]} found nothing. units present: '
                   f'{", ".join(d["non_dollar_units_present"]) or "(none)"}')
+    if gen.get('added'):
+        print(f'  treasury: {gen["added"]} qualified filer(s) added from the universe sweep '
+              f'(no claims read, so gross)')
+    elif gen.get('reason'):
+        print(f'  treasury: {gen["reason"]}')
     ix = out['cti']
     print(f'  CTI-US: {ix["member_count"]} members, {len(ix["excluded"])} excluded, '
           f'${ix["gross_nav_total_usd"]/1e9:,.1f}bn gross treasury NAV')
