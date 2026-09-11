@@ -268,7 +268,16 @@ def kpi_metcalfe(bc):
     wf = np.array([d >= dt.date(2011, 1, 1) for d in dates]); k_full = np.mean(lnP[wf] - X[wf]); met_full = float(np.exp(k_full + X[-1])); prem_full = 100 * (lnP - k_full - X); pfs = np.sort(prem_full[wf])
     rf = lnP[wf] - k_full - X[wf]; sig_full = 100 * math.sqrt((rf ** 2).sum() / (wf.sum() - 1))
     oos_v = oos_rmse(dates, lnP, X, dt.date(2017, 1, 1)); oos_f = oos_rmse(dates, lnP, X, dt.date(2011, 1, 1))
+    # The reference fit has its own distribution and therefore its own
+    # percentile. Publishing the reference premium beside the validated fit's
+    # percentile would pair a figure with the rank of a different figure -
+    # today those are the 43rd and the 52nd. Both are published so a page can
+    # show either fit without computing anything itself.
+    pf_pts = float(prem_full[-1])
+    pf_simple = 100.0 * (float(np.exp(lnP[-1])) / met_full - 1.0) if met_full else 0.0
     return {'value': round(float(met[-1]), 2),
+            'premium_pct_reference_close': round(pf_simple, 1),
+            'percentile_reference_close': round(pct_of(pfs, pf_pts), 0),
             # reference calibration (fit from 2011-01-01, comparable with published figures). The *_full_history keys are the legacy names for the same
             # numbers and are kept for one release; 'full history' is a misnomer, since the true full-history fit from 2010 is the one the site rejects.
             'value_reference': round(met_full, 2), 'reference_fit_from': '2011-01-01', 'sigma_pts_reference': round(sig_full, 1), 'oos_rmse_pts_reference': oos_f,

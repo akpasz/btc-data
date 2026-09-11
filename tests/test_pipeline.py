@@ -1383,3 +1383,32 @@ class TestWorkflowsCannotCollide:
             y = self._yml(f)
             assert 'push rejected, rebasing' in y, f'{f} must recover from a race, not fail on it'
             assert 'git pull --rebase --autostash' in y
+
+
+class TestMetcalfeReferenceReading:
+    """The dashboard headlines the 2011 reference calibration so that it and
+    the power law beside it are held to one standard. That reading has its own
+    distribution, so it needs its own percentile: pairing the reference
+    premium with the validated fit's rank would pair a figure with the rank of
+    a different figure - today those are the 45th and the 54th."""
+
+    def test_kpis_publishes_the_reference_reading(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'kpis.py'), encoding='utf-8').read()
+        assert "'premium_pct_reference_close'" in src
+        assert "'percentile_reference_close'" in src
+
+    def test_the_reference_percentile_uses_the_reference_distribution(self):
+        import os, re
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'kpis.py'), encoding='utf-8').read()
+        m = re.search(r"'percentile_reference_close':\s*round\(pct_of\((\w+),", src)
+        assert m, 'the reference percentile must be computed with pct_of'
+        assert m.group(1) == 'pfs', f'computed against {m.group(1)}, not the reference distribution pfs'
+
+    def test_glance_carries_both_readings(self):
+        import os
+        src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'glance.py'), encoding='utf-8').read()
+        for k in ('premium_pct_close', 'percentile_close',
+                  'premium_pct_reference_close', 'percentile_reference_close',
+                  'fit_from', 'reference_fit_from'):
+            assert k in src, f'glance must carry {k}; the gauge names both fits'

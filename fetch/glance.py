@@ -57,7 +57,8 @@ def main():
     # the fit windows too: the gauge names both, and a year typed into the
     # page would go stale the day either fit is re-specified
     out['metcalfe'] = cut(K.get('metcalfe') or {}, 'premium_pct_close', 'percentile_close',
-                          'value', 'value_reference', 'fit_from', 'reference_fit_from')
+                          'value', 'value_reference', 'fit_from', 'reference_fit_from',
+                          'premium_pct_reference_close', 'percentile_reference_close')
     out['powerlaw'] = cut(K.get('powerlaw') or {}, 'deviation_dex_close', 'percentile_close', 'trend')
     out['realised'] = cut(K.get('realised') or {}, 'mvrv_close', 'percentile_close', 'realised_price')
     out['extended'] = cut(K.get('extended') or {}, 'etf_btc', 'etf_pct_supply')
