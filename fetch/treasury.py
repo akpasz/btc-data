@@ -1230,7 +1230,7 @@ def _period_end(frame):
     return {1: f'{y}-03-31', 2: f'{y}-06-30', 3: f'{y}-09-30', 4: f'{y}-12-31'}.get(q)
 
 
-def qualify_universe(universe, registry=None, min_units=1e-9):
+def qualify_universe(universe, registry=None, min_units=1e-9, prices=None, facts_for=None):
     """Split the discovered universe into qualifying issuers and exclusions,
     each with its reason. §5 requires the reasons; an index that shows only
     what it kept cannot be checked."""
@@ -1255,8 +1255,36 @@ def qualify_universe(universe, registry=None, min_units=1e-9):
         if unit in IDENTIFYING_UNITS:
             # map, never truncate: "bitcoin"[:3] is "bit", which is not a
             # ticker and would not match any price series
-            keep.append({**c, 'token': UNIT_TO_TOKEN[unit], 'token_from': 'xbrl unit',
-                         'supply_flag': flag})
+            #
+            # AND RECONCILE IT. The gate ran only where the token had been
+            # INFERRED, which is backwards: an inferred token is already a
+            # price agreeing with a carrying value, while a STATED one has had
+            # nothing question it at all. CleanSpark tags "Bitcoin" and so
+            # skipped the check entirely - 1,719,000 units, 8.6% of every
+            # bitcoin mined, would have entered the index unexamined.
+            tok2 = UNIT_TO_TOKEN[unit]
+            bad, v = None, None
+            if prices and facts_for:
+                fv = fair_value_series(facts_for(cik) or {})
+                end = c.get('end') or _period_end(c.get('period'))
+                v = (fv.get(end) if end else None) or (_nearest_fair_value(fv, end) if end else None)
+                if v:
+                    bad = price_plausible(tok2, c.get('units'), v['usd'], prices, v['end'])
+            if bad:
+                drop.append({**c, 'token': tok2, 'reason': bad, 'needs_verification': True})
+                continue
+            if prices and facts_for and not v:
+                flag = (flag or '') + (' ' if flag else '') + (
+                    'no CryptoAssetFairValue reported for this period, so the unit count could '
+                    'not be reconciled against the issuer\'s own accounts. It is unchecked, not '
+                    'verified.')
+            keep.append({**c, 'token': tok2, 'token_from': 'xbrl unit',
+                         'supply_flag': flag,
+                         # whether this member was actually checked, per member:
+                         # an aggregate count would hide which ones were not
+                         'reconciled': bool(prices and facts_for and v),
+                         'implied_price_usd': (round(v['usd'] / c['units'], 4)
+                                               if (v and c.get('units')) else None)})
         elif cik in declared:
             keep.append({**c, 'token': declared[cik], 'token_from': 'registry declaration',
                          'supply_flag': flag})
@@ -1266,7 +1294,16 @@ def qualify_universe(universe, registry=None, min_units=1e-9):
                 f'away the dimensional member that would. Cannot be priced until the token is '
                 f'declared and reconciled against reported fair value.')})
     flagged = [c['name'] for c in keep if c.get('supply_flag')]
+    # A CHECK THAT DID NOT RUN LOOKS EXACTLY LIKE A CHECK THAT PASSED, and this
+    # one silently does nothing without a price file or a facts fetcher. That
+    # is the most dangerous shape a guard can take: CleanSpark's mis-tag would
+    # sail through and the output would look identical to a clean run.
+    recon_state = ('ran' if (prices and facts_for) else
+                   'NOT RUN: no reference prices' if not prices else
+                   'NOT RUN: no companyfacts fetcher')
     return {'qualifying': keep, 'excluded': drop, 'flagged_for_verification': flagged,
+            'reconciliation': recon_state,
+            'reconciled': sum(1 for c in keep if c.get('reconciled')),
             'counts': {'discovered': len(universe.get('companies', [])),
                        'qualifying': len(keep), 'excluded': len(drop)},
             'exclusion_summary': _summarise([d['reason'] for d in drop])}
@@ -1278,6 +1315,7 @@ def _summarise(reasons):
         k = ('trust or ETF' if 'trust or ETF' in r else
              'token not identified' if 'names no token' in r else
              'implausible against circulating supply' if 'circulating supply' in r else
+             'unit count and carrying value disagree' if 'same holding' in r else
              'zero or negative holding')
         out[k] = out.get(k, 0) + 1
     return out
@@ -1346,7 +1384,20 @@ if __name__ == '__main__':
             _reg = json.load(io.open('src/treasury/registry.json', encoding='utf-8'))
         except Exception:
             _reg = {}
-        q = qualify_universe(u, _reg)
+        _px = None
+        try:
+            _px = prices_from_relative(json.load(io.open('data/relative.json', encoding='utf-8')))
+        except Exception:
+            pass
+        _cache = {}
+        def _facts(cik):
+            if cik not in _cache:
+                try:
+                    _cache[cik] = _get(f'{SEC}/api/xbrl/companyfacts/CIK{int(cik):010d}.json').get('facts')
+                except Exception:
+                    _cache[cik] = {}
+            return _cache[cik]
+        q = qualify_universe(u, _reg, prices=_px, facts_for=_facts if _px else None)
         u['qualification'] = q
         cs = sorted(u['companies'], key=lambda c: -c['units'])
         print(f'  {len(cs)} US filers report a crypto unit count '
@@ -1359,6 +1410,10 @@ if __name__ == '__main__':
         print()
         print(f'  QUALIFICATION: {q["counts"]["qualifying"]} of {q["counts"]["discovered"]} '
               f'qualify for CTI-US')
+        print(f'  RECONCILIATION: {q["reconciliation"]}'
+              + (f' - {q["reconciled"]} of {q["counts"]["qualifying"]} members checked against '
+                 f'their own reported fair value' if q['reconciliation'] == 'ran' else
+                 '  <-- every unit count is UNCHECKED'))
         for k, v in sorted(q['exclusion_summary'].items(), key=lambda kv: -kv[1]):
             print(f'    {v:>3} excluded: {k}')
         print()

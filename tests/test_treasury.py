@@ -795,3 +795,77 @@ class TestNonCalendarFiscalYears:
 
     def test_the_frame_label_remains_a_fallback(self):
         assert T._period_end('CY2026Q2I') == '2026-06-30'
+
+
+class TestStatedTokensAreReconciledToo:
+    """The gate was applied only where the token had been INFERRED, which is
+    backwards. An inferred token is already the product of a price agreeing
+    with a carrying value. A STATED one has had nothing question it.
+
+    CleanSpark tags "Bitcoin", so it skipped the check entirely and 1,719,000
+    units - 8.6% of all bitcoin - would have entered the index unexamined."""
+
+    U = {'companies': [{'cik': 827876, 'name': 'CleanSpark, Inc.', 'units': 1_719_000.0,
+                        'unit_label': 'Bitcoin', 'period': 'CY2026Q2I', 'end': '2026-06-30'},
+                       {'cik': 1050446, 'name': 'STRATEGY INC', 'units': 846_000.0,
+                        'unit_label': 'Bitcoin', 'period': 'CY2026Q2I', 'end': '2026-06-30'}]}
+    P = {'BTC': {'values': [['2026-06-30', 58_600.0]]}}
+
+    def _facts(self, fv_by_cik):
+        def f(cik):
+            v = fv_by_cik.get(cik)
+            return {'us-gaap': {'CryptoAssetFairValue': {'units': {'USD': [
+                {'end': '2026-06-30', 'val': v, 'filed': '2026-08-03'}]}}}} if v else {}
+        return f
+
+    def test_a_stated_token_whose_numbers_disagree_is_excluded(self):
+        facts = self._facts({827876: 1.0e9, 1050446: 49.6e9})
+        q = T.qualify_universe(self.U, {'companies': []}, prices=self.P, facts_for=facts)
+        names = [c['name'] for c in q['qualifying']]
+        assert 'CleanSpark, Inc.' not in names
+        assert 'STRATEGY INC' in names
+        ex = next(d for d in q['excluded'] if d['cik'] == 827876)
+        assert 'mis-tagged' in ex['reason'] and ex['needs_verification'] is True
+
+    def test_without_prices_it_does_not_pretend_to_check(self):
+        """No reference price means no reconciliation. Excluding on a check
+        that could not run would be worse than admitting it."""
+        q = T.qualify_universe(self.U, {'companies': []})
+        assert len(q['qualifying']) == 2
+
+    def test_a_filer_with_no_fair_value_is_not_excluded_for_it(self):
+        facts = self._facts({})
+        q = T.qualify_universe(self.U, {'companies': []}, prices=self.P, facts_for=facts)
+        assert len(q['qualifying']) == 2, 'absence of a carrying value is not evidence against'
+
+
+class TestASkippedCheckAnnouncesItself:
+    """The reconciliation silently does nothing without a price file or a facts
+    fetcher, and the output looked identical either way. That is the most
+    dangerous shape a guard can take: CleanSpark's 125x mis-tag would sail
+    through and nothing would say the check had not run."""
+
+    U = {'companies': [{'cik': 1, 'name': 'X', 'units': 100.0, 'unit_label': 'Bitcoin',
+                        'period': 'CY2026Q2I', 'end': '2026-06-30'}]}
+
+    def test_it_says_when_it_did_not_run(self):
+        q = T.qualify_universe(self.U, {'companies': []})
+        assert q['reconciliation'].startswith('NOT RUN')
+        assert q['reconciled'] == 0
+
+    def test_it_says_when_it_did(self):
+        facts = lambda cik: {'us-gaap': {'CryptoAssetFairValue': {'units': {'USD': [
+            {'end': '2026-06-30', 'val': 5_860_000.0, 'filed': 'f'}]}}}}
+        q = T.qualify_universe(self.U, {'companies': []},
+                               prices={'BTC': {'values': [['2026-06-30', 58600.0]]}},
+                               facts_for=facts)
+        assert q['reconciliation'] == 'ran' and q['reconciled'] == 1
+
+    def test_a_member_with_no_fair_value_is_marked_unchecked(self):
+        """"Unchecked" and "verified" must never look the same."""
+        q = T.qualify_universe(self.U, {'companies': []},
+                               prices={'BTC': {'values': [['2026-06-30', 58600.0]]}},
+                               facts_for=lambda cik: {})
+        m = q['qualifying'][0]
+        assert m['reconciled'] is False
+        assert 'unchecked, not' in (m.get('supply_flag') or '')
