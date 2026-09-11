@@ -52,7 +52,10 @@ def main():
                              'position_in_90d_range_pct', 'composite_percentile', 'fear_greed',
                              'fear_greed_percentile', 'drawdown_from_ath_pct', 'ath_close', 'ath_date',
                              'days_since_halving', 'cycle_multiple')
-    out['metcalfe'] = cut(K.get('metcalfe') or {}, 'premium_pct_close', 'percentile_close', 'value')
+    # value_reference too: the dashboard states the alternative calibration
+    # beside the headline premium, so the view must carry both
+    out['metcalfe'] = cut(K.get('metcalfe') or {}, 'premium_pct_close', 'percentile_close',
+                          'value', 'value_reference')
     out['powerlaw'] = cut(K.get('powerlaw') or {}, 'deviation_dex_close', 'percentile_close', 'trend')
     out['realised'] = cut(K.get('realised') or {}, 'mvrv_close', 'percentile_close', 'realised_price')
     out['extended'] = cut(K.get('extended') or {}, 'etf_btc', 'etf_pct_supply')
