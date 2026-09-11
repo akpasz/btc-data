@@ -1,0 +1,140 @@
+{
+  "_README": [
+    "The registry is the part of the treasury module that CANNOT be automated, and the",
+    "reason it is a file rather than code is §15: each claim must be classified",
+    "treasury-attributed, operating, recourse, non-recourse or ambiguous, and no XBRL",
+    "element carries that classification. Code inferring it from element names would be",
+    "guessing, and a wrong guess produces a net NAV that is precisely wrong instead of",
+    "honestly uncertain.",
+    "",
+    "EVERY claim entry must carry a `source`: the accession number and the statement or",
+    "note it was read from. An entry without one is not evidence, and the module reports",
+    "any claim it cannot classify rather than quietly leaving it out - because omitting a",
+    "claim understates the claims and flatters NAV.",
+    "",
+    "`attribution` values:",
+    "  treasury   proceeds funded digital-asset purchases, or the instrument is secured on them",
+    "  operating  funded the operating business; not netted against treasury NAV",
+    "  ambiguous  genuinely arguable. Netted in the LOW bound only, so the band shows the",
+    "             size of the disagreement instead of hiding it behind one number",
+    "",
+    "CIKs below are PLACEHOLDERS marked null. Fill each from",
+    "https://www.sec.gov/files/company_tickers.json before the first run. They are left",
+    "null deliberately: a wrong CIK returns another company's facts and every downstream",
+    "figure would be confidently wrong.",
+    "",
+    "Claims are likewise EMPTY, not guessed. An empty claims list makes net NAV equal",
+    "gross NAV, which for a leveraged treasury company is materially wrong - so populate",
+    "them from the filings before publishing anything. The module surfaces this.",
+    "",
+    "CIKs filled 11 September 2026 from the SEC ticker file and checked against the registrant title each one returns. Claims remain empty: until they are populated the module reports gross NAV, and says so, rather than a net NAV that quietly equals it."
+  ],
+  "companies": [
+    {
+      "ticker": "MSTR",
+      "name": "Strategy Inc",
+      "cik": 1050446,
+      "listing": "NASDAQ",
+      "currency": "USD",
+      "tokens": [
+        "BTC"
+      ],
+      "confidence": "high",
+      "note": "Reports under us-gaap:CryptoAssetNumberOfUnits with unit 'Bitcoin' and a null label. Verified working in btc-data. Heavily financed: convertibles and several preferred series, so the claims list below is the difference between a real net NAV and a headline gross one.",
+      "claims": [],
+      "cik_source": "sec.gov/files/company_tickers.json, retrieved 11 September 2026"
+    },
+    {
+      "ticker": "BMNR",
+      "name": "BitMine Immersion Technologies, Inc.",
+      "cik": 1829311,
+      "listing": "NYSE American",
+      "currency": "USD",
+      "tokens": [
+        "ETH"
+      ],
+      "confidence": "medium",
+      "note": "Ether-primary treasury. Confirm which tokens are tagged and with which XBRL unit string before trusting the split; a multi-token balance sheet is separated here by the unit name alone.",
+      "claims": [],
+      "cik_source": "sec.gov/files/company_tickers.json, retrieved 11 September 2026",
+      "token_declared": true,
+      "token_declaration_source": "BMNR tags us-gaap:CryptoAssetNumberOfUnits with the generic units \"Integer\" and \"cryptoAsset\", which do not name the asset, and companyfacts flattens away the dimensional member that would. The token is declared here as ETH and CHECKED: 5,700,049 units against a reported CryptoAssetFairValue of $10,871,934,000 at 2026-05-31 implies $1,907 a unit. That is ether. Against bitcoin it would be out by 98%. The reconciliation runs on every row, so the declaration is a checkable claim rather than an assumption."
+    },
+    {
+      "ticker": "XXI",
+      "name": "Twenty One Capital, Inc.",
+      "cik": 2070457,
+      "listing": "NASDAQ",
+      "currency": "USD",
+      "tokens": [
+        "BTC"
+      ],
+      "confidence": "medium",
+      "note": "Formed via SPAC. Point-in-time history begins at the business combination, not at the SPAC's listing: treat pre-combination periods as a different issuer and do not carry a series across the break.",
+      "claims": [],
+      "cik_source": "sec.gov/files/company_tickers.json, retrieved 11 September 2026"
+    },
+    {
+      "ticker": "ASST",
+      "name": "Strive, Inc.",
+      "cik": 1920406,
+      "listing": "NASDAQ",
+      "currency": "USD",
+      "tokens": [
+        "BTC"
+      ],
+      "confidence": "none",
+      "note": "Confirm the correct filing entity and CIK after the merger; the ticker has changed hands.",
+      "claims": [],
+      "cik_source": "sec.gov/files/company_tickers.json, retrieved 11 September 2026",
+      "status_note": "NO CRYPTO FACTS IN XBRL. A full scan of companyfacts on 11 September 2026 returned no concept matching crypto, bitcoin, ether or digital - not a unit count, not even a USD carrying value. Either no post-merger period has been filed yet, or holdings are not tagged. This is recorded as unobtainable rather than left looking like a miss: a silent zero reads as \"holds no crypto\", and that is the failure that excludes a real holder while looking like a fact. Re-check after the next 10-Q."
+    },
+    {
+      "ticker": "ABTC",
+      "name": "American Bitcoin Corp.",
+      "cik": 1755953,
+      "listing": "NASDAQ",
+      "currency": "USD",
+      "tokens": [
+        "BTC"
+      ],
+      "confidence": "medium",
+      "note": "Miner AND treasury holder. §19: mined inventory awaiting sale is not the same economic claim as a held treasury, and counting both is a double count. Decide the treatment, record it here, and apply it consistently.",
+      "claims": [],
+      "cik_source": "sec.gov/files/company_tickers.json, retrieved 11 September 2026"
+    },
+    {
+      "ticker": "3350.T",
+      "name": "Metaplanet Inc.",
+      "cik": null,
+      "listing": "Tokyo",
+      "currency": "JPY",
+      "tokens": [
+        "BTC"
+      ],
+      "source": "manual",
+      "confidence": "low",
+      "note": "THREE traps here, all of which produce confident wrong numbers.\n1. A sponsored LEVEL I ADR creates no SEC reporting obligation. Level I relies on the Rule 12g3-2(b) exemption: the issuer publishes its home-market disclosures in English instead of filing. Only Level II and III, which list on an exchange, file Form 20-F. So MPJPY will NOT appear in companyfacts and this issuer stays source: manual.\n2. A CIK may nonetheless EXIST, because the depositary files Form F-6 to register the ADR facility. Finding a CIK is therefore not evidence that financial facts are available: companyfacts would be empty or carry only the facility. Do not read a CIK as a green light.\n3. THE ADR RATIO. Per-share figures computed on the ADR count are wrong by the ratio against figures computed on the ordinary count. BTC per share, NAV per share and mNAV are all affected. Record the ratio from the deposit agreement before any per-share figure is calculated, and state which security each one is on.\nSection 6 duplicate rule: the primary security is the Tokyo listing. MPJPY, MTPLF and DN3.F are the same economic exposure and must never be counted alongside it.",
+      "manual_rows": [],
+      "claims": [],
+      "primary_security": "3350.T (Tokyo Stock Exchange, JPY)",
+      "other_quotations": {
+        "MPJPY": "sponsored Level I ADR, US OTC, from 19 December 2025, depositary Deutsche Bank",
+        "MTPLF": "unsponsored OTC quotation, superseded by MPJPY",
+        "DN3.F": "Frankfurt"
+      },
+      "adr_ratio": null
+    }
+  ],
+  "_claim_example": {
+    "instrument": "0% Convertible Senior Notes due 2030",
+    "amount_usd": 0,
+    "attribution": "treasury",
+    "seniority": "senior unsecured",
+    "recourse": "recourse",
+    "from": "2024-03-08",
+    "until": null,
+    "source": "0000064040-24-000019, Note 7 Long-term Debt",
+    "note": "Prospectus states net proceeds were used to acquire bitcoin. `from` is the FILING or issuance date, never the period end: the claim is not knowable before it is disclosed."
+  }
+}
