@@ -477,3 +477,321 @@ class TestPredecessorEntityGuard:
     def test_it_says_nothing_when_there_is_nothing_to_compare(self):
         assert T.claims_holdings_gap([], [{'held': {'BTC': {'period_end': '2026-06-30'}}}]) is None
         assert T.claims_holdings_gap([{'end': '2025-06-30'}], []) is None
+
+
+class TestAccretingClaims:
+    """XXI's convertible carries 484,326,591 at 2025-12-31 and 484,543,716 six
+    months later. One instrument, several carrying amounts. A single figure
+    would net a 2026 balance against a 2025 holding, and entering each period
+    as its own claim would count a half-billion obligation three times."""
+
+    XXI = {'instrument': 'ConvertibleLongTermNotesPayable', 'attribution': 'treasury',
+           'source': 's', 'from': '2026-03-31',
+           'schedule': [{'from': '2026-03-31', 'amount_usd': 484326591.0},
+                        {'from': '2026-05-13', 'amount_usd': 484434554.0},
+                        {'from': '2026-08-11', 'amount_usd': 484543716.0}]}
+
+    def test_the_carrying_amount_is_read_point_in_time(self):
+        assert T._claim_amount(self.XXI, '2026-04-01') == 484326591.0
+        assert T._claim_amount(self.XXI, '2026-06-01') == 484434554.0
+        assert T._claim_amount(self.XXI, '2026-09-01') == 484543716.0
+
+    def test_nothing_is_netted_before_the_first_disclosure(self):
+        assert T._claim_amount(self.XXI, '2026-01-01') == 0.0
+        low, high, _ = T.net_nav(3.0e9, [self.XXI], '2026-01-01')
+        assert low == high == 3.0e9
+
+    def test_a_flat_claim_still_works(self):
+        flat = {'instrument': 'note', 'amount_usd': 1.0e6, 'attribution': 'treasury', 'source': 's'}
+        assert T._claim_amount(flat, '2030-01-01') == 1.0e6
+
+    def test_net_nav_uses_the_amount_in_force(self):
+        low, high, d = T.net_nav(3.0e9, [self.XXI], '2026-06-01')
+        assert high == 3.0e9 - 484434554.0
+        assert d['claims_used'][0]['amount_usd'] == 484434554.0
+
+    def test_the_drafter_groups_periods_into_one_instrument(self):
+        facts = {'us-gaap': {'ConvertibleLongTermNotesPayable': {'units': {'USD': [
+            {'end': '2025-12-31', 'val': 484326591.0, 'form': '10-K', 'filed': '2026-03-31', 'accn': 'a1'},
+            {'end': '2026-03-31', 'val': 484434554.0, 'form': '10-Q', 'filed': '2026-05-13', 'accn': 'a2'},
+            {'end': '2026-06-30', 'val': 484543716.0, 'form': '10-Q', 'filed': '2026-08-11', 'accn': 'a3'}]}}}}
+        T._get = lambda u, **k: {'facts': facts}
+        rows = T.draft_claims(1)
+        assert len({r['concept'] for r in rows}) == 1, 'three periods of one instrument'
+        assert len(rows) == 3, 'each period is still listed, to become a schedule entry'
+
+
+class TestEquityAndMnav:
+    """mNAV pairs an equity close with a token close taken 3-4 hours later, so
+    it inherits that mismatch. Both conventions are published."""
+
+    EQ = {'convention': 'test', 'MSTR': {'values': [['2026-08-03', 300.0]]}}
+
+    def test_market_cap_uses_basic_shares(self):
+        """§18's primary definition is equity market capitalisation - what the
+        market actually capitalises. The diluted count belongs in NAV per
+        share, where the claim on the assets is the question. Two different
+        questions that look like one."""
+        assert T.market_cap_at(self.EQ, 'MSTR', '2026-08-03', 1.0e6) == 3.0e8
+
+    def test_a_missing_equity_price_costs_an_mnav_not_an_issuer(self):
+        assert T.market_cap_at(self.EQ, 'NOSUCH', '2026-08-03', 1.0e6) is None
+        assert T.market_cap_at(self.EQ, 'MSTR', '2020-01-01', 1.0e6) is None
+
+    def test_mnav_inherits_the_nav_band(self):
+        m = T.mnav(3.0e9, 2.0e9, 2.5e9)
+        assert round(m['low'], 2) == 1.20 and round(m['high'], 2) == 1.50
+
+    def test_the_equity_convention_names_the_mismatch(self):
+        assert 'New York' in T.EQUITY_CONVENTION and '00:00 UTC' in T.EQUITY_CONVENTION
+
+    def test_a_non_us_listing_is_skipped_not_guessed(self):
+        """3350.T needs a Tokyo market code and a JPY conversion. Fetching it
+        as a US symbol would return either nothing or the wrong company."""
+        reg = {'companies': [{'ticker': '3350.T', 'source': 'manual'},
+                             {'ticker': 'MPJPY'}]}
+        T.equity_series = lambda t, market='us': [['2026-01-01', 1.0]]
+        eq = T.load_equity_prices(reg)
+        assert '3350.T' not in eq
+
+
+def _u(pairs):
+    return [{'ticker': t, 'name': t, 'claims_populated': True,
+             'rows': [{'filed': '2026-08-03', 'gross_nav_usd': n, 'market_cap_usd': n * 1.5,
+                       'nav_basis': 'net'}]} for t, n in pairs]
+
+
+class TestCapping:
+    """Three attempts at this. The first turned a 77.8% raw weight into 11.0%
+    and a 0.4% raw weight into 22.5%; the second put the smallest holding above
+    the largest. Both passed a casual reading. These are the assertions that
+    would have caught them."""
+
+    EIGHT = _u((('A', 53.7e9), ('B', 10.8e9), ('C', 3.0e9), ('D', 0.5e9),
+                ('E', 0.4e9), ('F', 0.3e9), ('G', 0.2e9), ('H', 0.1e9)))
+
+    def test_weights_sum_to_one(self):
+        for u in (self.EIGHT, _u([(chr(65 + k), 1e9 * (20 - k)) for k in range(20)])):
+            ms = T.build_cti(u)['members']
+            assert abs(sum(m['weight'] for m in ms) - 1.0) < 1e-6
+
+    def test_no_member_exceeds_the_single_cap(self):
+        ms = T.build_cti(self.EIGHT)['members']
+        assert max(m['weight'] for m in ms) <= T.CTI_RULES['single_name_cap'] + 1e-6
+
+    def test_order_is_preserved(self):
+        """The one that matters. A cap meant to limit concentration must never
+        lift a smaller holding above a larger one."""
+        ms = T.build_cti(self.EIGHT)['members']
+        for a, b in zip(ms, ms[1:]):
+            assert a['raw_weight'] >= b['raw_weight'] - 1e-9
+            assert a['weight'] >= b['weight'] - 1e-9
+
+    def test_an_infeasible_top_five_cap_is_reported_not_forced(self):
+        """On eight members a 55% top-five limit would require the other three
+        to carry 45%, more than any capped constituent. No solution keeps the
+        ranking, so it is recorded as a breach with its cause."""
+        cap = T.build_cti(self.EIGHT)['capping']
+        b = cap['top5_breach']
+        assert b and b['top_five'] > b['limit']
+        assert 'cannot be met without lifting smaller holdings' in b['reason']
+
+    def test_a_large_universe_has_no_breach(self):
+        cap = T.build_cti(_u([(chr(65 + k), 1e9 * (30 - k)) for k in range(20)]))['capping']
+        assert cap['top5_breach'] is None
+
+    def test_a_cap_unreachable_on_a_tiny_universe_is_not_pretended(self):
+        """Three names at a 15% cap reach 45%, not 100%. Applying it would mean
+        inventing weight."""
+        cap = T.build_cti(_u((('A', 9e9), ('B', 1e9), ('C', 0.5e9))))['capping']
+        assert cap['single_applied'] is False
+        assert 'unreachable on a universe this small' in cap['single_skipped_reason']
+
+    def test_exclusions_carry_their_reason(self):
+        u = self.EIGHT + _u((('TINY', 1e6),))
+        idx = T.build_cti(u)
+        assert any('below the' in e['reason'] for e in idx['excluded'])
+
+    def test_weight_is_nav_not_market_cap(self):
+        """Weighting by market capitalisation would weight by the treasury
+        premium, which is the thing CTP measures. An index whose weights move
+        with the premium cannot then report on it."""
+        u = _u((('A', 1e9), ('B', 1e9)))
+        u[0]['rows'][0]['market_cap_usd'] = 10e9      # a huge premium on A
+        ms = T.build_cti(u)['members']
+        assert abs(ms[0]['weight'] - ms[1]['weight']) < 1e-9, 'the premium moved the weight'
+
+
+class TestUniverseQualification:
+    """The frames sweep returns every filer tagging the concept, which includes
+    trusts holding crypto for shareholders and filers whose unit string names
+    no token. Both must come out, by rule and with a reason."""
+
+    U = {'companies': [
+        {'cik': 1980994, 'name': 'iShares Bitcoin Trust ETF', 'units': 734261.0,
+         'unit_label': 'Bitcoin', 'period': 'p'},
+        {'cik': 1050446, 'name': 'STRATEGY INC', 'units': 846000.0,
+         'unit_label': 'Bitcoin', 'period': 'p'},
+        {'cik': 862861, 'name': 'AI FINANCIAL CORPORATION', 'units': 7.28e9,
+         'unit_label': 'Integer', 'period': 'p'},
+        {'cik': 1829311, 'name': 'BITMINE IMMERSION', 'units': 5700049.0,
+         'unit_label': 'cryptoAsset', 'period': 'p'},
+        {'cik': 1604191, 'name': 'GRIDAI TECHNOLOGIES CORP', 'units': 0.0,
+         'unit_label': 'pure', 'period': 'p'}]}
+    REG = {'companies': [{'cik': 1829311, 'ticker': 'BMNR', 'token_declared': True,
+                          'tokens': ['ETH']}]}
+
+    def test_a_unit_string_is_mapped_not_truncated(self):
+        """"bitcoin"[:3] is "bit", which is not a ticker and matches no price
+        series. It shipped in the first version."""
+        q = T.qualify_universe(self.U, self.REG)
+        mstr = next(c for c in q['qualifying'] if c['cik'] == 1050446)
+        assert mstr['token'] == 'BTC'
+
+    def test_trusts_are_excluded_as_custody(self):
+        q = T.qualify_universe(self.U, self.REG)
+        ex = next(d for d in q['excluded'] if d['cik'] == 1980994)
+        assert '19' in ex['reason'] and 'custody' in ex['reason']
+
+    def test_an_unidentified_token_is_excluded_with_its_unit_named(self):
+        q = T.qualify_universe(self.U, self.REG)
+        ex = next(d for d in q['excluded'] if d['cik'] == 862861)
+        assert 'Integer' in ex['reason'] and 'declared' in ex['reason']
+
+    def test_a_registry_declaration_qualifies_a_generic_unit(self):
+        q = T.qualify_universe(self.U, self.REG)
+        b = next(c for c in q['qualifying'] if c['cik'] == 1829311)
+        assert b['token'] == 'ETH' and b['token_from'] == 'registry declaration'
+
+    def test_without_the_declaration_it_would_not_qualify(self):
+        q = T.qualify_universe(self.U, {'companies': []})
+        assert not any(c['cik'] == 1829311 for c in q['qualifying'])
+
+    def test_a_zero_holding_is_excluded(self):
+        q = T.qualify_universe(self.U, self.REG)
+        assert any(d['cik'] == 1604191 for d in q['excluded'])
+
+    def test_every_exclusion_carries_a_reason(self):
+        q = T.qualify_universe(self.U, self.REG)
+        assert all(d.get('reason') for d in q['excluded'])
+        assert sum(q['exclusion_summary'].values()) == len(q['excluded'])
+
+
+class TestSupplyPlausibility:
+    """CleanSpark tagged 1,719,000 under the unit "Bitcoin" - 8.6% of every
+    bitcoin mined, against a real holding near 12,500. At $78k it would have
+    priced as $134bn and been most of the index before capping.
+
+    My first fix was a 3% supply threshold, and the test below killed it:
+    Strategy holds 4.25% of all bitcoin and BitMine 4.7% of all ether. A
+    threshold catching the bad figure while sparing the real ones has four
+    points of room, and Strategy keeps buying. So the supply share is a FLAG
+    and the reconciliation is the gate."""
+
+    def test_the_largest_honest_holders_are_not_rejected(self):
+        """The assertion that killed the threshold approach."""
+        assert T.supply_check('BTC', 846_000) is None, 'Strategy is 4.25% of supply and real'
+        assert T.supply_check('ETH', 5_700_049) is None, 'BitMine is 4.7% of supply and real'
+
+    def test_an_extraordinary_figure_is_flagged_not_excluded(self):
+        r = T.supply_check('BTC', 1_719_000)
+        assert r and 'flagged for verification' in r
+        assert 'Not excluded on this alone' in r
+
+    def test_the_reconciliation_catches_it_precisely(self):
+        """No magic number needed. 1,719,000 against a $1bn carrying value
+        implies $582 a coin; 846,000 against $53bn implies $63,000."""
+        p = {'BTC': {'values': [['2026-06-30', 78000.0]]}}
+        bad = T.price_plausible('BTC', 1_719_000, 1.0e9, p, '2026-06-30')
+        good = T.price_plausible('BTC', 846_000, 53.7e9, p, '2026-06-30')
+        assert bad and 'mis-tagged' in bad
+        assert good is None
+
+    def test_the_gate_needs_no_per_token_calibration(self):
+        p = {'ETH': {'values': [['2026-05-31', 1907.0]]}}
+        assert T.price_plausible('ETH', 5_700_049, 10.87e9, p, '2026-05-31') is None
+
+    def test_it_says_nothing_without_a_fair_value(self):
+        p = {'BTC': {'values': [['2026-06-30', 78000.0]]}}
+        assert T.price_plausible('BTC', 1_719_000, None, p, '2026-06-30') is None
+
+    def test_a_flagged_issuer_is_named_in_the_output(self):
+        u = {'companies': [{'cik': 827876, 'name': 'CleanSpark, Inc.', 'units': 1_719_000.0,
+                            'unit_label': 'Bitcoin', 'period': 'p'}]}
+        q = T.qualify_universe(u, {'companies': []})
+        assert 'CleanSpark, Inc.' in q['flagged_for_verification']
+
+
+class TestTokenInference:
+    """Two thirds of the universe tags a unit string naming nothing. Asking for
+    eighteen human declarations is eighteen chances to be wrong with no way to
+    check any. The filer reports a unit count AND a fair value; their quotient
+    is a price, and a price identifies an asset."""
+
+    P = {'BTC': {'values': [['2026-06-30', 78000.0]]},
+         'ETH': {'values': [['2026-06-30', 1907.0]]},
+         'SOL': {'values': [['2026-06-30', 95.0]]}}
+
+    def test_it_identifies_from_the_issuers_own_numbers(self):
+        tok, d = T.infer_token(5_700_049, 10.87e9, self.P, '2026-06-30')
+        assert tok == 'ETH' and d['matched']['off_by_pct'] < 1
+
+    def test_a_stablecoin_is_recognised_and_named_as_one(self):
+        tok, d = T.infer_token(2_286_511_374, 2.29e9, self.P, '2026-06-30')
+        assert tok == 'USD-STABLE'
+        assert 'not crypto price exposure' in d['note']
+
+    def test_an_ambiguous_match_stays_unidentified(self):
+        """Two assets within tolerance cannot be told apart this way, and
+        picking the closer one is a coin flip dressed as a measurement."""
+        p = {'A': {'values': [['2026-06-30', 100.0]]}, 'B': {'values': [['2026-06-30', 103.0]]}}
+        tok, d = T.infer_token(1000, 101_000.0, p, '2026-06-30')
+        assert tok is None and len(d['candidates']) == 2
+        assert 'cannot be distinguished' in d['reason']
+
+    def test_an_unmatched_asset_still_reports_its_implied_price(self):
+        """The row stays useful. "$2.17 a unit" is identifiable by a person;
+        "Integer" is not."""
+        tok, d = T.infer_token(230_520_792, 5.0e8, self.P, '2026-06-30')
+        assert tok is None and round(d['implied_price_usd'], 2) == 2.17
+
+    def test_the_bad_cleanspark_tag_is_not_identified_as_bitcoin(self):
+        tok, d = T.infer_token(1_719_000, 1.0e9, self.P, '2026-06-30')
+        assert tok is None and d['implied_price_usd'] < 1000
+
+    def test_a_frame_label_maps_to_a_balance_sheet_date(self):
+        """Pairing a holding with a carrying value from a different quarter
+        would imply a price that is neither."""
+        assert T._period_end('CY2026Q2I') == '2026-06-30'
+        assert T._period_end('CY2025Q4I') == '2025-12-31'
+        assert T._period_end('rubbish') is None
+
+    def test_it_needs_both_numbers(self):
+        assert T.infer_token(1000, None, self.P, '2026-06-30')[0] is None
+        assert T.infer_token(None, 1000.0, self.P, '2026-06-30')[0] is None
+
+
+class TestNonCalendarFiscalYears:
+    """BitMine's balance-sheet date is 31 May; the frames API files it under
+    CY2026Q2I anyway, because a filer with a non-calendar fiscal year is
+    assigned to the nearest calendar quarter. Deriving 30 June from the frame
+    label and demanding an exact match found NO fair value for BitMine, CEA
+    Industries, AI Financial or Next Technology - five rows reported as having
+    no carrying value when they all have one."""
+
+    def test_the_rows_own_end_date_is_preferred(self):
+        fv = {'2026-05-31': {'end': '2026-05-31', 'usd': 10.87e9, 'filed': 'f'}}
+        assert T._nearest_fair_value(fv, '2026-05-31') is not None
+
+    def test_a_few_days_apart_still_pairs(self):
+        fv = {'2026-06-30': {'end': '2026-06-30', 'usd': 1.0, 'filed': 'f'}}
+        assert T._nearest_fair_value(fv, '2026-07-02', days=10) is not None
+
+    def test_a_different_quarter_never_pairs(self):
+        """A unit count against a carrying value from another quarter implies a
+        price that is neither."""
+        fv = {'2026-03-31': {'end': '2026-03-31', 'usd': 1.0, 'filed': 'f'}}
+        assert T._nearest_fair_value(fv, '2026-06-30', days=10) is None
+
+    def test_the_frame_label_remains_a_fallback(self):
+        assert T._period_end('CY2026Q2I') == '2026-06-30'

@@ -289,6 +289,24 @@ def as_of(series, when, field):
 
 # --------------------------------------------------------------------- NAV ---
 
+def _claim_amount(c, when):
+    """The carrying amount in force at `when`.
+
+    `schedule` is [{from, amount_usd}, ...]; the latest entry disclosed on or
+    before `when` wins. Falls back to a flat `amount_usd` for instruments whose
+    carrying amount does not move.
+    """
+    sched = c.get('schedule')
+    if sched:
+        best = None
+        for e in sched:
+            f = e.get('from') or ''
+            if f <= when and (best is None or f >= (best.get('from') or '')):
+                best = e
+        return float((best or {}).get('amount_usd') or 0)
+    return float(c.get('amount_usd') or 0)
+
+
 def net_nav(gross, claims, when):
     """Net treasury asset value as a BAND.
 
@@ -307,7 +325,12 @@ def net_nav(gross, claims, when):
             continue                              # not yet disclosed at `when`
         if c.get('until') and c['until'] <= when:
             continue                              # repaid or converted
-        amt = float(c.get('amount_usd') or 0)
+        # A convertible accretes: XXI's carries 484,326,591 at 2025-12-31 and
+        # 484,543,716 six months later. One instrument, several carrying
+        # amounts. A single figure would net a 2026 balance against a 2025
+        # holding, so a claim may carry a SCHEDULE and the amount is read
+        # point-in-time like everything else here.
+        amt = _claim_amount(c, when)
         kind = (c.get('attribution') or '').lower()
         if kind == 'treasury':
             attributed += amt
@@ -373,7 +396,7 @@ def mnav(market_cap, nav_low, nav_high):
 
 # ------------------------------------------------------------------ company ---
 
-def company(reg, prices, today=None):
+def company(reg, prices, equities=None, today=None):
     """One issuer's full point-in-time treasury series."""
     today = today or dt.date.today().isoformat()
     if reg.get('source') == 'manual':
@@ -414,6 +437,8 @@ def company(reg, prices, today=None):
         dsh, _ = as_of(diluted, d, 'shares')
         dsh = dsh or sh
         low, high, detail = net_nav(gross, reg.get('claims'), d)
+        mcap = market_cap_at(equities, reg['ticker'], d, sh)
+        mn = mnav(mcap, low, high) if mcap else None
         # A field named net_nav that contains gross is the kind of label that
         # gets quoted. Until the claims are recorded from the filings the basis
         # is stated on every row, and for a leveraged issuer the difference is
@@ -429,6 +454,7 @@ def company(reg, prices, today=None):
             'nav_per_diluted_share_high': (high / dsh) if dsh else None,
             'tokens_per_diluted_share': (total_units / dsh) if dsh else None,
             'claims': detail, 'nav_basis': basis,
+            'market_cap_usd': round(mcap, 2) if mcap else None, 'mnav': mn,
             'shares_as_of': sh_meta['filed'] if sh_meta else None,
         })
     claims_done = bool(reg.get('claims'))
@@ -621,14 +647,640 @@ def print_draft(cik, ticker=''):
     for r in rows[:24]:
         print(f'  {r["end"]:<12}{r["kind"]:<14}{r["amount_usd"]:>18,.0f}  {r["filed"]:<12}'
               f'{r["concept"].replace("us-gaap:", "")}')
-    print(f'\n  Classify each as treasury / operating / ambiguous, then paste into the '
-          f'registry\'s claims list. Template:')
-    r = next((x for x in rows if x['end'] == latest), rows[0])
-    print(json.dumps({'instrument': r['concept'].replace('us-gaap:', '') + f' at {r["end"]}',
-                      'amount_usd': r['amount_usd'], 'attribution': 'treasury|operating|ambiguous',
-                      'seniority': '', 'from': r['filed'], 'until': None,
-                      'source': f'{r["accn"]}, {r["form"]} for {r["end"]}'}, indent=2))
+    # Group by concept: several balance-sheet dates of ONE instrument are one
+    # claim with a schedule, not several claims. Entering each row separately
+    # would multiply a single obligation by the number of quarters it appears
+    # in - on XXI, a half-billion convertible counted three times.
+    by_concept = {}
+    for r in rows:
+        by_concept.setdefault(r['concept'], []).append(r)
+    print(f'\n  {len(by_concept)} distinct concept(s). Each is ONE claim with a schedule, '
+          f'not one per period.')
+    print(f'  Classify each as treasury / operating / ambiguous, then paste into the '
+          f'registry\'s claims list.\n')
+    draft = []
+    for concept, rs in sorted(by_concept.items(), key=lambda kv: -max(x['amount_usd'] for x in kv[1])):
+        rs = sorted(rs, key=lambda x: x['end'])
+        first = rs[0]
+        draft.append({
+            'instrument': concept.replace('us-gaap:', ''),
+            'attribution': 'treasury|operating|ambiguous',
+            'seniority': '',
+            'from': first['filed'],
+            'until': None,
+            'schedule': [{'from': x['filed'], 'amount_usd': x['amount_usd'], 'period': x['end']}
+                         for x in rs],
+            'source': f'{first["accn"]}, {first["form"]} for {first["end"]}'
+                      + (f' and {len(rs) - 1} later filing(s)' if len(rs) > 1 else ''),
+        })
+    print(json.dumps(draft, indent=2))
     return rows
+
+
+
+# --------------------------------------------------------- equity prices ---
+
+# mNAV needs equity market capitalisation, which needs a SHARE PRICE. The
+# pipeline's existing sources give token prices and index levels, not single
+# equities, so this adds one small source.
+#
+# Stooq: free daily CSV, no key, no registration. Chosen over the unofficial
+# Yahoo endpoint because it is a documented download rather than a scraped
+# API, and over a paid vendor because §4's whole point is to establish what is
+# obtainable without one.
+#
+# THE SAME CONVENTION PROBLEM, FROM THE OTHER SIDE. Stooq's daily close is the
+# exchange close - 16:00 New York for a US listing. The token price this
+# module uses closes at 00:00 UTC the following day. They are 3 to 4 hours
+# apart and that is already recorded in PRICE_CONVENTION; naming it here too
+# because an mNAV pairs the two directly and inherits the error.
+STOOQ = 'https://stooq.com/q/d/l/'
+EQUITY_CONVENTION = (
+    'Stooq daily close (exchange close, 16:00 New York for a US listing). Paired with a token '
+    'price closing 00:00 UTC the following day, so an mNAV computed from the two is not struck '
+    'at a single moment; see mismatch_hours.'
+)
+
+
+def equity_series(ticker, market='us'):
+    """Daily closes for one listing. Returns [] rather than raising: a missing
+    equity price must cost an mNAV, never a whole issuer's holdings."""
+    sym = f'{ticker.lower()}.{market}'
+    try:
+        req = urllib.request.Request(f'{STOOQ}?s={sym}&i=d', headers={'User-Agent': UA})
+        with urllib.request.urlopen(req, timeout=45) as r:
+            text = r.read().decode()
+    except Exception:
+        return []
+    out = []
+    for line in text.splitlines()[1:]:
+        parts = line.split(',')
+        if len(parts) < 5:
+            continue
+        try:
+            out.append([parts[0], float(parts[4])])
+        except ValueError:
+            continue
+    return out
+
+
+def load_equity_prices(registry):
+    eq = {'convention': EQUITY_CONVENTION, 'series': {}}
+    for c in registry.get('companies', []):
+        t = c.get('ticker', '')
+        if c.get('source') == 'manual' or '.' in t:
+            continue                      # non-US listings need their own market code
+        rows = equity_series(t)
+        if rows:
+            eq[t] = {'values': rows}
+            eq['series'][t] = {'n': len(rows), 'from': rows[0][0], 'to': rows[-1][0]}
+    return eq
+
+
+def market_cap_at(eq, ticker, when, shares):
+    """Basic shares times the close. Deliberately BASIC and not diluted: §18's
+    primary definition is equity market capitalisation, which is what the
+    market actually capitalises. The diluted figure belongs in NAV per share,
+    where the claim on the assets is what matters - two different questions
+    that look like one."""
+    if not shares:
+        return None
+    px = price_at(eq, ticker, when)
+    return (px * shares) if px else None
+
+
+# ================================================================ CTI-US ===
+#
+# The universe, discovered rather than chosen.
+#
+# Every previous step worked from six issuers we happened to name. That is a
+# monitor, not an index: §5 requires the broadest defensible universe and every
+# exclusion documented, and a hand-list fails both - it has no stated inclusion
+# rule and its omissions are invisible.
+#
+# SEC's XBRL FRAMES API returns every filer reporting a concept in a period. One
+# call to CryptoAssetNumberOfUnits therefore enumerates every US filer that
+# reports a crypto holding, mechanically and completely. That is a real
+# universe with a rule behind it, and anything absent is absent for a reason
+# the rule states.
+#
+# WHAT THIS IS AND IS NOT. It is CTI-US: one sleeve, US filers, treasury
+# exposure. It is NOT CEC, CEI or CEE - those need point-in-time free float
+# across global markets, which Phase 0 found is not reconstructable on public
+# data. Naming it accurately is the difference between an index and a claim.
+
+FRAMES = SEC + '/api/xbrl/frames/us-gaap/CryptoAssetNumberOfUnits'
+
+
+def discover_universe(periods=None):
+    """Every US filer reporting a crypto unit count, from the frames API.
+
+    Returns {cik: {ticker?, name, units, unit_label, period, accn}}. The frame
+    is per period, so several are queried and merged: a filer that reported in
+    Q1 but not Q2 belongs in the universe with a stale reading, not absent.
+    Dropping it would be survivorship bias of exactly the kind §30 forbids.
+    """
+    periods = periods or _recent_frames()
+    found, tried, failed = {}, [], []
+    for unit, per in periods:
+        url = f'{FRAMES}/{unit}/{per}.json'
+        tried.append(f'{unit}/{per}')
+        try:
+            data = _get(url, tries=2)
+        except Exception as e:
+            failed.append(f'{unit}/{per}: {str(e)[:60]}')
+            continue
+        for row in data.get('data') or []:
+            cik = row.get('cik')
+            if cik is None or row.get('val') is None:
+                continue
+            prev = found.get(cik)
+            if prev is None or per > prev['period']:
+                found[cik] = {'cik': int(cik), 'name': row.get('entityName'),
+                              'units': float(row['val']), 'unit_label': unit,
+                              'period': per,
+                              # the ACTUAL balance-sheet date, not one derived
+                              # from the frame label. A filer with a non-calendar
+                              # fiscal year is assigned to the nearest calendar
+                              # quarter - BitMine's 31 May sits in CY2026Q2I -
+                              # so deriving 30 June from the label and demanding
+                              # an exact match found nothing for every such filer.
+                              'end': row.get('end'),
+                              'accn': row.get('accn'),
+                              'form': row.get('form'), 'filed': row.get('filed'),
+                              'frame': f'{unit}/{per}'}
+    return {'companies': list(found.values()), 'frames_tried': tried,
+            'frames_failed': failed,
+            'note': ('every US filer reporting us-gaap:CryptoAssetNumberOfUnits in the frames '
+                     'queried. A filer absent here either does not tag the concept or did not '
+                     'report in these periods; absence is not evidence of no holding, and §14 '
+                     'requires that distinction to survive into the output.')}
+
+
+def _recent_frames(n=6):
+    """Recent instantaneous frames, newest first. The unit segment is the token
+    name, so several are queried - a bitcoin filer and an ether filer appear in
+    different frames entirely, and querying only one would silently exclude a
+    whole class of issuer."""
+    today = dt.date.today()
+    out = []
+    for unit in ('Bitcoin', 'BTC', 'Ethereum', 'ETH', 'Integer', 'cryptoAsset', 'shares', 'pure'):
+        y, q = today.year, (today.month - 1) // 3 + 1
+        for _ in range(n):
+            out.append((unit, f'CY{y}Q{q}I'))
+            q -= 1
+            if q == 0:
+                q, y = 4, y - 1
+    return out
+
+
+# --------------------------------------------------- CTI-US construction ---
+
+# THE RULES, FROZEN AND STATED. Every one is a parameter that could be tuned to
+# flatter a backtest, which is why §23 ranks historical return sixteenth and
+# §32 requires rejecting anything that depends on a narrow choice. These are
+# set for STABILITY - a company should not enter and leave on a quiet quarter -
+# and the effect of changing them is a test, not a tweak.
+CTI_RULES = {
+    'version': 'CTI-US v0.1',
+    'universe': 'every US filer reporting us-gaap:CryptoAssetNumberOfUnits in the frames queried',
+    'min_gross_nav_usd': 25_000_000,
+    'min_market_cap_usd': 50_000_000,
+    'entry_buffer_nav_usd': 25_000_000,
+    'exit_buffer_nav_usd': 15_000_000,      # lower than entry: §26, so a borderline
+                                            # issuer does not churn in and out
+    'single_name_cap': 0.15,
+    'top_five_cap': 0.55,
+    'weight': 'gross treasury NAV, capped; NOT market capitalisation',
+    'why_nav_weight': (
+        'Weighting by market capitalisation would weight by the treasury PREMIUM, which is '
+        'the thing CTP exists to measure. An index whose weights move with the premium cannot '
+        'then report on it - that is the circularity §18 rules out for mNAV, arriving through '
+        'the weight instead.'),
+    'rebalance': 'on each pipeline run; a production index would use quarterly with buffers (§27)',
+    'not_included': (
+        'no free float, no ADV screen, no corporate-action rules, no seasoning. CTI-US v0.1 is '
+        'an ECONOMIC measure in the CEE sense, not an investable one. Calling it investable '
+        'would require the eligibility work in §25 that has not been done.'),
+}
+
+
+def build_cti(companies, rules=None):
+    """Weights from gross treasury NAV, capped. Returns the index plus every
+    exclusion with its reason, because §5 requires that and because an index
+    that only shows what it kept cannot be checked."""
+    r = dict(CTI_RULES); r.update(rules or {})
+    members, excluded = [], []
+    for c in companies:
+        rows = c.get('rows') or []
+        if not rows:
+            excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
+                             'reason': c.get('status') or 'no point-in-time holding series'})
+            continue
+        last = rows[-1]
+        nav = last.get('gross_nav_usd') or 0
+        mcap = last.get('market_cap_usd')
+        if nav < r['min_gross_nav_usd']:
+            excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
+                             'reason': f'gross NAV ${nav:,.0f} below the ${r["min_gross_nav_usd"]:,.0f} floor'})
+            continue
+        if mcap is not None and mcap < r['min_market_cap_usd']:
+            excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
+                             'reason': f'market cap ${mcap:,.0f} below the ${r["min_market_cap_usd"]:,.0f} floor'})
+            continue
+        members.append({'ticker': c.get('ticker'), 'name': c.get('name'), 'cik': c.get('cik'),
+                        'tokens': c.get('tokens'), 'as_of': last.get('filed'),
+                        'gross_nav_usd': nav, 'market_cap_usd': mcap,
+                        'net_nav_low_usd': last.get('net_nav_low_usd'),
+                        'net_nav_high_usd': last.get('net_nav_high_usd'),
+                        'nav_basis': last.get('nav_basis'), 'mnav': last.get('mnav'),
+                        'claims_populated': c.get('claims_populated'),
+                        'confidence': c.get('confidence')})
+    total = sum(m['gross_nav_usd'] for m in members) or 1.0
+    for m in members:
+        m['raw_weight'] = m['gross_nav_usd'] / total
+    cap_info = _apply_caps(members, r['single_name_cap'], r['top_five_cap'])
+    members.sort(key=lambda m: -m['weight'])
+    return {'name': 'CTI-US', 'version': r['version'], 'rules': r,
+            'as_of': max((m['as_of'] for m in members), default=None),
+            'members': members, 'excluded': excluded,
+            'member_count': len(members), 'capping': cap_info,
+            'gross_nav_total_usd': round(total, 2),
+            'concentration': {
+                'top_1': round(sum(m['weight'] for m in members[:1]), 4),
+                'top_5': round(sum(m['weight'] for m in members[:5]), 4),
+                'top_10': round(sum(m['weight'] for m in members[:10]), 4)},
+            'caveat': (
+                'An economic measure, not an investable one. Weights are gross treasury NAV: '
+                'where an issuer\'s claims are not yet recorded its NAV is gross of debt and '
+                'preferred, which OVERSTATES its weight against a fully-recorded peer. The '
+                'nav_basis field on every member says which it is.')}
+
+
+def _apply_caps(members, single, top5):
+    """Single-name cap, applied properly. Top-five cap REPORTED, never forced.
+
+    Three attempts at this, and the third is the one that is provably right.
+
+    The single-name cap is a standard iterative capping problem and converges:
+    cap whoever is over, share the excess among those under, repeat. It is
+    order-preserving by construction, because a name is only ever raised toward
+    the cap and never past a larger one.
+
+    THE TOP-FIVE CAP IS DIFFERENT, and this is the part worth recording. On a
+    small universe it can be INFEASIBLE. With eight members and a 55% limit on
+    the top five, the other three must carry 45% - 15% each, more than any of
+    the capped five. There is no solution that keeps the ranking. My first two
+    attempts forced it anyway and produced an index where the smallest holding
+    outweighed the largest, which is indefensible: a cap meant to LIMIT
+    concentration cannot be allowed to invert the order it is limiting.
+
+    So it is measured and reported as a breach with its cause, not applied. A
+    cap that cannot bind without inverting is a fact about the universe, and
+    the honest response is to say the universe is too small - not to publish
+    weights that satisfy a rule by violating a more basic one.
+    """
+    if not members:
+        return {'single_applied': False, 'top5_breach': None}
+    n = len(members)
+    for m in members:
+        m['weight'] = m['raw_weight']
+        m['capped'] = False
+
+    if n * single < 1.0 - 1e-9:
+        return {'single_applied': False, 'top5_breach': None,
+                'single_skipped_reason': (
+                    f'{n} members at a {single:.0%} cap reach only {n * single:.0%}. The cap is '
+                    f'unreachable on a universe this small; weights are uncapped and say so.')}
+
+    for _ in range(500):
+        over = [m for m in members if m['weight'] > single + 1e-12]
+        if not over:
+            break
+        excess = sum(m['weight'] - single for m in over)
+        for m in over:
+            m['weight'] = single
+            m['capped'] = True
+        under = [m for m in members if m['weight'] < single - 1e-12]
+        pool = sum(m['weight'] for m in under)
+        if not under or pool <= 0:
+            # everyone is at the cap: share the remainder equally, the only
+            # allocation that does not invent an ordering
+            each = excess / n
+            for m in members:
+                m['weight'] += each
+            break
+        shares = [(m, m['weight'] / pool) for m in under]
+        for m, sh in shares:
+            m['weight'] += excess * sh
+
+    tot = sum(m['weight'] for m in members) or 1.0
+    for m in members:
+        m['weight'] = m['weight'] / tot
+
+    ranked = sorted(members, key=lambda m: -m['weight'])
+    t5 = sum(m['weight'] for m in ranked[:5])
+    breach = None
+    if len(ranked) > 5 and t5 > top5 + 1e-9:
+        breach = {'top_five': round(t5, 4), 'limit': top5, 'members': n,
+                  'reason': (
+                      f'the top five hold {t5:.1%} against a {top5:.0%} guideline. On {n} '
+                      f'members the limit cannot be met without lifting smaller holdings above '
+                      f'larger ones, so it is reported rather than enforced. It becomes '
+                      f'bindable as the universe grows.')}
+    for m in members:
+        m['weight'] = round(m['weight'], 6)
+    return {'single_applied': any(m['capped'] for m in members),
+            'single_cap': single, 'top5_limit': top5,
+            'top_five_actual': round(t5, 4), 'top5_breach': breach}
+
+
+# ------------------------------------------------- universe qualification ---
+
+# THREE EXCLUSIONS, each with a rule rather than a judgment call.
+
+# 1. §19: a trust or ETF holds crypto FOR ITS SHAREHOLDERS. That is assets
+#    under custody, not issuer-owned treasury, and counting it would put the
+#    same coins in the index twice - once in the trust and once in whoever owns
+#    the trust. The frames sweep returns them because they tag the same
+#    concept, which is exactly why the exclusion has to be explicit.
+TRUST_MARKERS = (' trust', ' etf', 'ishares', 'grayscale', 'bitwise ', 'osprey ',
+                 'franklin ', 'valkyrie', 'wisdomtree', 'invesco', 'vaneck',
+                 'fidelity wise', 'abrdn', 'hashdex', '21shares')
+
+# 2. Unit strings that name nothing. Two thirds of the universe tags one of
+#    these, so the token cannot be identified from the API and the holding
+#    cannot be priced. They stay IN the universe - absence would be a lie - and
+#    out of the index until a registry declaration names the token, checked
+#    against reported fair value the way BMNR's was.
+UNIT_TO_TOKEN = {'bitcoin': 'BTC', 'btc': 'BTC',
+                 'ethereum': 'ETH', 'eth': 'ETH', 'ether': 'ETH',
+                 'solana': 'SOL', 'sol': 'SOL'}
+IDENTIFYING_UNITS = set(UNIT_TO_TOKEN)
+
+
+
+# A HOLDING CANNOT EXCEED THE ASSET THAT EXISTS.
+#
+# The frames sweep returned CleanSpark tagging 1,719,000 under the unit
+# "Bitcoin". That is 8.6% of every bitcoin ever mined, more than all the ETFs
+# combined and twice Strategy's position; the real figure is around 12,500. At
+# $78k it prices as $134bn and would have been 70% of CTI-US before capping.
+#
+# One mis-tagged filer would have defined the index, and nothing in the
+# pipeline would have objected: the unit string said Bitcoin, the concept was
+# the standard one, the number was a number.
+#
+# So every holding is checked against the circulating supply of the asset it
+# claims to be. A corporate treasury above a few per cent of supply is not
+# impossible in principle, but it is extraordinary enough that it must be
+# verified by a person rather than admitted by a parser. Flagged, never
+# silently dropped and never silently kept.
+CIRCULATING_SUPPLY = {'BTC': 19_900_000, 'ETH': 120_500_000, 'SOL': 580_000_000}
+
+# A PERCENTAGE-OF-SUPPLY THRESHOLD IS THE WRONG GATE, and the test proved it.
+#
+# Strategy holds 4.25% of every bitcoin. BitMine holds 4.7% of every ether.
+# Both are real. CleanSpark's mis-tagged 1,719,000 is 8.6%. A threshold that
+# catches the bad figure and spares the good ones has to sit in a gap of four
+# percentage points - and Strategy keeps buying, so the gap closes on its own.
+# Any such threshold eventually rejects the largest honest holder, which is the
+# worst possible failure for an index of large holders.
+#
+# So this is a FLAG, not a gate: it marks a holding for a human to look at. The
+# gate is the fair-value reconciliation, which needs no magic number - CleanSpark
+# tagging 1,719,000 "Bitcoin" against a reported fair value near $1bn implies
+# $582 a coin, which is nothing like bitcoin and is caught precisely.
+FLAG_SUPPLY_SHARE = 0.06
+
+
+def supply_check(token, units):
+    """None if unremarkable, otherwise a note that a person should look.
+
+    Deliberately NOT an exclusion. It exists to raise the question, and the
+    reconciliation answers it.
+    """
+    sup = CIRCULATING_SUPPLY.get((token or '').upper())
+    if not sup or not units:
+        return None
+    share = units / sup
+    if share <= FLAG_SUPPLY_SHARE:
+        return None
+    return (f'{units:,.0f} {token} is {share:.1%} of circulating supply ({sup:,} {token}). '
+            f'Larger than any known corporate treasury, so it is flagged for verification '
+            f'against the filing. Not excluded on this alone: the largest honest holders are '
+            f'several per cent of supply and growing, and a threshold that catches a mis-tag '
+            f'today would reject them tomorrow.')
+
+
+def price_plausible(token, units, fair_value_usd, prices, when, tolerance=0.5):
+    """The real gate. Units times a reference price should land near the
+    filer's own reported fair value.
+
+    CleanSpark's 1,719,000 "Bitcoin" against a fair value near $1bn implies
+    about $582 a coin. Strategy's 846,000 against $53bn implies $63,000. One is
+    bitcoin and the other is not, and no threshold on quantity is needed to
+    tell them apart.
+    """
+    if not (units and fair_value_usd):
+        return None
+    px = price_at(prices, token, when)
+    if not px:
+        return None
+    implied = fair_value_usd / units
+    off = abs(implied - px) / px
+    if off <= tolerance:
+        return None
+    return (f'{units:,.0f} {token} against a reported fair value of ${fair_value_usd:,.0f} '
+            f'implies ${implied:,.2f} a unit, against a reference price of ${px:,.2f} '
+            f'({off:.0%} apart). The unit count and the carrying value do not describe the '
+            f'same holding; one of them is mis-tagged.')
+
+
+
+# ------------------------------------------------- token identification ----
+
+# TWO THIRDS OF THE UNIVERSE TAGS A UNIT STRING THAT NAMES NOTHING, and
+# companyfacts flattens away the dimensional member that would. Asking for a
+# human declaration on each is eighteen judgments, which is eighteen chances to
+# be wrong and no way to check any of them.
+#
+# But the filer reports TWO numbers: a unit count and a fair value. Their
+# quotient is an implied price per unit, and a price identifies an asset. This
+# infers the token from the issuer's own accounts and then requires the match
+# to be UNIQUE - if two candidate assets both fit within tolerance, it stays
+# unidentified rather than guessing between them.
+#
+# Where nothing matches, the implied price is still reported. A person reading
+# "$2.17 a unit" identifies it in a second; reading "Integer" cannot.
+STABLE_BAND = (0.97, 1.03)
+
+
+def infer_token(units, fair_value_usd, prices, when, tolerance=0.12):
+    """Identify the asset from the filer's own numbers.
+
+    Returns (token, detail). `token` is None where no unique match exists, and
+    `detail` always carries the implied price so an unidentified row is still
+    informative.
+    """
+    if not (units and fair_value_usd):
+        return None, {'reason': 'needs both a unit count and a reported fair value'}
+    implied = fair_value_usd / units
+    cands = []
+    for tok in (prices or {}):
+        if tok in ('convention', 'mismatch_hours', 'source_file', 'series'):
+            continue
+        px = price_at(prices, tok, when)
+        if not px:
+            continue
+        off = abs(implied - px) / px
+        if off <= tolerance:
+            cands.append({'token': tok, 'price_usd': px, 'off_by_pct': round(100 * off, 1)})
+    detail = {'implied_price_usd': round(implied, 4), 'candidates': cands, 'priced_at': when}
+    if len(cands) == 1:
+        return cands[0]['token'], {**detail, 'matched': cands[0]}
+    if len(cands) > 1:
+        # two assets within tolerance of each other cannot be told apart this
+        # way, and picking the closer one would be a coin flip dressed as a
+        # measurement
+        return None, {**detail, 'reason': 'more than one asset matches; cannot be distinguished '
+                                          'from the implied price alone'}
+    if STABLE_BAND[0] <= implied <= STABLE_BAND[1]:
+        return 'USD-STABLE', {**detail, 'matched': {'token': 'USD-STABLE', 'price_usd': 1.0},
+                              'note': 'implies about a dollar a unit: a stablecoin. Valued at '
+                                      'unit count, and worth recording as such because a '
+                                      'stablecoin treasury is not crypto price exposure.'}
+    return None, {**detail, 'reason': 'no reference price within tolerance of the implied price'}
+
+
+def identify_unknowns(universe, prices, limit=40):
+    """For every filer whose unit string names nothing, fetch its reported fair
+    value and infer the asset from the implied price.
+
+    One companyfacts call per filer. Slow, and run on demand rather than on
+    every pipeline pass, but it converts an opaque row into either an
+    identified holding or an implied price a person can name at a glance.
+    """
+    out = []
+    unknown = [c for c in universe.get('companies', [])
+               if str(c.get('unit_label', '')).lower() not in IDENTIFYING_UNITS]
+    for c in unknown[:limit]:
+        rec = {'cik': c['cik'], 'name': c.get('name'), 'units': c.get('units'),
+               'unit_label': c.get('unit_label'), 'period': c.get('period')}
+        try:
+            facts = _get(f'{SEC}/api/xbrl/companyfacts/CIK{int(c["cik"]):010d}.json').get('facts')
+        except Exception as e:
+            out.append({**rec, 'status': f'fetch failed: {str(e)[:60]}'})
+            continue
+        fv = fair_value_series(facts)
+        # the fair value for the same period end as the unit count, or nothing:
+        # pairing a holding with a carrying value from a different quarter would
+        # imply a price that is neither
+        # the row's own end first; the frame label only as a fallback for data
+        # that predates this field being captured
+        end = c.get('end') or _period_end(c.get('period'))
+        v = fv.get(end) if end else None
+        if not v and end:
+            # a filer may report the holding and the carrying value on dates a
+            # few days apart; anything wider is a different balance sheet
+            v = _nearest_fair_value(fv, end, days=10)
+        if not v:
+            out.append({**rec, 'status': 'no CryptoAssetFairValue for the same period end',
+                        'fair_values_available': sorted(fv)[-3:]})
+            continue
+        tok, detail = infer_token(c.get('units'), v['usd'], prices, v['end'])
+        out.append({**rec, 'fair_value_usd': v['usd'], 'inferred_token': tok,
+                    'implied_price_usd': detail.get('implied_price_usd'),
+                    'basis': 'inferred from the issuer\'s own unit count and carrying value',
+                    'detail': detail,
+                    'status': 'identified' if tok else 'implied price reported, asset not matched'})
+    return out
+
+
+def _nearest_fair_value(fv, end, days=10):
+    """The carrying value within `days` of the holding's date, or nothing.
+
+    Pairing a unit count with a fair value from a different quarter implies a
+    price that is neither, so the window is deliberately narrow.
+    """
+    try:
+        target = dt.date.fromisoformat(end)
+    except Exception:
+        return None
+    best = None
+    for k, v in fv.items():
+        try:
+            gap = abs((dt.date.fromisoformat(k) - target).days)
+        except Exception:
+            continue
+        if gap <= days and (best is None or gap < best[0]):
+            best = (gap, v)
+    return best[1] if best else None
+
+
+def _period_end(frame):
+    """CY2026Q2I -> 2026-06-30. The frames label is a quarter, the fair value is
+    keyed by balance-sheet date, and they have to be made to meet."""
+    if not frame or len(frame) < 8:
+        return None
+    try:
+        y = int(frame[2:6]); q = int(frame[7])
+    except (ValueError, IndexError):
+        return None
+    return {1: f'{y}-03-31', 2: f'{y}-06-30', 3: f'{y}-09-30', 4: f'{y}-12-31'}.get(q)
+
+
+def qualify_universe(universe, registry=None, min_units=1e-9):
+    """Split the discovered universe into qualifying issuers and exclusions,
+    each with its reason. §5 requires the reasons; an index that shows only
+    what it kept cannot be checked."""
+    declared = {}
+    for c in (registry or {}).get('companies', []):
+        if c.get('cik') and c.get('token_declared'):
+            declared[int(c['cik'])] = (c.get('tokens') or [None])[0]
+    keep, drop = [], []
+    for c in universe.get('companies', []):
+        name = (c.get('name') or '').lower()
+        unit = str(c.get('unit_label') or '').lower()
+        cik = int(c.get('cik'))
+        if any(m in f' {name} ' for m in TRUST_MARKERS):
+            drop.append({**c, 'reason': 'trust or ETF: holds crypto for its shareholders, which '
+                                        'is custody and not issuer treasury (§19)'})
+            continue
+        if not c.get('units') or c['units'] < min_units:
+            drop.append({**c, 'reason': f'reports {c.get("units")} units'})
+            continue
+        tok = UNIT_TO_TOKEN.get(unit) or (declared.get(cik) if cik in declared else None)
+        flag = supply_check(tok, c.get('units')) if tok else None
+        if unit in IDENTIFYING_UNITS:
+            # map, never truncate: "bitcoin"[:3] is "bit", which is not a
+            # ticker and would not match any price series
+            keep.append({**c, 'token': UNIT_TO_TOKEN[unit], 'token_from': 'xbrl unit',
+                         'supply_flag': flag})
+        elif cik in declared:
+            keep.append({**c, 'token': declared[cik], 'token_from': 'registry declaration',
+                         'supply_flag': flag})
+        else:
+            drop.append({**c, 'reason': (
+                f'unit string "{c.get("unit_label")}" names no token, and companyfacts flattens '
+                f'away the dimensional member that would. Cannot be priced until the token is '
+                f'declared and reconciled against reported fair value.')})
+    flagged = [c['name'] for c in keep if c.get('supply_flag')]
+    return {'qualifying': keep, 'excluded': drop, 'flagged_for_verification': flagged,
+            'counts': {'discovered': len(universe.get('companies', [])),
+                       'qualifying': len(keep), 'excluded': len(drop)},
+            'exclusion_summary': _summarise([d['reason'] for d in drop])}
+
+
+def _summarise(reasons):
+    out = {}
+    for r in reasons:
+        k = ('trust or ETF' if 'trust or ETF' in r else
+             'token not identified' if 'names no token' in r else
+             'implausible against circulating supply' if 'circulating supply' in r else
+             'zero or negative holding')
+        out[k] = out.get(k, 0) + 1
+    return out
 
 
 def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
@@ -645,16 +1297,22 @@ def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
         raise SystemExit('price file carries no `convention`: state the source, timestamp and '
                          'timezone, and align it with the equity close (see §7 and finding 5)')
     reg = json.load(io.open(registry_path, encoding='utf-8'))
+    equities = load_equity_prices(reg)
     out = {'schema_version': 1, 'generated_at': dt.datetime.now(dt.timezone.utc).isoformat(),
-           'price_convention': conv, 'companies': []}
+           'price_convention': conv, 'equity_convention': equities.get('convention'),
+           'equity_coverage': equities.get('series'), 'companies': []}
     for c in reg.get('companies', []):
         try:
-            out['companies'].append(company(c, prices))
+            out['companies'].append(company(c, prices, equities))
         except Exception as e:
             out['companies'].append({'ticker': c.get('ticker'), 'status': 'error',
                                      'reason': str(e)[:200]})
     os.makedirs(out_dir, exist_ok=True)
     io.open(f'{out_dir}/treasury.json', 'w', encoding='utf-8').write(json.dumps(out))
+    # the index, built from whatever the registry covers. Discovery of the
+    # wider universe is a separate command: it is a long set of SEC calls and
+    # should not run on every pipeline pass.
+    out['cti'] = build_cti(out['companies'])
     ok = sum(1 for c in out['companies'] if c.get('rows'))
     gross_only = [c['ticker'] for c in out['companies'] if c.get('rows') and not c.get('claims_populated')]
     print(f'  treasury: {ok} of {len(out["companies"])} issuers with a point-in-time series')
@@ -663,6 +1321,13 @@ def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
             d = c['diagnosis']
             print(f'  treasury: {c["ticker"]} found nothing. units present: '
                   f'{", ".join(d["non_dollar_units_present"]) or "(none)"}')
+    ix = out['cti']
+    print(f'  CTI-US: {ix["member_count"]} members, {len(ix["excluded"])} excluded, '
+          f'${ix["gross_nav_total_usd"]/1e9:,.1f}bn gross treasury NAV')
+    if ix['capping'].get('top5_breach'):
+        print(f'  CTI-US: top five hold {ix["capping"]["top5_breach"]["top_five"]:.0%} against a '
+              f'{ix["capping"]["top5_breach"]["limit"]:.0%} guideline - reported, not enforced, '
+              f'on {ix["member_count"]} members')
     if gross_only:
         print(f'  treasury: GROSS ONLY, claims not yet recorded: {", ".join(gross_only)}')
         print('            these figures are not net of debt or preferred claims; do not publish them')
@@ -673,6 +1338,66 @@ if __name__ == '__main__':
     # `python fetch/treasury.py --claims MSTR` lists that issuer's candidate
     # claims instead of running the pipeline. Finding them is mechanical;
     # classifying them is the judgment §15 requires and this will not fake it.
+    if len(sys.argv) > 1 and sys.argv[1] == '--discover':
+        # every US filer reporting a crypto unit count, from the frames API.
+        # This is §5's universe: a rule, not a hand-list.
+        u = discover_universe()
+        try:
+            _reg = json.load(io.open('src/treasury/registry.json', encoding='utf-8'))
+        except Exception:
+            _reg = {}
+        q = qualify_universe(u, _reg)
+        u['qualification'] = q
+        cs = sorted(u['companies'], key=lambda c: -c['units'])
+        print(f'  {len(cs)} US filers report a crypto unit count '
+              f'({len(u["frames_tried"])} frames queried, {len(u["frames_failed"])} failed)')
+        print(f'  {"units":>16}  {"period":<10} {"cik":<10} name')
+        for c in cs[:60]:
+            print(f'  {c["units"]:>16,.2f}  {c["period"]:<10} {c["cik"]:<10} {(c["name"] or "")[:52]}')
+        os.makedirs(OUT, exist_ok=True)
+        io.open(f'{OUT}/treasury_universe.json', 'w', encoding='utf-8').write(json.dumps(u))
+        print()
+        print(f'  QUALIFICATION: {q["counts"]["qualifying"]} of {q["counts"]["discovered"]} '
+              f'qualify for CTI-US')
+        for k, v in sorted(q['exclusion_summary'].items(), key=lambda kv: -kv[1]):
+            print(f'    {v:>3} excluded: {k}')
+        print()
+        print('  QUALIFYING:')
+        for c in sorted(q['qualifying'], key=lambda c: -c['units']):
+            print(f'    {c["units"]:>14,.2f} {c["token"]:<4} {c["cik"]:<9} '
+                  f'{(c["name"] or "")[:44]:<46}{c["token_from"]}')
+        if q.get('flagged_for_verification'):
+            print()
+            print('  !! FLAGGED FOR VERIFICATION - a holding larger than any known corporate')
+            print('     treasury. Check the unit count against the filing before this is used:')
+            for c in q['qualifying']:
+                if c.get('supply_flag'):
+                    print(f'       {c["name"]}')
+                    print(f'       {c["supply_flag"]}')
+        print(f'\n  written to {OUT}/treasury_universe.json')
+        print('  NOTE: units are not comparable across tokens. A filer with 5,700,049 units of '
+              'ether\n  is not larger than one with 846,000 units of bitcoin. Ranking by units '
+              'is for\n  eyeballing the list only; the index ranks by NAV.')
+        sys.exit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == '--identify':
+        u = json.load(io.open(f'{OUT}/treasury_universe.json', encoding='utf-8'))
+        rel = json.load(io.open('data/relative.json', encoding='utf-8'))
+        px = prices_from_relative(rel)
+        res = identify_unknowns(u, px)
+        ok = [r for r in res if r.get('inferred_token')]
+        print(f'  {len(res)} filers with an unidentified unit string')
+        print(f'  {len(ok)} identified from the implied price\n')
+        print(f'  {"implied $/unit":>16}  {"token":<12}{"units":>18}  name')
+        for r in sorted(res, key=lambda r: -(r.get('implied_price_usd') or 0)):
+            ip = r.get('implied_price_usd')
+            print(f'  {("$" + format(ip, ",.4f")) if ip is not None else "-":>16}  '
+                  f'{(r.get("inferred_token") or "?"):<12}{r["units"]:>18,.2f}  {(r["name"] or "")[:44]}')
+        io.open(f'{OUT}/treasury_identify.json', 'w', encoding='utf-8').write(json.dumps(res))
+        print(f'\n  written to {OUT}/treasury_identify.json')
+        print('  An inferred token is the ISSUER\'S OWN two numbers agreeing with a reference')
+        print('  price, not a guess. Where nothing matched, the implied price is still shown:')
+        print('  a person reading "$2.17 a unit" names the asset in a second.')
+        sys.exit(0)
     if len(sys.argv) > 2 and sys.argv[1] == '--claims':
         reg = json.load(io.open('src/treasury/registry.json', encoding='utf-8'))
         want = sys.argv[2].upper()

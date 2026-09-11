@@ -95,8 +95,8 @@
               "period": "2026-06-30"
             }
           ],
-          "source": "0001213900-26-037460 10-K for 2025-12-31 and 2 later 10-Qs (carrying amounts). Attribution evidence: 0001213900-25-120736, 8-K filed 11 December 2025, recording that the business combination with Cantor Equity Partners, Tether Investments and iFinex closed on 8 December 2025.",
-          "note": "AMBIGUOUS ON THE EVIDENCE, NOT AS A FALLBACK. The notes first appear on the 2025-12-31 balance sheet, weeks after the combination closed on 8 December 2025, so they arrived through the transaction structure rather than a standalone offering. There is no use-of-proceeds sentence of the usual kind to read: the question is what the notes funded within the combination, described in the S-4 filed 17 October 2025, which has not been read. TO NARROW IT: if the notes financed the bitcoin contributed at closing this becomes treasury; if they financed other consideration, operating.",
+          "source": "0001213900-26-037460, 10-K for 2025-12-31, and 2 later 10-Qs (carrying amounts). Attribution evidence: 0001213900-25-120736, 8-K filed 11 December 2025, which records that the business combination with Cantor Equity Partners, Tether Investments and iFinex closed on 8 December 2025.",
+          "note": "MARKED AMBIGUOUS ON THE EVIDENCE, NOT AS A FALLBACK. The notes first appear on the 2025-12-31 balance sheet, weeks after the combination closed on 8 December 2025, so they arrived through the transaction structure rather than from a standalone offering by the operating company. There is therefore no use-of-proceeds sentence of the usual kind to read: the question is what the notes funded within the combination, and that is described in the S-4 filed 17 October 2025, which has not been read. Until it is, treasury-attribution is arguable in both directions and the band is the honest answer. TO NARROW IT: read the transaction structure and pro-forma balance sheet in the S-4. If the notes financed the bitcoin contributed at closing, this becomes treasury; if they financed other consideration, operating.",
           "carrying_amount_not_face": true
         }
       ],
@@ -152,6 +152,35 @@
         "DN3.F": "Frankfurt"
       },
       "adr_ratio": null
+    },
+    {
+      "ticker": "CLSK",
+      "name": "CleanSpark, Inc.",
+      "cik": 827876,
+      "listing": "NASDAQ",
+      "currency": "USD",
+      "tokens": [
+        "BTC"
+      ],
+      "confidence": "low",
+      "xbrl_mis_tag": {
+        "concept": "us-gaap:CryptoAssetNumberOfUnits",
+        "unit": "Bitcoin",
+        "reported": 1719000.0,
+        "period": "2026-06-30",
+        "actual_reference": 13703,
+        "actual_as_of": "2026-08-31",
+        "actual_source": "CleanSpark August 2026 Operational Update, 8 September 2026: bitcoin holdings were 13,703 in total as of 31 August 2026.",
+        "note": "The XBRL unit count is wrong by a factor of about 125. It is tagged under the standard element with the unit string 'Bitcoin', so nothing about the tag itself looks irregular: an index taking the field at face value would have valued this position near $100bn and weighted it above Strategy. The reconciliation against the filer's own CryptoAssetFairValue is what catches it, and it is the reason that check now runs on STATED tokens and not only inferred ones."
+      },
+      "encumbrance": {
+        "units_encumbered": 3951,
+        "units_total": 13703,
+        "as_of": "2026-08-31",
+        "note": "3,951 of 13,703 is posted as collateral or recorded as receivable, all related to derivative transactions. §15 requires restrictions and encumbrances to be documented: encumbered coins are not unencumbered treasury, and a treasury index that counts them at par overstates the position. Not yet netted - the treatment has to be decided and applied consistently across every miner that posts collateral, not just the one where it was noticed."
+      },
+      "claims": [],
+      "note": "Mines AND holds. Two open questions before this is used: the mis-tagged unit count above, and whether mined inventory awaiting sale is the same economic claim as a held treasury (§19)."
     }
   ],
   "_claim_example": {
