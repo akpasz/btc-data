@@ -740,3 +740,42 @@ class TestTheConceptsLargeFilersActuallyUse:
 
     def test_strategy_is_no_longer_empty(self):
         assert len(self._s(self.MSTR)) == 2
+
+
+class TestWeightsReachTheOutput:
+    """_weights returns a dict keyed by position and the level used it, but
+    nothing wrote it back onto the member objects. So cec.json carried the
+    constituent list with no weights and the published page printed an en-dash
+    down the whole column: the caps were applied and invisible, which means
+    nobody could check them."""
+
+    def _m(self, tk, cap, n=400, sleeve='mining'):
+        import datetime as dt
+        d0 = dt.date(2024, 1, 1)
+        ds = [(d0 + dt.timedelta(days=i)).isoformat() for i in range(n)]
+        return {'ticker': tk, 'sleeve': sleeve, 'qualified_from': '2024-01-01',
+                'px': [(d, 10.0) for d in ds],
+                'caps': [(d, cap) for d in ds]}
+
+    def test_every_member_carries_a_weight(self):
+        ms = [self._m(f'T{i}', 1e9 * (i + 1)) for i in range(12)]
+        C.build(ms)
+        assert all(m.get('weight') is not None for m in ms)
+        assert abs(sum(m['weight'] for m in ms) - 1.0) < 1e-4
+
+    def test_the_weights_respect_the_cap(self):
+        ms = [self._m('BIG', 9e10)] + [self._m(f'T{i}', 1e9) for i in range(11)]
+        C.build(ms)
+        assert ms[0]['weight'] <= C.RULES['single_name_cap'] + 1e-6
+
+    def test_a_member_that_never_qualified_is_named(self):
+        """Twenty One showed a market value of $5 and sat in the table looking
+        like a constituent."""
+        ms = [self._m(f'T{i}', 1e9) for i in range(11)] + [self._m('TINY', 5.0)]
+        ix = C.build(ms)
+        assert 'TINY' in ix['never_qualified']
+        assert ms[-1]['weight'] is None
+
+    def test_a_real_member_is_not_named(self):
+        ms = [self._m(f'T{i}', 1e9) for i in range(12)]
+        assert C.build(ms)['never_qualified'] == []

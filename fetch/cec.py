@@ -441,10 +441,27 @@ def build(members, rules=None):
                 turnover.append(sum(abs(w.get(i, 0) - prev_w.get(i, 0))
                                     for i in set(w) | set(prev_w)) / 2)
         levels.append({'date': d, 'level': round(level, 4), 'members': len(live)})
+        # WRITE THE WEIGHTS BACK. _weights returns a dict keyed by position and
+        # the level used it, but nothing put it on the member objects - so
+        # cec.json carried the constituent list with no weights and the page
+        # printed an en-dash down the whole column. The caps were applied and
+        # invisible, which means nobody could check them.
+        for i, _c in live:
+            members[i]['weight'] = round(w.get(i, 0.0), 6)
+            members[i]['in_index_on'] = d
+        for i, m in enumerate(members):
+            if 'weight' not in m:
+                m['weight'] = None
         prev_w, prev_val, pd = w, val, d
 
+    # a member that never cleared the floors is listed as a constituent while
+    # never having been in the index. Twenty One showed a market value of $5 -
+    # a weighted-average share count from a period when the vehicle had almost
+    # no shares - and sat in the table looking like a member.
+    never = [m.get('ticker') for m in members if not m.get('in_index_on')]
     return {'levels': levels, 'rules': r,
             'entered_on_seasoning_only': unqualified,
+            'never_qualified': never,
             'median_turnover': round(sorted(turnover)[len(turnover) // 2], 5) if turnover else None,
             'first': levels[0]['date'] if levels else None,
             'members_at_start': levels[0]['members'] if levels else None,

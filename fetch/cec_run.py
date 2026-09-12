@@ -275,6 +275,13 @@ def main(out_dir=OUT, limit=0):
         print(f'     {", ".join(approx)}')
         print(f'     It lags mid-quarter issuance, which understates exactly the companies that '
               f'dilute most.')
+    never = ix.get('never_qualified') or []
+    if never:
+        print(f'  {len(never)} listed constituent(s) NEVER cleared the floors and are not in '
+              f'the index on any day:')
+        print(f'     {", ".join(str(x) for x in never)}')
+        print(f'     Usually a market value below the ${C.RULES["min_market_cap_usd"]:,} floor, '
+              f'which for a recent listing often means an unusable share count.')
     seas = ix.get('entered_on_seasoning_only') or []
     if seas:
         print(f'  {len(seas)} constituent(s) have no known qualification date and enter on '
