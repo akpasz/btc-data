@@ -1,0 +1,246 @@
+{
+  "_README": [
+    "THE CONSTITUENT LIST. One line per company: the sleeve it belongs to, and",
+    "whether it is in or out.",
+    "",
+    "WHY THIS IS A FILE AND NOT A RULE. Two automated screens were built and both",
+    "selected the wrong universe:",
+    "",
+    "  BALANCE SHEET (crypto assets / total assets). Measures what proportion of a",
+    "  company IS a pile of coins. Coinbase scored 5.5% and was excluded as",
+    "  immaterial; Circle scored 0.14%. Greenlane Holdings, a $2m shell, scored 79%",
+    "  and was a constituent. The test selects crypto HOLDINGS, not crypto",
+    "  COMPANIES.",
+    "",
+    "  TEXT MATCHES (how many crypto phrases a 10-K contains). Coinbase matched 4.",
+    "  Greenlane matched 5. A shell that pivoted writes expansively about its new",
+    "  strategy while Coinbase describes its operations in plain, narrow language.",
+    "  The signal runs backwards and no threshold on it separates them.",
+    "",
+    "  SEGMENT REVENUE would be the right measure and is not obtainable: it has no",
+    "  standard XBRL element, companyfacts flattens the dimensions that carry it,",
+    "  and most filers report no crypto segment at all.",
+    "",
+    "So: judgment, recorded. Section 5 asks for a documented inclusion rule, and",
+    "'a named person judged each company against stated criteria, and every",
+    "decision is listed with its reason' is documented. What it is not is",
+    "automatic, and no published crypto-equity index is.",
+    "",
+    "THE CRITERION APPLIED HERE: would this company's revenue or balance sheet be",
+    "materially different if crypto ceased to exist? Yes puts it in. A company",
+    "that merely accepts crypto, or mentions it in risk factors, is out.",
+    "",
+    "CONFIDENCE MARKS. 'verify' means I am not certain of the ticker or the",
+    "current status and it should be checked before the index is published. This",
+    "list was assembled partly from a knowledge cutoff of May 2026 and partly from",
+    "search; several of these companies listed or renamed recently."
+  ],
+  "criterion": "would revenue or the balance sheet be materially different if crypto ceased to exist",
+  "constituents": {
+    "COIN": {
+      "sleeve": "exchange",
+      "name": "Coinbase Global",
+      "note": "largest US listed crypto exchange; the screen excluded it at 5.5% balance-sheet share"
+    },
+    "HOOD": {
+      "sleeve": "exchange",
+      "name": "Robinhood Markets",
+      "note": "crypto is a minority of revenue but material and growing. WARNING: stopped tagging shares outstanding in Feb 2022, so the index will skip it until a share count is supplied by hand"
+    },
+    "GLXY": {
+      "sleeve": "exchange",
+      "name": "Galaxy Digital",
+      "note": "trading, asset management, custody, staking. Also building AI data centres - §8 says separate those economics where identifiable, which has NOT been done"
+    },
+    "BLSH": {
+      "sleeve": "exchange",
+      "name": "Bullish",
+      "note": "Bullish confirmed, listed 2025, owns CoinDesk, acquiring Equiniti"
+    },
+    "GEMI": {
+      "sleeve": "exchange",
+      "name": "Gemini Space Station",
+      "note": "listed 2025"
+    },
+    "BKKT": {
+      "sleeve": "stablecoin",
+      "name": "Bakkt",
+      "note": "crypto payments and loyalty; NOT a miner despite matching the mining phrase"
+    },
+    "CRCL": {
+      "sleeve": "stablecoin",
+      "name": "Circle Internet Group",
+      "note": "USDC issuer. The screen called it immaterial at 0.14% because reserves back a liability rather than being owned"
+    },
+    "XYZ": {
+      "sleeve": "stablecoin",
+      "name": "Block",
+      "note": "Block confirmed. BORDERLINE: most revenue is not crypto"
+    },
+    "BTGO": {
+      "sleeve": "infrastructure",
+      "name": "BitGo Holdings",
+      "note": "custody and prime services; listed 2026. The text screen classified it as a miner"
+    },
+    "EXOD": {
+      "sleeve": "infrastructure",
+      "name": "Exodus Movement",
+      "note": "self-custody wallet software"
+    },
+    "MARA": {
+      "sleeve": "mining",
+      "name": "MARA Holdings",
+      "note": "formerly Marathon Digital"
+    },
+    "RIOT": {
+      "sleeve": "mining",
+      "name": "Riot Platforms",
+      "note": "mining plus a twenty-year AI data-centre lease at Rockdale. The AI economics are material and not separated here"
+    },
+    "CLSK": {
+      "sleeve": "mining",
+      "name": "CleanSpark",
+      "note": "13,703 BTC at 31 Aug 2026, of which 3,951 encumbered as derivative collateral. Its XBRL unit count is mis-tagged by 1000x - see the treasury registry"
+    },
+    "HUT": {
+      "sleeve": "mining",
+      "name": "Hut 8",
+      "note": "mining and data centres"
+    },
+    "CORZ": {
+      "sleeve": "mining",
+      "name": "Core Scientific",
+      "note": "NASDAQ: CORZ confirmed. Aggressive AI pivot with a $3.3bn raise, but still mining. BORDERLINE - re-check if HPC passes half of revenue"
+    },
+    "CIFR": {
+      "sleeve": "mining",
+      "name": "Cipher Mining",
+      "note": "NASDAQ: CIFR confirmed, now trading as Cipher Digital. Major hyperscaler contracts; still mining"
+    },
+    "BTDR": {
+      "sleeve": "mining",
+      "name": "Bitdeer Technologies",
+      "note": "Singapore-based, Nasdaq listed"
+    },
+    "HIVE": {
+      "sleeve": "mining",
+      "name": "HIVE Digital Technologies",
+      "note": "HIVE Digital Technologies confirmed, TSX and NASDAQ"
+    },
+    "BITF": {
+      "sleeve": "mining",
+      "name": "Bitfarms",
+      "note": "Bitfarms confirmed"
+    },
+    "BTBT": {
+      "sleeve": "mining",
+      "name": "Bit Digital",
+      "note": "mining and staking; also holds a large ether position"
+    },
+    "GREE": {
+      "sleeve": "mining",
+      "name": "Greenidge Generation",
+      "note": "Greenidge Generation confirmed"
+    },
+    "CAN": {
+      "sleeve": "mining",
+      "name": "Canaan",
+      "note": "Canaan confirmed - mining HARDWARE, not mining"
+    },
+    "MSTR": {
+      "sleeve": "treasury",
+      "name": "Strategy",
+      "note": "formerly MicroStrategy; the largest corporate bitcoin treasury"
+    },
+    "BMNR": {
+      "sleeve": "treasury",
+      "name": "BitMine Immersion",
+      "note": "largest ether treasury; 5.7m ETH confirmed against its own reported fair value"
+    },
+    "XXI": {
+      "sleeve": "treasury",
+      "name": "Twenty One Capital",
+      "note": "formed by business combination Dec 2025 with Cantor, Tether and iFinex"
+    },
+    "SMLR": {
+      "sleeve": "treasury",
+      "name": "Semler Scientific",
+      "note": "Semler Scientific confirmed"
+    },
+    "NAKA": {
+      "sleeve": "treasury",
+      "name": "Nakamoto",
+      "note": "was Kindly MD"
+    },
+    "EMPD": {
+      "sleeve": "treasury",
+      "name": "Empery Digital",
+      "note": "was Volcon, an electric vehicle company"
+    },
+    "ASST": {
+      "sleeve": "treasury",
+      "name": "Strive",
+      "note": "was Asset Entities. No crypto facts in XBRL as of Sept 2026 - re-check"
+    },
+    "UPXI": {
+      "sleeve": "treasury",
+      "name": "Upexi",
+      "note": "was Grove; Solana treasury"
+    },
+    "DFDV": {
+      "sleeve": "treasury",
+      "name": "DeFi Development",
+      "note": "Solana treasury. The text screen called it an exchange"
+    },
+    "SBET": {
+      "sleeve": "treasury",
+      "name": "SharpLink Gaming",
+      "note": "SharpLink Gaming confirmed - ether treasury, joint yield fund with Galaxy"
+    },
+    "FWDI": {
+      "sleeve": "treasury",
+      "name": "Forward Industries",
+      "note": "Forward Industries confirmed - Solana treasury"
+    },
+    "ABTC": {
+      "sleeve": "mining",
+      "name": "American Bitcoin",
+      "note": "MINES AND HOLDS. §19 double count: mined inventory awaiting sale is not the same economic claim as a held treasury, and that decision has not been made"
+    }
+  },
+  "excluded": {
+    "_note": "companies the automated screens admitted, excluded here with the reason",
+    "GNLN": "Greenlane Holdings - $2m market capitalisation and a majority-crypto balance sheet only because the balance sheet is nearly empty. Not a crypto company by any reading of the business",
+    "IPST": "IP Strategy Holdings - was Heritage Distilling; $2.5m",
+    "APUS": "Apimeds Pharmaceuticals - $3.2m",
+    "CIMG": "CIMG - was Havana Furnishings; $5.9m",
+    "SCLX": "Scilex Holding - a pharmaceutical company; the text screen called it a miner",
+    "DJT": "Trump Media - a media company holding bitcoin. Arguable, and excluded because the business would be substantially unchanged without crypto",
+    "LRHC": "La Rosa Holdings - real estate; $8.5m",
+    "_all_funds": "every trust, ETF and ETP. §19: they hold crypto for their shareholders, which is custody and not issuer treasury, and including them counts the same coins twice",
+    "IREN": "holds ZERO bitcoin and is projected at ~71% of revenue from AI and HPC by end 2026, with a Microsoft contract and an Nvidia partnership. It is an AI cloud provider with a mining history. By the stated criterion - would revenue or the balance sheet be materially different if crypto ceased to exist - the answer is no",
+    "WULF": "exiting bitcoin mining ENTIRELY by 2026. HPC lease revenue from Anthropic and Fluidstack reached 71% of total while mining revenue fell to $12.8m. Same criterion, same answer"
+  },
+  "open_questions": [
+    "AI AND HPC. Riot leases data-centre capacity to AI tenants under a twenty-year agreement; Galaxy is building AI data centres; Core Scientific, IREN and TeraWulf all have material HPC exposure. §8 requires those economics separated where identifiable. They are NOT separated here, so the mining sleeve currently contains a large and growing quantity of AI infrastructure. This is the single largest unresolved issue in the classification.",
+    "MINED INVENTORY VERSUS TREASURY. §19 for every miner that also holds. Not decided.",
+    "ENCUMBRANCE. CleanSpark posts 29% of its holdings as derivative collateral. Whether the index measures gross or unencumbered holdings applies to every miner posting collateral.",
+    "HOOD SHARE COUNT. Robinhood stopped tagging shares outstanding in February 2022. Until a count is supplied it cannot be weighted, and it is one of the largest constituents by value."
+  ],
+  "ai_rule": {
+    "rule": "a company leaves the index when crypto stops being material to it, judged by the same criterion used to admit it",
+    "why": "The miners are not what they were. IREN, TeraWulf, Core Scientific, Cipher and Hut 8 have all moved capacity to AI and high-performance computing, and the sector beat bitcoin by 70% in 2026 BECAUSE of that pivot rather than because of crypto. An index that keeps them all is partly measuring the AI trade wearing a mining ticker.",
+    "excluded_on_this_rule": [
+      "IREN",
+      "WULF"
+    ],
+    "retained_with_material_ai": {
+      "CORZ": "aggressive pivot, still mining. Re-check when HPC passes half of revenue",
+      "CIFR": "hyperscaler contracts, still mining",
+      "HUT": "data centres alongside mining and a treasury",
+      "RIOT": "a twenty-year Rockdale lease but no major AI revenue yet; still primarily a miner",
+      "MARA": "remains primarily a bitcoin miner"
+    },
+    "the_judgment_that_remains": "Where a company is halfway through the pivot there is no clean line, and the boundary moves as they execute. This should be reviewed each quarter, and the review is a judgment rather than a threshold - segment revenue would settle it and is not obtainable from XBRL."
+  }
+}

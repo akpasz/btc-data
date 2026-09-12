@@ -118,6 +118,21 @@ def _latest(facts, names, taxonomy='us-gaap', unit='USD', at_end=None):
     return None
 
 
+def _earliest(facts, names, taxonomy='us-gaap', unit='USD'):
+    """The earliest FILING date on which any of these concepts appeared."""
+    best = None
+    for name in names:
+        c = ((facts or {}).get(taxonomy) or {}).get(name)
+        for u, rows in ((c or {}).get('units') or {}).items():
+            if str(u).upper() != unit:
+                continue
+            for r in rows:
+                f = r.get('filed')
+                if f and (best is None or f < best):
+                    best = f
+    return best
+
+
 def measure(cik, facts=None):
     """Every materiality figure obtainable for one filer, each with its source
     and each absent where it cannot be read."""
@@ -162,6 +177,10 @@ def measure(cik, facts=None):
     # it lives in segment reporting, which companyfacts does not expose
     # dimensionally. Saying so is the honest answer; deriving one would be
     # estimation reported as measurement.
+    # THE FIRST crypto disclosure, which is when the company became one. The
+    # module otherwise reports only the latest of everything, and "when did this
+    # start" is a different question from "what is it now".
+    out['crypto_first_filed'] = _earliest(facts, CRYPTO_ASSET_CONCEPTS)
     out['crypto_revenue_share'] = None
     out['revenue_share_unavailable'] = (
         'crypto revenue is a SEGMENT disclosure and has no standard XBRL element; '
@@ -205,6 +224,47 @@ def current_name(cik, cache=None):
     if cache is not None:
         cache[cik] = out
     return out
+
+
+
+# A SIC CODE THE COMPANY NO LONGER FITS.
+#
+# Fourteen of the top eighteen crypto treasuries in the live run were something
+# else first: Havana Furnishings, Helius Medical Technologies, Volcon (electric
+# vehicles), NovaBay Pharmaceuticals, Hillstream BioPharma, SRM Entertainment,
+# Sharps Technology, Eyenovia. Furniture, medical devices, vehicles, pharma,
+# entertainment - all now bitcoin and ether treasuries.
+#
+# The SEC keeps the OLD industry classification, so the mismatch is mechanical:
+# a balance sheet that is 93% crypto against a SIC saying "Pharmaceutical
+# Preparations" is a pivot, countable rather than asserted.
+#
+# This matters for an index beyond being interesting. A repurposed shell and an
+# operating company with the same treasury are not the same instrument: they
+# differ in governance, in liquidity, in what happens when the holding falls,
+# and in whether there is a business underneath at all. §23 wants an index to
+# know what it is measuring, and "how much of this sleeve is vehicles" is part
+# of that.
+CRYPTO_SIC_HINTS = ('blank check', 'finance services', 'investors', 'security',
+                    'commodity', 'services-computer', 'services-prepackaged software')
+
+
+def is_pivot(row):
+    """True where a company's industry classification no longer describes it.
+
+    Deliberately conservative: it needs BOTH a former name AND a material
+    crypto balance sheet AND an industry that is not already financial or
+    software. A company that has always been a crypto business and merely
+    rebranded is not a pivot, and counting it as one would inflate the finding.
+    """
+    if not row.get('renamed') or row.get('verdict') != 'material':
+        return False
+    if (row.get('crypto_asset_share') or 0) < 0.5:
+        return False
+    sic = (row.get('sic_description') or '').lower()
+    if not sic:
+        return False
+    return not any(h in sic for h in CRYPTO_SIC_HINTS)
 
 
 def classify(m, signals=None, thresholds=None, name=None):
@@ -317,6 +377,7 @@ def main(universe_path=f'{OUT}/crypto_universe.json', out_dir=OUT, limit=0):
                      'tickers': nm.get('tickers'), 'sic_description': nm.get('sic_description'),
                      'renamed': bool(nm.get('former_names'))})
     res = {'rows': rows, 'thresholds': THRESHOLDS,
+           'pivots': [r['cik'] for r in rows if is_pivot(r)],
            'sensitivity': sensitivity(measures, sigs),
            'counts': _counts(rows)}
     os.makedirs(out_dir, exist_ok=True)
@@ -333,12 +394,22 @@ def main(universe_path=f'{OUT}/crypto_universe.json', out_dir=OUT, limit=0):
         tail = f'  (was {was[-1][:26]})' if was else ''
         print(f'  {(r.get("crypto_asset_share") or 0):>7.1%}  {(r.get("sleeve") or "unsettled"):<16}'
               f'{r["cik"]:<10} {nm[:38]:<40}{tail}')
-    renamed = [r for r in mat if r.get('renamed')]
-    if renamed:
+    pivots = [r for r in rows if is_pivot(r)]
+    if pivots:
         print()
-        print(f'  {len(renamed)} of {len(mat)} material companies have filed under another name. '
-              f'A pivot is')
-        print('  the interesting fact about several of these, not a footnote.')
+        print(f'  PIVOTS: {len(pivots)} of {len(mat)} material companies are repurposed - a former')
+        print(f'  name, a majority-crypto balance sheet, and an industry classification that no')
+        print(f'  longer describes them. The SEC still carries the old SIC.')
+        print()
+        print(f'  {"share":>7}  {"still classified as":<34} was')
+        for r in sorted(pivots, key=lambda r: -(r.get('crypto_asset_share') or 0))[:20]:
+            was = (r.get('former_names') or ['?'])[-1]
+            print(f'  {(r.get("crypto_asset_share") or 0):>6.0%}  '
+                  f'{(r.get("sic_description") or "")[:32]:<34}{was[:34]}')
+        print()
+        print('  A repurposed shell and an operating company with the same treasury are not the')
+        print('  same instrument: they differ in governance, in liquidity, and in whether there')
+        print('  is a business underneath. An index should know how much of a sleeve is vehicles.')
     s = res['sensitivity']
     print()
     print(f'  THRESHOLD SENSITIVITY around {s["base_threshold"]:.0%}:')
