@@ -879,10 +879,12 @@ class TestTheIndexAppliesItsOwnChecks:
 
     def test_a_company_whose_numbers_disagree_is_excluded(self):
         cs = [{'ticker': 'BAD', 'name': 'Bad', 'claims_populated': True,
-               'reconciliation_failures': [{'token': 'BTC', 'period': '2026-06-30',
-                                            'reason': 'implies $58.53 a unit; mis-tagged'}],
+               # only a CURRENT-period failure disqualifies; an old comparative
+               # under cost-basis accounting does not
+               'disqualifying_failures': [{'token': 'BTC', 'period': '2026-06-30',
+                                           'reason': 'implies $58.53 a unit; mis-tagged'}],
                'rows': [{'filed': 'd', 'gross_nav_usd': 100e9, 'market_cap_usd': 5e9}]},
-              {'ticker': 'OK', 'name': 'Ok', 'claims_populated': True, 'reconciliation_failures': [],
+              {'ticker': 'OK', 'name': 'Ok', 'claims_populated': True, 'disqualifying_failures': [],
                'rows': [{'filed': 'd', 'gross_nav_usd': 1e9, 'market_cap_usd': 2e9}]}]
         ix = T.build_cti(cs)
         assert [m['ticker'] for m in ix['members']] == ['OK']
@@ -964,3 +966,86 @@ class TestTheUniverseFeedsTheIndex:
         reg2, gen = T.registry_from_universe(reg, '/nonexistent/u.json')
         assert gen['added'] == 0 and 'run --discover' in gen['reason']
         assert len(reg2['companies']) == 1
+
+
+class TestTheIndexReachesTheFile:
+    """The index build sat immediately AFTER the file write, so it was
+    computed, printed to the console, and thrown away. The file the page reads
+    had no `cti` key: the console said "4 members, $14.3bn" and the dashboard
+    would have rendered empty.
+
+    A summary printed from memory is not evidence about a file."""
+
+    def test_the_written_file_carries_the_index(self, tmp_path):
+        import json
+        facts = {'us-gaap': {'CryptoAssetNumberOfUnits': {'units': {'Bitcoin': [
+            {'end': '2026-06-30', 'val': 1000.0, 'form': '10-Q', 'filed': '2026-08-03'}]}},
+            'Assets': {'units': {'USD': [{'val': 1e9, 'end': '2026-06-30',
+                                          'filed': '2026-08-03'}]}}}}
+        T._get = lambda u, **k: {'facts': facts}
+        T.load_equity_prices = lambda reg: {'convention': 'test'}
+        reg = tmp_path / 'registry.json'
+        reg.write_text(json.dumps({'companies': [
+            {'ticker': 'X', 'name': 'X', 'cik': 1, 'tokens': ['BTC'], 'claims': []}]}))
+        out = T.main(registry_path=str(reg), out_dir=str(tmp_path),
+                     prices={'convention': 'test',
+                             'BTC': {'values': [['2026-01-01', 60000.0]]}},
+                     relative_path='/nonexistent')
+        written = json.loads((tmp_path / 'treasury.json').read_text())
+        assert 'cti' in written, 'the index must reach the file the page reads'
+        assert written['cti']['member_count'] == out['cti']['member_count']
+
+
+class TestPreFairValuePeriods:
+    """Strategy was excluded from its own index. Its 2023 comparative -
+    189,150 BTC against a $3.63bn carrying value - implies $19,172 against a
+    $42,288 market, and that 55% gap is not a mis-tag: before ASU 2023-08
+    crypto was carried at COST LESS IMPAIRMENT, written down on every dip and
+    never written back up.
+
+    The largest holder in the world was being thrown out for having complied
+    with the accounting rules that applied at the time."""
+
+    def _facts(self, rows, fv):
+        return {'us-gaap': {
+            'CryptoAssetNumberOfUnits': {'units': {'Bitcoin': rows}},
+            'CryptoAssetFairValue': {'units': {'USD': fv}}}}
+
+    MSTR = [{'end': '2023-12-31', 'val': 189150.0, 'form': '10-K', 'filed': '2026-02-19'},
+            {'end': '2026-06-30', 'val': 846000.0, 'form': '10-Q', 'filed': '2026-08-03'}]
+    FV = [{'end': '2023-12-31', 'val': 3.626e9, 'filed': '2026-02-19'},
+          {'end': '2026-06-30', 'val': 49.6e9, 'filed': '2026-08-03'}]
+    P = {'convention': 't', 'BTC': {'values': [['2023-12-31', 42288.06],
+                                               ['2026-06-30', 58600.0]]}}
+
+    def test_a_cost_basis_period_is_not_reconciled(self):
+        T._get = lambda u, **k: {'facts': self._facts(self.MSTR, self.FV)}
+        c = T.company({'ticker': 'MSTR', 'cik': 1, 'tokens': ['BTC'], 'claims': []}, self.P)
+        periods = [f['period'] for f in c['reconciliation_failures']]
+        assert '2023-12-31' not in periods, 'impaired cost is not a mis-tag'
+
+    def test_strategy_is_index_eligible(self):
+        T._get = lambda u, **k: {'facts': self._facts(self.MSTR, self.FV)}
+        c = T.company({'ticker': 'MSTR', 'cik': 1, 'tokens': ['BTC'], 'claims': []}, self.P)
+        assert c['index_eligible'] is True
+
+    def test_a_current_period_failure_still_excludes(self):
+        """CleanSpark's disagreement is at 2026-06-30 and must still bite."""
+        rows = [{'end': '2026-06-30', 'val': 1_719_000.0, 'form': '10-Q', 'filed': '2026-08-03'}]
+        fv = [{'end': '2026-06-30', 'val': 100.607e6, 'filed': '2026-08-03'}]
+        T._get = lambda u, **k: {'facts': self._facts(rows, fv)}
+        c = T.company({'ticker': 'CLSK', 'cik': 1, 'tokens': ['BTC'], 'claims': []}, self.P)
+        assert c['index_eligible'] is False and c['disqualifying_failures']
+
+    def test_an_old_failure_alone_does_not_exclude(self):
+        """The index is built from what a company holds NOW."""
+        rows = [{'end': '2024-06-30', 'val': 100.0, 'form': '10-Q', 'filed': '2024-08-03'},
+                {'end': '2026-06-30', 'val': 846000.0, 'form': '10-Q', 'filed': '2026-08-03'}]
+        fv = [{'end': '2024-06-30', 'val': 1.0, 'filed': '2024-08-03'},
+              {'end': '2026-06-30', 'val': 49.6e9, 'filed': '2026-08-03'}]
+        T._get = lambda u, **k: {'facts': self._facts(rows, fv)}
+        c = T.company({'ticker': 'X', 'cik': 1, 'tokens': ['BTC'], 'claims': []}, self.P)
+        assert c['reconciliation_failures'] and c['index_eligible'] is True
+
+    def test_the_boundary_is_the_standard_not_a_guess(self):
+        assert T.FAIR_VALUE_FROM == '2024-01-01'
