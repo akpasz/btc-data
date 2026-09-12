@@ -159,7 +159,28 @@ def score(dates,px,fires,eligible,direction):
         ci = [round(max(0.0, centre - half) * 100, 1),
               round(min(1.0, centre + half) * 100, 1)]
 
+    # THE EPISODE DATES, EMITTED. Every ingredient was already here - `eps`
+    # holds the boundaries and `outcome` resolves each one - and only the COUNT
+    # was published. A timeline cannot be drawn from a count, and neither can a
+    # "what changed this week" panel, so both were impossible for a reason that
+    # was one line deep.
+    #
+    # `outcome` is None where the 365-day window has not closed, and that is
+    # carried through as `pending` rather than flattened to a miss: an episode
+    # awaiting its answer is not a failure, and the forward record exists
+    # precisely to make that distinction.
+    episode_list = []
+    for s0, e0 in eps:
+        o = outcome(s0)
+        episode_list.append({
+            'start': dates[s0], 'end': dates[e0],
+            'days': (e0 - s0 + 1),
+            'outcome': ('pending' if o is None else ('hit' if o else 'miss')),
+        })
+
     return dict(episodes=tot,censored=cens,
+        episode_dates=episode_list,
+        first_fired=(episode_list[0]['start'] if episode_list else None),
         pending_since=(pending_dates[0] if pending_dates else None),
         hit_rate=(100*hit/tot) if tot else None,
         hit_rate_ci90=ci,

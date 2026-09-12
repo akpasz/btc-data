@@ -1412,3 +1412,40 @@ class TestMetcalfeReferenceReading:
                   'premium_pct_reference_close', 'percentile_reference_close',
                   'fit_from', 'reference_fit_from'):
             assert k in src, f'glance must carry {k}; the gauge names both fits'
+
+
+class TestEpisodeDatesArePublished:
+    """The scorecard published `episodes` as a COUNT. Every ingredient for the
+    dates was already computed - the episode boundaries and the outcome of each
+    - and only the total was emitted, which made a timeline and a
+    what-changed-by-rule panel impossible for a reason one line deep."""
+
+    def _src(self):
+        import os
+        return open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'scorecard.py'),
+                    encoding='utf-8').read()
+
+    def test_the_dates_are_emitted(self):
+        s = self._src()
+        assert "episode_dates=episode_list" in s
+        assert "'start': dates[s0]" in s and "'end': dates[e0]" in s
+
+    def test_a_pending_episode_is_not_flattened_to_a_miss(self):
+        """An episode whose 365-day window has not closed is awaiting its
+        answer, not failing. The forward record exists to keep that
+        distinction."""
+        s = self._src()
+        assert "'pending' if o is None" in s
+
+    def test_the_first_firing_is_published(self):
+        """"Five episodes" and "five episodes, the first in 2013" are different
+        statements about the same rule."""
+        assert "first_fired=" in self._src()
+
+    def test_the_count_still_agrees_with_the_dates(self):
+        """`episodes` counts only scoreable episodes; the date list includes
+        pending ones. They are different numbers on purpose, and a reader
+        comparing them must find the difference explained."""
+        s = self._src()
+        i, j = s.find('episode_list = []'), s.find('return dict(episodes=tot')
+        assert 0 < i < j, 'the list must be built before the return that carries it'
