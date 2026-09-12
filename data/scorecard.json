@@ -1,9 +1,9 @@
 {
  "schema_version": "1.0",
  "source": "derived",
- "generated_at": "2026-09-11T11:52:41+00:00",
- "as_of": "2026-09-10",
- "price_points": 5868,
+ "generated_at": "2026-09-12T18:21:26+00:00",
+ "as_of": "2026-09-11",
+ "price_points": 5869,
  "horizon_days": 365,
  "cluster_days": 90,
  "min_episodes": 20,
@@ -12,6 +12,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-08-02",
+     "end": "2011-10-07",
+     "days": 67,
+     "outcome": "hit"
+    },
+    {
+     "start": "2013-04-07",
+     "end": "2013-08-08",
+     "days": 124,
+     "outcome": "hit"
+    },
+    {
+     "start": "2013-12-07",
+     "end": "2014-03-26",
+     "days": 110,
+     "outcome": "hit"
+    },
+    {
+     "start": "2017-12-17",
+     "end": "2018-03-04",
+     "days": 78,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-04-13",
+     "end": "2021-04-23",
+     "days": 11,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2011-08-02",
    "pending_since": null,
    "hit_rate": 100.0,
    "hit_rate_ci90": [
@@ -19,8 +52,8 @@
     100.0
    ],
    "baseline_rate": 26.0,
-   "baseline_days": 4314,
-   "eligible_days": 5519,
+   "baseline_days": 4315,
+   "eligible_days": 5520,
    "key": "pi_cycle",
    "name": "Pi Cycle Top",
    "claim": "The 111-day average crossing above twice the 350-day average marks a cycle top.",
@@ -28,7 +61,7 @@
    "detail": "/tools/bitcoin-indicator-autopsy",
    "firing_today": false,
    "last_fired": "2021-04-23",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 74.0,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "above",
@@ -37,6 +70,57 @@
   {
    "episodes": 8,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-03-05",
+     "end": "2011-07-20",
+     "days": 138,
+     "outcome": "miss"
+    },
+    {
+     "start": "2012-08-18",
+     "end": "2012-08-18",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-03-05",
+     "end": "2013-05-28",
+     "days": 85,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-11-09",
+     "end": "2014-01-16",
+     "days": 69,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-06-07",
+     "end": "2017-06-07",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-11-28",
+     "end": "2018-01-08",
+     "days": 42,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-06-27",
+     "end": "2019-06-27",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-01-04",
+     "end": "2021-03-14",
+     "days": 70,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2011-03-05",
    "pending_since": null,
    "hit_rate": 25.0,
    "hit_rate_ci90": [
@@ -44,8 +128,8 @@
     54.0
    ],
    "baseline_rate": 26.4,
-   "baseline_days": 4177,
-   "eligible_days": 5669,
+   "baseline_days": 4178,
+   "eligible_days": 5670,
    "key": "mayer_high",
    "name": "Mayer multiple above 2.4",
    "claim": "Price at 2.4x its 200-day average is an overheated market.",
@@ -53,7 +137,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2021-03-14",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -1.4,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -62,6 +146,39 @@
   {
    "episodes": 4,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2015-01-15",
+     "end": "2015-01-15",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2015-08-19",
+     "end": "2015-10-01",
+     "days": 44,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-19",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-15",
+     "end": "2023-10-16",
+     "days": 489,
+     "outcome": "miss"
+    },
+    {
+     "start": "2026-06-06",
+     "end": "2026-08-17",
+     "days": 73,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2015-01-15",
    "pending_since": "2026-06-06",
    "hit_rate": 75.0,
    "hit_rate_ci90": [
@@ -69,8 +186,8 @@
     94.2
    ],
    "baseline_rate": 46.0,
-   "baseline_days": 3203,
-   "eligible_days": 4469,
+   "baseline_days": 3204,
+   "eligible_days": 4470,
    "key": "below_200w",
    "name": "Price below the 200-week average",
    "claim": "Price under its 200-week average is a generational buying zone.",
@@ -78,7 +195,7 @@
    "detail": "/tools/bitcoin-indicator-autopsy",
    "firing_today": false,
    "last_fired": "2026-08-17",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 29.0,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -87,6 +204,39 @@
   {
    "episodes": 4,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2014-11-02",
+     "end": "2016-02-10",
+     "days": 466,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-20",
+     "end": "2019-05-10",
+     "days": 172,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-10-24",
+     "end": "2020-04-23",
+     "days": 183,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-05-09",
+     "end": "2023-10-23",
+     "days": 533,
+     "outcome": "miss"
+    },
+    {
+     "start": "2026-01-30",
+     "end": "2026-09-11",
+     "days": 225,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2014-11-02",
    "pending_since": "2026-01-30",
    "hit_rate": 25.0,
    "hit_rate_ci90": [
@@ -94,16 +244,16 @@
     64.4
    ],
    "baseline_rate": 44.9,
-   "baseline_days": 3060,
-   "eligible_days": 5139,
+   "baseline_days": 3061,
+   "eligible_days": 5140,
    "key": "two_year_ma",
    "name": "Price below the 2-year average",
    "claim": "The 2-year moving average multiplier marks the accumulation band.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-indicator-autopsy",
    "firing_today": true,
-   "last_fired": "2026-09-10",
-   "as_of_day": "2026-09-10",
+   "last_fired": "2026-09-11",
+   "as_of_day": "2026-09-11",
    "difference": -19.9,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -112,15 +262,96 @@
   {
    "episodes": 12,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2012-02-12",
+     "end": "2012-02-12",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-07-13",
+     "end": "2014-07-13",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2015-07-16",
+     "end": "2015-07-16",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2015-10-29",
+     "end": "2015-10-29",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-04-25",
+     "end": "2019-04-25",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-02-19",
+     "end": "2020-02-19",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-05-22",
+     "end": "2020-05-22",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-09-16",
+     "end": "2021-09-16",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-02-08",
+     "end": "2023-02-08",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2023-10-31",
+     "end": "2023-10-31",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-10-29",
+     "end": "2024-10-29",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-05-23",
+     "end": "2025-05-23",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2026-09-09",
+     "end": "2026-09-09",
+     "days": 1,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2012-02-12",
    "pending_since": "2026-09-09",
    "hit_rate": 66.7,
    "hit_rate_ci90": [
     43.1,
     84.1
    ],
-   "baseline_rate": 57.0,
-   "baseline_days": 4212,
-   "eligible_days": 5669,
+   "baseline_rate": 56.9,
+   "baseline_days": 4213,
+   "eligible_days": 5670,
    "key": "golden_cross",
    "name": "Golden cross",
    "claim": "The 50-day crossing above the 200-day average starts a bull phase.",
@@ -128,7 +359,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2026-09-09",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 9.7,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -137,6 +368,87 @@
   {
    "episodes": 12,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2011-09-23",
+     "end": "2011-09-23",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-04-10",
+     "end": "2014-04-10",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-09-05",
+     "end": "2014-09-05",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2015-09-16",
+     "end": "2015-09-16",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-04-01",
+     "end": "2018-04-01",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-10-27",
+     "end": "2019-10-27",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-27",
+     "end": "2020-03-27",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-06-20",
+     "end": "2021-06-20",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-01-15",
+     "end": "2022-01-15",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2023-09-13",
+     "end": "2023-09-13",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-08-11",
+     "end": "2024-08-11",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-04-08",
+     "end": "2025-04-08",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-11-17",
+     "end": "2025-11-17",
+     "days": 1,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2011-09-23",
    "pending_since": "2025-11-17",
    "hit_rate": 58.3,
    "hit_rate_ci90": [
@@ -144,8 +456,8 @@
     78.0
    ],
    "baseline_rate": 28.6,
-   "baseline_days": 4212,
-   "eligible_days": 5669,
+   "baseline_days": 4213,
+   "eligible_days": 5670,
    "key": "death_cross",
    "name": "Death cross",
    "claim": "The 50-day crossing below the 200-day average starts a bear phase.",
@@ -153,7 +465,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2025-11-17",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 29.8,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "above",
@@ -162,6 +474,135 @@
   {
    "episodes": 20,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2010-09-15",
+     "end": "2011-06-12",
+     "days": 271,
+     "outcome": "miss"
+    },
+    {
+     "start": "2011-12-20",
+     "end": "2012-01-18",
+     "days": 30,
+     "outcome": "miss"
+    },
+    {
+     "start": "2012-04-22",
+     "end": "2013-04-10",
+     "days": 354,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-08-31",
+     "end": "2013-12-05",
+     "days": 97,
+     "outcome": "miss"
+    },
+    {
+     "start": "2014-05-23",
+     "end": "2014-06-09",
+     "days": 18,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-11-13",
+     "end": "2014-11-14",
+     "days": 2,
+     "outcome": "hit"
+    },
+    {
+     "start": "2015-03-12",
+     "end": "2015-03-12",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2015-06-17",
+     "end": "2015-07-13",
+     "days": 27,
+     "outcome": "miss"
+    },
+    {
+     "start": "2015-10-17",
+     "end": "2015-12-20",
+     "days": 65,
+     "outcome": "miss"
+    },
+    {
+     "start": "2016-04-21",
+     "end": "2016-06-21",
+     "days": 62,
+     "outcome": "miss"
+    },
+    {
+     "start": "2016-10-12",
+     "end": "2017-12-19",
+     "days": 434,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-07-25",
+     "end": "2018-07-26",
+     "days": 2,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-02-20",
+     "end": "2019-06-27",
+     "days": 128,
+     "outcome": "miss"
+    },
+    {
+     "start": "2020-01-15",
+     "end": "2021-03-14",
+     "days": 425,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-07-29",
+     "end": "2021-10-21",
+     "days": 85,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-03-30",
+     "end": "2022-03-30",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2023-01-12",
+     "end": "2023-07-04",
+     "days": 174,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-10-21",
+     "end": "2024-03-15",
+     "days": 147,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-10-21",
+     "end": "2024-11-25",
+     "days": 36,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-05-03",
+     "end": "2025-10-07",
+     "days": 158,
+     "outcome": "miss"
+    },
+    {
+     "start": "2026-08-20",
+     "end": "2026-09-04",
+     "days": 16,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2010-09-15",
    "pending_since": "2026-08-20",
    "hit_rate": 30.0,
    "hit_rate_ci90": [
@@ -170,7 +611,7 @@
    ],
    "baseline_rate": 38.6,
    "baseline_days": 1289,
-   "eligible_days": 5854,
+   "eligible_days": 5855,
    "key": "rsi_hot",
    "name": "RSI-14 above 70",
    "claim": "An overbought RSI precedes a fall.",
@@ -178,7 +619,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2026-09-04",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -8.6,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -187,6 +628,147 @@
   {
    "episodes": 21,
    "censored": 2,
+   "episode_dates": [
+    {
+     "start": "2011-04-06",
+     "end": "2011-04-06",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2011-08-05",
+     "end": "2012-02-22",
+     "days": 202,
+     "outcome": "miss"
+    },
+    {
+     "start": "2012-10-27",
+     "end": "2012-11-04",
+     "days": 9,
+     "outcome": "hit"
+    },
+    {
+     "start": "2013-06-10",
+     "end": "2013-10-03",
+     "days": 116,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-02-14",
+     "end": "2014-04-11",
+     "days": 57,
+     "outcome": "miss"
+    },
+    {
+     "start": "2014-07-31",
+     "end": "2015-04-15",
+     "days": 259,
+     "outcome": "miss"
+    },
+    {
+     "start": "2015-08-19",
+     "end": "2015-08-25",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2016-01-16",
+     "end": "2016-01-16",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2016-08-03",
+     "end": "2016-08-03",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2017-07-16",
+     "end": "2017-09-15",
+     "days": 62,
+     "outcome": "hit"
+    },
+    {
+     "start": "2018-02-06",
+     "end": "2018-02-06",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-06-11",
+     "end": "2018-06-14",
+     "days": 4,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-15",
+     "end": "2018-12-17",
+     "days": 33,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-09-25",
+     "end": "2020-03-18",
+     "days": 176,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-05-19",
+     "end": "2021-05-24",
+     "days": 6,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-12-11",
+     "end": "2022-01-25",
+     "days": 46,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-05-10",
+     "end": "2022-11-10",
+     "days": 185,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-03-10",
+     "end": "2023-03-11",
+     "days": 2,
+     "outcome": "hit"
+    },
+    {
+     "start": "2023-08-18",
+     "end": "2023-08-29",
+     "days": 12,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-06-25",
+     "end": "2024-08-06",
+     "days": 43,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-02-27",
+     "end": "2025-03-01",
+     "days": 3,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-11-18",
+     "end": "2026-02-13",
+     "days": 88,
+     "outcome": "pending"
+    },
+    {
+     "start": "2026-06-03",
+     "end": "2026-06-11",
+     "days": 9,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2011-04-06",
    "pending_since": "2025-11-18",
    "hit_rate": 47.6,
    "hit_rate_ci90": [
@@ -194,8 +776,8 @@
     64.8
    ],
    "baseline_rate": 59.8,
-   "baseline_days": 2373,
-   "eligible_days": 5854,
+   "baseline_days": 2374,
+   "eligible_days": 5855,
    "key": "rsi_cold",
    "name": "RSI-14 below 30",
    "claim": "An oversold RSI precedes a rally.",
@@ -203,7 +785,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2026-06-11",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -12.2,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -212,6 +794,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2010-08-18",
+     "end": "2011-06-11",
+     "days": 298,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-03-20",
+     "end": "2013-04-11",
+     "days": 23,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-11-09",
+     "end": "2013-12-11",
+     "days": 33,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-12-07",
+     "end": "2017-12-20",
+     "days": 14,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-01-08",
+     "end": "2021-03-14",
+     "days": 66,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2010-08-18",
    "pending_since": null,
    "hit_rate": 20.0,
    "hit_rate_ci90": [
@@ -219,8 +834,8 @@
     56.5
    ],
    "baseline_rate": 28.1,
-   "baseline_days": 4619,
-   "eligible_days": 5868,
+   "baseline_days": 4620,
+   "eligible_days": 5869,
    "key": "mvrv_high",
    "name": "MVRV above 3.7",
    "claim": "An MVRV above 3.7 marks the top of the cycle.",
@@ -228,7 +843,7 @@
    "detail": "/tools/bitcoin-realised-value-monitor",
    "firing_today": false,
    "last_fired": "2021-03-14",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -8.1,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -237,6 +852,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-09-10",
+     "end": "2012-04-09",
+     "days": 213,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-10-05",
+     "end": "2015-10-23",
+     "days": 384,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-20",
+     "end": "2019-04-02",
+     "days": 134,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-19",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-14",
+     "end": "2023-01-13",
+     "days": 214,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2011-09-10",
    "pending_since": null,
    "hit_rate": 60.0,
    "hit_rate_ci90": [
@@ -244,8 +892,8 @@
     85.7
    ],
    "baseline_rate": 54.8,
-   "baseline_days": 4101,
-   "eligible_days": 5868,
+   "baseline_days": 4102,
+   "eligible_days": 5869,
    "key": "mvrv_low",
    "name": "MVRV below 1",
    "claim": "An MVRV below 1 means the average holder is under water: a bottom.",
@@ -253,7 +901,7 @@
    "detail": "/tools/bitcoin-realised-value-monitor",
    "firing_today": false,
    "last_fired": "2023-01-13",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 5.2,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -262,6 +910,45 @@
   {
    "episodes": 6,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-10-18",
+     "end": "2011-12-16",
+     "days": 60,
+     "outcome": "hit"
+    },
+    {
+     "start": "2015-01-14",
+     "end": "2015-02-13",
+     "days": 31,
+     "outcome": "hit"
+    },
+    {
+     "start": "2018-11-22",
+     "end": "2018-12-19",
+     "days": 28,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-05-18",
+     "end": "2020-05-25",
+     "days": 8,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-17",
+     "end": "2022-07-14",
+     "days": 28,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-11-27",
+     "end": "2022-12-25",
+     "days": 29,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2011-10-18",
    "pending_since": null,
    "hit_rate": 83.3,
    "hit_rate_ci90": [
@@ -269,8 +956,8 @@
     96.2
    ],
    "baseline_rate": 54.7,
-   "baseline_days": 4415,
-   "eligible_days": 5504,
+   "baseline_days": 4416,
+   "eligible_days": 5505,
    "key": "puell_low",
    "name": "Puell multiple below 0.4",
    "claim": "Miner revenue far below its yearly average marks a cycle low.",
@@ -278,7 +965,7 @@
    "detail": "/tools/bitcoin-miners-monitor",
    "firing_today": false,
    "last_fired": "2022-12-25",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 28.6,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -287,6 +974,27 @@
   {
    "episodes": 3,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2013-03-21",
+     "end": "2013-06-02",
+     "days": 74,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-11-12",
+     "end": "2014-01-13",
+     "days": 63,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-11-28",
+     "end": "2018-01-07",
+     "days": 41,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2013-03-21",
    "pending_since": null,
    "hit_rate": 33.3,
    "hit_rate_ci90": [
@@ -294,8 +1002,8 @@
     74.6
    ],
    "baseline_rate": 28.5,
-   "baseline_days": 4691,
-   "eligible_days": 5504,
+   "baseline_days": 4692,
+   "eligible_days": 5505,
    "key": "puell_high",
    "name": "Puell multiple above 4",
    "claim": "Miner revenue far above its yearly average marks a cycle top.",
@@ -303,7 +1011,7 @@
    "detail": "/tools/bitcoin-miners-monitor",
    "firing_today": false,
    "last_fired": "2018-01-07",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 4.8,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -312,6 +1020,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-09-10",
+     "end": "2012-04-09",
+     "days": 213,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-10-05",
+     "end": "2015-10-23",
+     "days": 384,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-20",
+     "end": "2019-04-02",
+     "days": 134,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-19",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-14",
+     "end": "2023-01-13",
+     "days": 214,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2011-09-10",
    "pending_since": null,
    "hit_rate": 60.0,
    "hit_rate_ci90": [
@@ -319,8 +1060,8 @@
     85.7
    ],
    "baseline_rate": 52.4,
-   "baseline_days": 3736,
-   "eligible_days": 5503,
+   "baseline_days": 3737,
+   "eligible_days": 5504,
    "key": "mvrvz_low",
    "name": "MVRV Z-score below zero",
    "claim": "Market value below realised value, in standard deviations, marks the bottom.",
@@ -328,7 +1069,7 @@
    "detail": "/tools/bitcoin-realised-value-monitor",
    "firing_today": false,
    "last_fired": "2023-01-13",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 7.6,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -337,15 +1078,60 @@
   {
    "episodes": 7,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2013-03-22",
+     "end": "2013-04-10",
+     "days": 20,
+     "outcome": "miss"
+    },
+    {
+     "start": "2013-11-18",
+     "end": "2013-12-01",
+     "days": 14,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-05-25",
+     "end": "2017-05-25",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-12-08",
+     "end": "2017-12-08",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-01-04",
+     "end": "2021-01-10",
+     "days": 7,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-03-05",
+     "end": "2024-03-05",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-11-12",
+     "end": "2024-11-25",
+     "days": 14,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2013-03-22",
    "pending_since": null,
    "hit_rate": 14.3,
    "hit_rate_ci90": [
     3.3,
     45.2
    ],
-   "baseline_rate": 30.9,
-   "baseline_days": 4450,
-   "eligible_days": 5503,
+   "baseline_rate": 31.0,
+   "baseline_days": 4451,
+   "eligible_days": 5504,
    "key": "mvrvz_high",
    "name": "MVRV Z-score above 5",
    "claim": "An extreme Z-score marks the top of the cycle.",
@@ -353,7 +1139,7 @@
    "detail": "/tools/bitcoin-realised-value-monitor",
    "firing_today": false,
    "last_fired": "2024-11-25",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -16.7,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -362,15 +1148,60 @@
   {
    "episodes": 7,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2010-10-01",
+     "end": "2013-03-06",
+     "days": 888,
+     "outcome": "hit"
+    },
+    {
+     "start": "2013-07-02",
+     "end": "2013-10-04",
+     "days": 95,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-03-31",
+     "end": "2017-05-01",
+     "days": 1128,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-15",
+     "end": "2019-05-10",
+     "days": 177,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-10-24",
+     "end": "2020-07-25",
+     "days": 276,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-06-17",
+     "end": "2023-03-13",
+     "days": 270,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-06-15",
+     "end": "2023-09-28",
+     "days": 106,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2010-10-01",
    "pending_since": null,
    "hit_rate": 57.1,
    "hit_rate_ci90": [
     28.9,
     81.4
    ],
-   "baseline_rate": 24.2,
-   "baseline_days": 1933,
-   "eligible_days": 5868,
+   "baseline_rate": 24.1,
+   "baseline_days": 1934,
+   "eligible_days": 5869,
    "key": "mcap_thermo_low",
    "name": "Market cap under 10x thermocap",
    "claim": "Market value close to everything ever paid to miners marks a cycle low.",
@@ -378,7 +1209,7 @@
    "detail": "/tools/bitcoin-miners-monitor",
    "firing_today": false,
    "last_fired": "2023-09-28",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 33.0,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "above",
@@ -387,6 +1218,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-09-10",
+     "end": "2012-04-09",
+     "days": 213,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-10-05",
+     "end": "2015-10-23",
+     "days": 384,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-20",
+     "end": "2019-04-02",
+     "days": 134,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-19",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-14",
+     "end": "2023-01-13",
+     "days": 214,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2011-09-10",
    "pending_since": null,
    "hit_rate": 60.0,
    "hit_rate_ci90": [
@@ -394,8 +1258,8 @@
     85.7
    ],
    "baseline_rate": 54.8,
-   "baseline_days": 4101,
-   "eligible_days": 5868,
+   "baseline_days": 4102,
+   "eligible_days": 5869,
    "key": "below_realised",
    "name": "Price below realised price",
    "claim": "When price falls under what the average holder paid, the bottom is in.",
@@ -403,7 +1267,7 @@
    "detail": "/tools/bitcoin-realised-value-monitor",
    "firing_today": false,
    "last_fired": "2023-01-13",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 5.2,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -412,6 +1276,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-09-10",
+     "end": "2012-04-09",
+     "days": 213,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-10-05",
+     "end": "2015-10-23",
+     "days": 384,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-20",
+     "end": "2019-04-02",
+     "days": 134,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-19",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-14",
+     "end": "2023-01-13",
+     "days": 214,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2011-09-10",
    "pending_since": null,
    "hit_rate": 60.0,
    "hit_rate_ci90": [
@@ -419,8 +1316,8 @@
     85.7
    ],
    "baseline_rate": 54.8,
-   "baseline_days": 4101,
-   "eligible_days": 5868,
+   "baseline_days": 4102,
+   "eligible_days": 5869,
    "key": "below_balanced",
    "name": "Price below the balanced price",
    "claim": "A deeper floor than realised price, reached only in the worst bear markets.",
@@ -428,7 +1325,7 @@
    "detail": "/tools/bitcoin-realised-value-monitor",
    "firing_today": false,
    "last_fired": "2023-01-13",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 5.2,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -437,6 +1334,27 @@
   {
    "episodes": 2,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2022-01-23",
+     "end": "2022-01-23",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-05-01",
+     "end": "2023-06-15",
+     "days": 411,
+     "outcome": "miss"
+    },
+    {
+     "start": "2026-07-01",
+     "end": "2026-07-01",
+     "days": 1,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2022-01-23",
    "pending_since": "2026-07-01",
    "hit_rate": 0.0,
    "hit_rate_ci90": [
@@ -444,8 +1362,8 @@
     57.5
    ],
    "baseline_rate": 39.8,
-   "baseline_days": 2251,
-   "eligible_days": 3208,
+   "baseline_days": 2252,
+   "eligible_days": 3209,
    "key": "ssr_low",
    "name": "Stablecoin supply ratio in its lowest tenth",
    "claim": "Plenty of dry powder relative to market value precedes a rally.",
@@ -453,7 +1371,7 @@
    "detail": "/tools/bitcoin-flows-positioning-monitor",
    "firing_today": false,
    "last_fired": "2026-07-01",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -39.8,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -462,6 +1380,33 @@
   {
    "episodes": 3,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2015-01-14",
+     "end": "2015-01-27",
+     "days": 14,
+     "outcome": "hit"
+    },
+    {
+     "start": "2018-12-12",
+     "end": "2018-12-18",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-22",
+     "end": "2022-07-19",
+     "days": 28,
+     "outcome": "miss"
+    },
+    {
+     "start": "2026-02-11",
+     "end": "2026-03-03",
+     "days": 21,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2015-01-14",
    "pending_since": "2026-02-11",
    "hit_rate": 66.7,
    "hit_rate_ci90": [
@@ -469,8 +1414,8 @@
     92.2
    ],
    "baseline_rate": 59.0,
-   "baseline_days": 5086,
-   "eligible_days": 5770,
+   "baseline_days": 5087,
+   "eligible_days": 5771,
    "key": "rsi_weekly_low",
    "name": "Weekly RSI below 30",
    "claim": "An oversold weekly RSI marks the bottom of a bear market.",
@@ -478,7 +1423,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2026-03-03",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 7.7,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -487,12 +1432,21 @@
   {
    "episodes": 1,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2022-11-13",
+     "end": "2023-01-11",
+     "days": 60,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2022-11-13",
    "pending_since": null,
    "hit_rate": 100.0,
    "hit_rate_ci90": null,
    "baseline_rate": 55.8,
-   "baseline_days": 4933,
-   "eligible_days": 5448,
+   "baseline_days": 4934,
+   "eligible_days": 5449,
    "key": "rsi_monthly_low",
    "name": "Monthly RSI below 40",
    "claim": "A monthly RSI at bear-market levels marks the bottom.",
@@ -500,7 +1454,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2023-01-11",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 44.2,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": null,
@@ -509,6 +1463,33 @@
   {
    "episodes": 4,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2012-06-02",
+     "end": "2012-07-11",
+     "days": 40,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-11-22",
+     "end": "2015-09-17",
+     "days": 300,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-11-25",
+     "end": "2019-03-27",
+     "days": 123,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-08-10",
+     "end": "2023-03-10",
+     "days": 213,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2012-06-02",
    "pending_since": null,
    "hit_rate": 50.0,
    "hit_rate_ci90": [
@@ -516,8 +1497,8 @@
     81.8
    ],
    "baseline_rate": 53.7,
-   "baseline_days": 4102,
-   "eligible_days": 5503,
+   "baseline_days": 4103,
+   "eligible_days": 5504,
    "key": "roi1y_low",
    "name": "One-year return below -50%",
    "claim": "A full reset of the trailing year marks the capitulation low.",
@@ -525,7 +1506,7 @@
    "detail": "/tools/bitcoin-cycle-monitor",
    "firing_today": false,
    "last_fired": "2023-03-10",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -3.7,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -534,6 +1515,99 @@
   {
    "episodes": 14,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2011-09-20",
+     "end": "2011-09-20",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2012-01-06",
+     "end": "2012-01-06",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2012-06-17",
+     "end": "2012-06-17",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-04-12",
+     "end": "2014-04-12",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2015-10-21",
+     "end": "2015-10-23",
+     "days": 3,
+     "outcome": "hit"
+    },
+    {
+     "start": "2018-04-08",
+     "end": "2018-04-11",
+     "days": 4,
+     "outcome": "miss"
+    },
+    {
+     "start": "2019-05-04",
+     "end": "2019-05-04",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-11-28",
+     "end": "2020-05-28",
+     "days": 183,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-07-24",
+     "end": "2021-07-24",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-12-12",
+     "end": "2021-12-22",
+     "days": 11,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-03-29",
+     "end": "2022-03-29",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-03-14",
+     "end": "2023-03-14",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-09-08",
+     "end": "2024-09-08",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2025-04-10",
+     "end": "2025-04-10",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-11-11",
+     "end": "2025-11-11",
+     "days": 1,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2011-09-20",
    "pending_since": "2025-11-11",
    "hit_rate": 64.3,
    "hit_rate_ci90": [
@@ -541,8 +1615,8 @@
     81.4
    ],
    "baseline_rate": 59.7,
-   "baseline_days": 3683,
-   "eligible_days": 5519,
+   "baseline_days": 3684,
+   "eligible_days": 5520,
    "key": "reclaim_50w",
    "name": "Price reclaims the 50-week average",
    "claim": "A convincing close back above the 50-week average confirms the low is in.",
@@ -550,7 +1624,7 @@
    "detail": "/tools/bitcoin-technical-signals",
    "firing_today": false,
    "last_fired": "2025-11-11",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 4.6,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -559,15 +1633,30 @@
   {
    "episodes": 2,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2010-08-18",
+     "end": "2011-04-26",
+     "days": 252,
+     "outcome": "hit"
+    },
+    {
+     "start": "2011-10-18",
+     "end": "2012-02-19",
+     "days": 125,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2010-08-18",
    "pending_since": null,
    "hit_rate": 100.0,
    "hit_rate_ci90": [
     42.5,
     100.0
    ],
-   "baseline_rate": 55.1,
-   "baseline_days": 4946,
-   "eligible_days": 5861,
+   "baseline_rate": 55.0,
+   "baseline_days": 4947,
+   "eligible_days": 5862,
    "key": "fees_low",
    "name": "Transaction fees in their lowest twentieth",
    "claim": "Fees as low as at previous bottoms mean the chain is as quiet as it gets.",
@@ -575,8 +1664,8 @@
    "detail": "/tools/bitcoin-miners-monitor",
    "firing_today": false,
    "last_fired": "2012-02-19",
-   "as_of_day": "2026-09-10",
-   "difference": 44.9,
+   "as_of_day": "2026-09-11",
+   "difference": 45.0,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
@@ -584,6 +1673,27 @@
   {
    "episodes": 3,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2023-02-01",
+     "end": "2023-07-31",
+     "days": 181,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-06-01",
+     "end": "2024-09-30",
+     "days": 122,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-06-01",
+     "end": "2026-09-11",
+     "days": 468,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2023-02-01",
    "pending_since": null,
    "hit_rate": 33.3,
    "hit_rate_ci90": [
@@ -592,15 +1702,15 @@
    ],
    "baseline_rate": 55.4,
    "baseline_days": 3140,
-   "eligible_days": 4090,
+   "eligible_days": 4091,
    "key": "attention_low",
    "name": "Public attention in its lowest sixth",
    "claim": "Nobody is looking: the condition that precedes a recovery.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-market-context",
    "firing_today": true,
-   "last_fired": "2026-09-10",
-   "as_of_day": "2026-09-10",
+   "last_fired": "2026-09-11",
+   "as_of_day": "2026-09-11",
    "difference": -22.1,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -609,6 +1719,21 @@
   {
    "episodes": 2,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2017-05-01",
+     "end": "2018-03-31",
+     "days": 335,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-01-01",
+     "end": "2021-05-31",
+     "days": 151,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2017-05-01",
    "pending_since": null,
    "hit_rate": 0.0,
    "hit_rate_ci90": [
@@ -616,8 +1741,8 @@
     57.5
    ],
    "baseline_rate": 25.1,
-   "baseline_days": 3059,
-   "eligible_days": 4090,
+   "baseline_days": 3060,
+   "eligible_days": 4091,
    "key": "attention_high",
    "name": "Public attention in its highest tenth",
    "claim": "Everybody is looking: the condition that marks a top.",
@@ -625,7 +1750,7 @@
    "detail": "/tools/bitcoin-market-context",
    "firing_today": false,
    "last_fired": "2021-05-31",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -25.1,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -634,6 +1759,51 @@
   {
    "episodes": 6,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2013-09-09",
+     "end": "2013-10-13",
+     "days": 35,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-02-21",
+     "end": "2015-10-19",
+     "days": 606,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-06-13",
+     "end": "2019-04-02",
+     "days": 294,
+     "outcome": "miss"
+    },
+    {
+     "start": "2019-11-23",
+     "end": "2020-04-22",
+     "days": 152,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-05-09",
+     "end": "2023-03-13",
+     "days": 309,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-06-15",
+     "end": "2023-10-15",
+     "days": 123,
+     "outcome": "hit"
+    },
+    {
+     "start": "2025-11-23",
+     "end": "2026-08-20",
+     "days": 271,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2013-09-09",
    "pending_since": "2025-11-23",
    "hit_rate": 50.0,
    "hit_rate_ci90": [
@@ -641,8 +1811,8 @@
     77.9
    ],
    "baseline_rate": 42.2,
-   "baseline_days": 2327,
-   "eligible_days": 4751,
+   "baseline_days": 2328,
+   "eligible_days": 4752,
    "key": "site_composite_cheap",
    "name": "Our composite reads cheap (below 30)",
    "claim": "When our own valuation composite is in its cheap band, a doubling follows.",
@@ -650,7 +1820,7 @@
    "detail": "/tools/bitcoin-market-context",
    "firing_today": false,
    "last_fired": "2026-08-20",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "own": true,
    "difference": 7.8,
    "evaluation_type": "episode_binomial",
@@ -660,6 +1830,63 @@
   {
    "episodes": 9,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2013-10-24",
+     "end": "2014-01-20",
+     "days": 89,
+     "outcome": "miss"
+    },
+    {
+     "start": "2016-06-17",
+     "end": "2016-06-17",
+     "days": 1,
+     "outcome": "miss"
+    },
+    {
+     "start": "2016-12-24",
+     "end": "2018-03-06",
+     "days": 438,
+     "outcome": "miss"
+    },
+    {
+     "start": "2019-06-21",
+     "end": "2019-08-12",
+     "days": 53,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-11-06",
+     "end": "2021-05-17",
+     "days": 193,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-09-07",
+     "end": "2021-12-03",
+     "days": 88,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-02-15",
+     "end": "2024-05-21",
+     "days": 97,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-11-12",
+     "end": "2025-02-04",
+     "days": 85,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-07-14",
+     "end": "2025-08-14",
+     "days": 32,
+     "outcome": "hit"
+    }
+   ],
+   "first_fired": "2013-10-24",
    "pending_since": null,
    "hit_rate": 33.3,
    "hit_rate_ci90": [
@@ -668,7 +1895,7 @@
    ],
    "baseline_rate": 27.1,
    "baseline_days": 2563,
-   "eligible_days": 4751,
+   "eligible_days": 4752,
    "key": "site_composite_dear",
    "name": "Our composite reads dear (above 70)",
    "claim": "When our own valuation composite is in its dear band, a 40% fall follows.",
@@ -676,7 +1903,7 @@
    "detail": "/tools/bitcoin-market-context",
    "firing_today": false,
    "last_fired": "2025-08-14",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "own": true,
    "difference": 6.2,
    "evaluation_type": "episode_binomial",
@@ -686,6 +1913,33 @@
   {
    "episodes": 4,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2014-04-10",
+     "end": "2015-04-30",
+     "days": 386,
+     "outcome": "miss"
+    },
+    {
+     "start": "2018-12-14",
+     "end": "2018-12-17",
+     "days": 4,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-13",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-17",
+     "end": "2022-11-30",
+     "days": 167,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2014-04-10",
    "pending_since": null,
    "hit_rate": 50.0,
    "hit_rate_ci90": [
@@ -693,8 +1947,8 @@
     81.8
    ],
    "baseline_rate": 52.2,
-   "baseline_days": 3468,
-   "eligible_days": 4751,
+   "baseline_days": 3469,
+   "eligible_days": 4752,
    "key": "site_composite_floor",
    "name": "Our composite reads very cheap (below 10)",
    "claim": "When our composite is in its lowest band, a doubling follows.",
@@ -702,7 +1956,7 @@
    "detail": "/tools/bitcoin-market-context",
    "firing_today": false,
    "last_fired": "2022-11-30",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "own": true,
    "difference": -2.2,
    "evaluation_type": "episode_binomial",
@@ -712,15 +1966,36 @@
   {
    "episodes": 3,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2013-11-14",
+     "end": "2013-12-11",
+     "days": 28,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-08-15",
+     "end": "2018-01-08",
+     "days": 147,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-01-03",
+     "end": "2021-04-17",
+     "days": 105,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2013-11-14",
    "pending_since": null,
    "hit_rate": 0.0,
    "hit_rate_ci90": [
     0.0,
     47.4
    ],
-   "baseline_rate": 31.0,
-   "baseline_days": 3836,
-   "eligible_days": 4751,
+   "baseline_rate": 31.1,
+   "baseline_days": 3837,
+   "eligible_days": 4752,
    "key": "site_composite_ceiling",
    "name": "Our composite reads very dear (above 90)",
    "claim": "When our composite is in its highest band, a 40% fall follows.",
@@ -728,9 +2003,9 @@
    "detail": "/tools/bitcoin-market-context",
    "firing_today": false,
    "last_fired": "2021-04-17",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "own": true,
-   "difference": -31.0,
+   "difference": -31.1,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
@@ -738,6 +2013,51 @@
   {
    "episodes": 5,
    "censored": 2,
+   "episode_dates": [
+    {
+     "start": "2013-10-03",
+     "end": "2013-10-03",
+     "days": 1,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-04-11",
+     "end": "2015-10-26",
+     "days": 564,
+     "outcome": "miss"
+    },
+    {
+     "start": "2020-03-13",
+     "end": "2020-03-19",
+     "days": 7,
+     "outcome": "hit"
+    },
+    {
+     "start": "2022-06-17",
+     "end": "2023-03-13",
+     "days": 270,
+     "outcome": "miss"
+    },
+    {
+     "start": "2023-08-19",
+     "end": "2023-10-15",
+     "days": 58,
+     "outcome": "hit"
+    },
+    {
+     "start": "2026-02-06",
+     "end": "2026-02-25",
+     "days": 20,
+     "outcome": "pending"
+    },
+    {
+     "start": "2026-06-03",
+     "end": "2026-08-20",
+     "days": 79,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2013-10-03",
    "pending_since": "2026-02-06",
    "hit_rate": 60.0,
    "hit_rate_ci90": [
@@ -745,8 +2065,8 @@
     85.7
    ],
    "baseline_rate": 47.5,
-   "baseline_days": 3036,
-   "eligible_days": 4751,
+   "baseline_days": 3037,
+   "eligible_days": 4752,
    "key": "site_powerlaw_low",
    "name": "Price in the power-law model's bottom fifth",
    "claim": "When price sits in the lowest fifth of its power-law deviation history, a doubling follows.",
@@ -754,7 +2074,7 @@
    "detail": "/tools/bitcoin-power-law-monitor",
    "firing_today": false,
    "last_fired": "2026-08-20",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "own": true,
    "difference": 12.5,
    "evaluation_type": "episode_binomial",
@@ -764,6 +2084,27 @@
   {
    "episodes": 3,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2013-11-08",
+     "end": "2014-02-02",
+     "days": 87,
+     "outcome": "miss"
+    },
+    {
+     "start": "2017-06-07",
+     "end": "2018-05-08",
+     "days": 336,
+     "outcome": "miss"
+    },
+    {
+     "start": "2020-12-29",
+     "end": "2021-11-30",
+     "days": 337,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2013-11-08",
    "pending_since": null,
    "hit_rate": 0.0,
    "hit_rate_ci90": [
@@ -771,8 +2112,8 @@
     47.4
    ],
    "baseline_rate": 23.7,
-   "baseline_days": 3356,
-   "eligible_days": 4751,
+   "baseline_days": 3357,
+   "eligible_days": 4752,
    "key": "site_powerlaw_high",
    "name": "Price in the power-law model's top fifth",
    "claim": "When price sits in the highest fifth of its power-law deviation history, a 40% fall follows.",
@@ -780,7 +2121,7 @@
    "detail": "/tools/bitcoin-power-law-monitor",
    "firing_today": false,
    "last_fired": "2021-11-30",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "own": true,
    "difference": -23.7,
    "evaluation_type": "episode_binomial",
@@ -790,6 +2131,45 @@
   {
    "episodes": 5,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2018-02-02",
+     "end": "2019-02-07",
+     "days": 371,
+     "outcome": "miss"
+    },
+    {
+     "start": "2019-07-15",
+     "end": "2020-04-24",
+     "days": 285,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-05-16",
+     "end": "2022-11-25",
+     "days": 559,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-08-06",
+     "end": "2024-08-08",
+     "days": 3,
+     "outcome": "hit"
+    },
+    {
+     "start": "2025-02-27",
+     "end": "2025-04-09",
+     "days": 42,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-11-08",
+     "end": "2026-07-08",
+     "days": 243,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2018-02-02",
    "pending_since": "2025-11-08",
    "hit_rate": 20.0,
    "hit_rate_ci90": [
@@ -797,8 +2177,8 @@
     56.5
    ],
    "baseline_rate": 51.7,
-   "baseline_days": 1069,
-   "eligible_days": 3140,
+   "baseline_days": 1070,
+   "eligible_days": 3141,
    "key": "fear_extreme",
    "name": "Fear and Greed at 20 or below",
    "claim": "Extreme fear means the market has capitulated and it is time to buy.",
@@ -806,7 +2186,7 @@
    "detail": "/tools/bitcoin-flows-positioning-monitor",
    "firing_today": false,
    "last_fired": "2026-07-08",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": -31.7,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -815,6 +2195,39 @@
   {
    "episodes": 5,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2019-06-16",
+     "end": "2019-07-10",
+     "days": 25,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-08-02",
+     "end": "2021-03-09",
+     "days": 220,
+     "outcome": "miss"
+    },
+    {
+     "start": "2021-10-20",
+     "end": "2021-11-09",
+     "days": 21,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-02-28",
+     "end": "2024-04-09",
+     "days": 42,
+     "outcome": "miss"
+    },
+    {
+     "start": "2024-11-12",
+     "end": "2025-01-22",
+     "days": 72,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2019-06-16",
    "pending_since": null,
    "hit_rate": 40.0,
    "hit_rate_ci90": [
@@ -822,8 +2235,8 @@
     72.8
    ],
    "baseline_rate": 39.2,
-   "baseline_days": 1945,
-   "eligible_days": 3140,
+   "baseline_days": 1946,
+   "eligible_days": 3141,
    "key": "greed_extreme",
    "name": "Fear and Greed at 80 or above",
    "claim": "Extreme greed means the market is euphoric and due to fall.",
@@ -831,7 +2244,7 @@
    "detail": "/tools/bitcoin-flows-positioning-monitor",
    "firing_today": false,
    "last_fired": "2025-01-22",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 0.8,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -840,6 +2253,105 @@
   {
    "episodes": 15,
    "censored": 1,
+   "episode_dates": [
+    {
+     "start": "2011-09-02",
+     "end": "2011-12-26",
+     "days": 116,
+     "outcome": "miss"
+    },
+    {
+     "start": "2012-04-24",
+     "end": "2012-06-21",
+     "days": 59,
+     "outcome": "hit"
+    },
+    {
+     "start": "2012-12-16",
+     "end": "2013-02-03",
+     "days": 50,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-12-18",
+     "end": "2014-12-31",
+     "days": 14,
+     "outcome": "miss"
+    },
+    {
+     "start": "2015-04-27",
+     "end": "2015-05-28",
+     "days": 32,
+     "outcome": "hit"
+    },
+    {
+     "start": "2016-07-30",
+     "end": "2016-08-21",
+     "days": 23,
+     "outcome": "hit"
+    },
+    {
+     "start": "2018-10-30",
+     "end": "2019-01-09",
+     "days": 72,
+     "outcome": "hit"
+    },
+    {
+     "start": "2019-11-20",
+     "end": "2020-06-22",
+     "days": 216,
+     "outcome": "hit"
+    },
+    {
+     "start": "2020-10-29",
+     "end": "2020-12-01",
+     "days": 34,
+     "outcome": "hit"
+    },
+    {
+     "start": "2021-04-24",
+     "end": "2021-08-06",
+     "days": 105,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-06-09",
+     "end": "2022-08-18",
+     "days": 71,
+     "outcome": "miss"
+    },
+    {
+     "start": "2022-11-27",
+     "end": "2023-01-13",
+     "days": 48,
+     "outcome": "hit"
+    },
+    {
+     "start": "2023-07-12",
+     "end": "2023-08-09",
+     "days": 29,
+     "outcome": "hit"
+    },
+    {
+     "start": "2024-05-14",
+     "end": "2024-10-10",
+     "days": 150,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-01-31",
+     "end": "2025-07-22",
+     "days": 173,
+     "outcome": "miss"
+    },
+    {
+     "start": "2025-11-25",
+     "end": "2026-08-16",
+     "days": 265,
+     "outcome": "pending"
+    }
+   ],
+   "first_fired": "2011-09-02",
    "pending_since": "2025-11-25",
    "hit_rate": 60.0,
    "hit_rate_ci90": [
@@ -848,7 +2360,7 @@
    ],
    "baseline_rate": 53.3,
    "baseline_days": 2942,
-   "eligible_days": 5799,
+   "eligible_days": 5800,
    "key": "hash_ribbon",
    "name": "Hash ribbon capitulation",
    "claim": "When the 30-day hash rate falls below the 60-day, miners are capitulating and a bottom is near.",
@@ -856,7 +2368,7 @@
    "detail": "/tools/bitcoin-miners-monitor",
    "firing_today": false,
    "last_fired": "2026-08-16",
-   "as_of_day": "2026-09-10",
+   "as_of_day": "2026-09-11",
    "difference": 6.7,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "no",
@@ -865,6 +2377,21 @@
   {
    "episodes": 2,
    "censored": 0,
+   "episode_dates": [
+    {
+     "start": "2011-09-16",
+     "end": "2013-11-08",
+     "days": 785,
+     "outcome": "hit"
+    },
+    {
+     "start": "2014-09-18",
+     "end": "2026-09-11",
+     "days": 4377,
+     "outcome": "miss"
+    }
+   ],
+   "first_fired": "2011-09-16",
    "pending_since": null,
    "hit_rate": 50.0,
    "hit_rate_ci90": [
@@ -873,15 +2400,15 @@
    ],
    "baseline_rate": 3.6,
    "baseline_days": 252,
-   "eligible_days": 5503,
+   "eligible_days": 5504,
    "key": "below_s2f",
    "name": "Price below the Stock-to-Flow model",
    "claim": "Bitcoin trades below its scarcity-implied value and will revert to it.",
    "direction": "bottom",
    "detail": "/tools/bitcoin-indicator-autopsy",
    "firing_today": true,
-   "last_fired": "2026-09-10",
-   "as_of_day": "2026-09-10",
+   "last_fired": "2026-09-11",
+   "as_of_day": "2026-09-11",
    "difference": 46.4,
    "evaluation_type": "episode_binomial",
    "interval_clears_baseline": "above",
@@ -901,8 +2428,8 @@
    ],
    "interval_kind": "random-signal 90% range, 10,000 draws",
    "baseline_rate": 34.6,
-   "baseline_days": 4635,
-   "eligible_days": 4635,
+   "baseline_days": 4636,
+   "eligible_days": 4636,
    "doubling_after_signal": 64.0,
    "doubling_baseline": 53.0,
    "median_run_days": 9,
@@ -911,14 +2438,60 @@
    "confidence_threshold": 0.5,
    "firing_today": false,
    "last_fired": "2024-05-03",
-   "as_of_day": "2026-09-10",
-   "strict": null,
-   "negative": null,
-   "critical_time": null,
-   "strict_spec_scored": false,
+   "as_of_day": "2026-09-11",
+   "strict": {
+    "signal_days": 0,
+    "runs": 0,
+    "note": "never fires at confidence 0.5"
+   },
+   "negative": {
+    "signal_days": 35,
+    "runs": 2,
+    "hit_rate": 97.1,
+    "baseline_rate": 53.0,
+    "random_p5": 0.0,
+    "random_p95": 100.0,
+    "p": 0.4488,
+    "direction": "bottom"
+   },
+   "critical_time": {
+    "rule": "one trial per signal run: at its first day, did the highest close of the following 365 days fall within the tolerance of the fitted t_c; baseline = random start days with t_c offsets resampled from the runs",
+    "runs": 18,
+    "trials": 16,
+    "median_tc_days_ahead": 96.75,
+    "draws": 10000,
+    "seed": 2026,
+    "by_tolerance": {
+     "15": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.07620625,
+      "random_p5": 0.0,
+      "random_p95": 0.1875,
+      "p_random_at_least_observed": 0.7209
+     },
+     "30": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.13513125,
+      "random_p5": 0.0,
+      "random_p95": 0.3125,
+      "p_random_at_least_observed": 0.9022
+     },
+     "60": {
+      "hit_rate_signal": 0.0625,
+      "hits": 1,
+      "random_mean": 0.24444375,
+      "random_p5": 0.0625,
+      "random_p95": 0.4375,
+      "p_random_at_least_observed": 0.9898
+     }
+    }
+   },
+   "strict_spec_scored": true,
    "evaluation_type": "random_block_signal_days",
    "detail": "/tools/bitcoin-indicator-autopsy",
-   "note": "random-block p = 0.6791",
+   "note": "random-block p = 0.6807",
    "difference": -6.6,
    "interval_clears_baseline": "no",
    "verdict": "Not enough episodes to score"
