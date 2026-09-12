@@ -469,12 +469,29 @@ def company(reg, prices, equities=None, today=None):
     failures = []
     for t, srs in per_token.items():
         for r in srs:
+            # ONLY PERIODS UNDER FAIR-VALUE ACCOUNTING. Before ASU 2023-08 crypto
+            # was carried at COST LESS IMPAIRMENT, so the carrying value is far
+            # below market by design and the implied price is not a price.
+            #
+            # This excluded STRATEGY. Its 2023 comparative - 189,150 BTC against
+            # a $3.63bn carrying value - implies $19,172 against a $42,288
+            # market, which is impaired cost behaving exactly as the standard
+            # required. The largest holder in the world was being thrown out of
+            # its own index for having complied with the accounting rules that
+            # applied at the time.
+            if (r['end'] or '') < FAIR_VALUE_FROM:
+                continue
             v = fv_all.get(r['end']) or _nearest_fair_value(fv_all, r['end'])
             if not v:
                 continue
             bad = price_plausible(t, r['units'], v['usd'], prices, r['end'])
             if bad:
-                failures.append({'token': t, 'period': r['end'], 'reason': bad})
+                failures.append({'token': t, 'period': r['end'], 'reason': bad,
+                                 'is_latest': r is srs[-1]})
+    # AND ONLY THE CURRENT PERIOD EXCLUDES. A disagreement in an old comparative
+    # is worth recording and is not a reason to drop a company whose latest
+    # filing reconciles: the index is built from what it holds now.
+    disqualifying = [f for f in failures if f.get('is_latest')]
     recon = {}
     if declared:
         fv = fair_value_series(facts)
@@ -493,7 +510,8 @@ def company(reg, prices, equities=None, today=None):
                 f'({mis.get("actual_source", "")[:90]})') if mis else None,
             'token_declared': declared, 'fair_value_reconciliation': recon,
             'reconciliation_failures': failures,
-            'index_eligible': not failures,
+            'disqualifying_failures': disqualifying,
+            'index_eligible': not disqualifying,
             'claims_populated': claims_done,
             'nav_basis': 'net' if claims_done else 'GROSS - no claims recorded yet',
             'accretion': accretion(rows),
@@ -903,8 +921,8 @@ def build_cti(companies, rules=None):
             excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
                              'reason': c.get('status') or 'no point-in-time holding series'})
             continue
-        if c.get('reconciliation_failures'):
-            f = c['reconciliation_failures'][-1]
+        if c.get('disqualifying_failures'):
+            f = c['disqualifying_failures'][-1]
             excluded.append({'ticker': c.get('ticker'), 'name': c.get('name'),
                              'reason': f['reason'], 'needs_verification': True})
             continue
@@ -1106,6 +1124,14 @@ def supply_check(token, units):
             f'against the filing. Not excluded on this alone: the largest honest holders are '
             f'several per cent of supply and growing, and a threshold that catches a mis-tag '
             f'today would reject them tomorrow.')
+
+
+# ASU 2023-08 required crypto at FAIR VALUE for fiscal years beginning after
+# 15 December 2024, with early adoption permitted from 2023. Before it, holdings
+# were carried at COST LESS IMPAIRMENT - written down on every dip and never
+# written back up - so a carrying value from an earlier period is not comparable
+# with a market price and the two were never meant to agree.
+FAIR_VALUE_FROM = '2024-01-01'
 
 
 def price_plausible(token, units, fair_value_usd, prices, when, tolerance=0.5):
@@ -1424,11 +1450,16 @@ def main(registry_path='src/treasury/registry.json', prices=None, out_dir=OUT,
             out['companies'].append({'ticker': c.get('ticker'), 'status': 'error',
                                      'reason': str(e)[:200]})
     os.makedirs(out_dir, exist_ok=True)
-    io.open(f'{out_dir}/treasury.json', 'w', encoding='utf-8').write(json.dumps(out))
-    # the index, built from whatever the registry covers. Discovery of the
-    # wider universe is a separate command: it is a long set of SEC calls and
-    # should not run on every pipeline pass.
+    # BUILD THE INDEX BEFORE WRITING. This sat immediately AFTER the write, so
+    # the index was computed, printed to the console, and thrown away: the file
+    # the page reads had no `cti` key at all. The console said "4 members,
+    # $14.3bn" and the dashboard would have rendered empty.
+    #
+    # Same shape as the reconciliation that never ran - a step that reports
+    # success while producing nothing - and the console output is what made it
+    # invisible. A summary printed from memory is not evidence about a file.
     out['cti'] = build_cti(out['companies'])
+    io.open(f'{out_dir}/treasury.json', 'w', encoding='utf-8').write(json.dumps(out))
     ok = sum(1 for c in out['companies'] if c.get('rows'))
     gross_only = [c['ticker'] for c in out['companies'] if c.get('rows') and not c.get('claims_populated')]
     print(f'  treasury: {ok} of {len(out["companies"])} issuers with a point-in-time series')
