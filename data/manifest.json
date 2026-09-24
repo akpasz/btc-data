@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "generated_at": "2026-09-24T19:12:44+00:00",
+ "generated_at": "2026-09-24T23:53:47+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
@@ -44,7 +44,7 @@
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-09-24T19:12:44+00:00",
+   "fetched_at": "2026-09-24T23:53:47+00:00",
    "metrics": {
     "spot": 24
    },
@@ -68,7 +68,7 @@
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-09-24T19:12:44+00:00",
+   "fetched_at": "2026-09-24T23:53:47+00:00",
    "metrics": {
     "fee_fastest_sat_vb": 24,
     "hash_rate_ehs": 1119,
@@ -113,7 +113,7 @@
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-09-24T19:12:44+00:00",
+   "fetched_at": "2026-09-24T23:53:47+00:00",
    "metrics": {
     "index": 3154
    },
@@ -125,7 +125,7 @@
   },
   "coingecko_global": {
    "status": "ok",
-   "fetched_at": "2026-09-24T19:12:44+00:00",
+   "fetched_at": "2026-09-24T23:53:47+00:00",
    "metrics": {
     "btc_dominance_pct": 23
    },
@@ -137,24 +137,24 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-09-24T19:12:44+00:00",
+   "fetched_at": "2026-09-24T23:53:47+00:00",
    "metrics": {
-    "deribit_term_slope_30_180_pts": 22,
-    "cme_btc_open_interest_contracts": 4,
     "cme_btc_leveraged_short": 4,
-    "deribit_funding_8h_daily_mean": 384,
-    "deribit_skew_25d_pts": 23,
-    "deribit_basis_90d_ann_pct": 23,
-    "deribit_atm_iv_90d": 22,
-    "cme_btc_leveraged_net": 4,
-    "deribit_atm_iv_180d": 22,
-    "deribit_atm_iv_7d": 22,
-    "deribit_atm_iv_30d": 23,
     "okx_open_interest_usd": 203,
-    "deribit_butterfly_25d_pts": 23,
+    "deribit_basis_90d_ann_pct": 23,
+    "deribit_dvol_close": 1023,
     "cme_btc_leveraged_long": 4,
+    "deribit_term_slope_30_180_pts": 22,
+    "deribit_skew_25d_pts": 23,
+    "deribit_atm_iv_7d": 22,
+    "deribit_butterfly_25d_pts": 23,
     "deribit_putcall_oi_ratio": 23,
-    "deribit_dvol_close": 1023
+    "cme_btc_open_interest_contracts": 4,
+    "deribit_atm_iv_30d": 23,
+    "deribit_funding_8h_daily_mean": 384,
+    "deribit_atm_iv_180d": 22,
+    "deribit_atm_iv_90d": 22,
+    "cme_btc_leveraged_net": 4
    },
    "last_date": "2026-09-24",
    "source_url": "Deribit, OKX, CFTC public endpoints",
@@ -162,80 +162,80 @@
    "age_days": 0,
    "expected_max_age_days": 2,
    "term_structure": {
-    "as_of": "2026-09-24T19:12:44+00:00",
+    "as_of": "2026-09-24T23:53:47+00:00",
     "curve": [
      {
       "expiry": "2026-09-27",
-      "days": 2.5,
-      "atm_iv": 27.95,
+      "days": 2.3,
+      "atm_iv": 26.18,
       "n_strikes": 62
      },
      {
       "expiry": "2026-09-28",
-      "days": 3.5,
-      "atm_iv": 27.41,
+      "days": 3.3,
+      "atm_iv": 26.7,
       "n_strikes": 58
      },
      {
       "expiry": "2026-10-02",
-      "days": 7.5,
-      "atm_iv": 32.45,
+      "days": 7.3,
+      "atm_iv": 32.75,
       "n_strikes": 48
      },
      {
       "expiry": "2026-10-09",
-      "days": 14.5,
-      "atm_iv": 33.42,
+      "days": 14.3,
+      "atm_iv": 33.48,
       "n_strikes": 52
      },
      {
       "expiry": "2026-10-16",
-      "days": 21.5,
-      "atm_iv": 34.15,
+      "days": 21.3,
+      "atm_iv": 34.33,
       "n_strikes": 38
      },
      {
       "expiry": "2026-10-30",
-      "days": 35.5,
-      "atm_iv": 35.03,
+      "days": 35.3,
+      "atm_iv": 35.02,
       "n_strikes": 112
      },
      {
       "expiry": "2026-11-27",
-      "days": 63.5,
-      "atm_iv": 36.89,
+      "days": 63.3,
+      "atm_iv": 36.93,
       "n_strikes": 96
      },
      {
       "expiry": "2026-12-25",
-      "days": 91.5,
-      "atm_iv": 37.63,
+      "days": 91.3,
+      "atm_iv": 37.54,
       "n_strikes": 118
      },
      {
       "expiry": "2027-03-26",
-      "days": 182.5,
-      "atm_iv": 38.62,
+      "days": 182.3,
+      "atm_iv": 38.47,
       "n_strikes": 104
      },
      {
       "expiry": "2027-06-25",
-      "days": 273.5,
-      "atm_iv": 39.22,
+      "days": 273.3,
+      "atm_iv": 39.24,
       "n_strikes": 108
      },
      {
       "expiry": "2027-09-24",
-      "days": 364.5,
+      "days": 364.3,
       "atm_iv": 39.52,
       "n_strikes": 82
      }
     ],
     "at_tenor": {
-     "7": 31.82,
-     "30": 34.68,
-     "90": 37.59,
-     "180": 38.59
+     "7": 32.3,
+     "30": 34.76,
+     "90": 37.51,
+     "180": 38.45
     },
     "note": "ATM IV per listed expiry (50-delta by interpolation, r=0); tenor values interpolated in days, never extrapolated. Slope is 180-day minus 30-day ATM IV in vol points: positive is the normal contango of a calm surface, negative (inverted) marks stress."
    }
