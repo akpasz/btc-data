@@ -4,68 +4,68 @@
  "series": [
   {
    "name": "addr_balance_count",
-   "points": 5917,
-   "bytes": 139048,
+   "points": 5918,
+   "bytes": 139072,
    "url": "series/addr_balance_count.json"
   },
   {
    "name": "fees_usd",
-   "points": 6456,
-   "bytes": 161594,
+   "points": 6457,
+   "bytes": 161620,
    "url": "series/fees_usd.json"
   },
   {
    "name": "hash_rate",
-   "points": 6467,
-   "bytes": 168505,
+   "points": 6468,
+   "bytes": 168531,
    "url": "series/hash_rate.json"
   },
   {
    "name": "issuance_usd",
-   "points": 5916,
-   "bytes": 152786,
+   "points": 5917,
+   "bytes": 152812,
    "url": "series/issuance_usd.json"
   },
   {
    "name": "market_cap",
-   "points": 5916,
-   "bytes": 161552,
+   "points": 5917,
+   "bytes": 161581,
    "url": "series/market_cap.json"
   },
   {
    "name": "mvrv",
-   "points": 5916,
-   "bytes": 153724,
+   "points": 5917,
+   "bytes": 153750,
    "url": "series/mvrv.json"
   },
   {
    "name": "price",
-   "points": 6477,
-   "bytes": 143124,
+   "points": 6478,
+   "bytes": 143148,
    "url": "series/price.json"
   },
   {
    "name": "price_cm",
-   "points": 5916,
-   "bytes": 153048,
+   "points": 5917,
+   "bytes": 153073,
    "url": "series/price_cm.json"
   },
   {
    "name": "supply",
-   "points": 6472,
-   "bytes": 161121,
+   "points": 6473,
+   "bytes": 161148,
    "url": "series/supply.json"
   },
   {
    "name": "supply_cm",
-   "points": 5917,
-   "bytes": 168806,
+   "points": 5918,
+   "bytes": 168835,
    "url": "series/supply_cm.json"
   },
   {
    "name": "transactions",
-   "points": 6453,
-   "bytes": 138008,
+   "points": 6454,
+   "bytes": 138030,
    "url": "series/transactions.json"
   },
   {
@@ -76,14 +76,14 @@
   },
   {
    "name": "unique_addresses",
-   "points": 6441,
-   "bytes": 138525,
+   "points": 6442,
+   "bytes": 138547,
    "url": "series/unique_addresses.json"
   },
   {
    "name": "utxo_count",
-   "points": 6456,
-   "bytes": 152839,
+   "points": 6457,
+   "bytes": 152864,
    "url": "series/utxo_count.json"
   }
  ]
