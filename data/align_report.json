@@ -1,14 +1,14 @@
 {
  "schema_version": "1.0",
- "checked_at": "2026-10-03T05:22:06+00:00",
+ "checked_at": "2026-10-03T12:04:32+00:00",
  "canonical": "blockchain",
  "shift_at_ingest": {
   "coinmetrics": 1
  },
  "checked": {
-  "blockchain": "2026-10-01",
-  "coinmetrics": "2026-10-02"
+  "blockchain": "2026-10-02",
+  "coinmetrics": "2026-10-03"
  },
  "best_extra_offset": 0,
- "mean_abs_pct_at_zero": 0.0886
+ "mean_abs_pct_at_zero": 0.0888
 }
