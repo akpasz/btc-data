@@ -4,86 +4,86 @@
  "series": [
   {
    "name": "addr_balance_count",
-   "points": 5925,
-   "bytes": 139240,
+   "points": 5926,
+   "bytes": 139264,
    "url": "series/addr_balance_count.json"
   },
   {
    "name": "fees_usd",
-   "points": 6471,
-   "bytes": 161981,
+   "points": 6472,
+   "bytes": 162007,
    "url": "series/fees_usd.json"
   },
   {
    "name": "hash_rate",
-   "points": 6482,
-   "bytes": 168884,
+   "points": 6483,
+   "bytes": 168910,
    "url": "series/hash_rate.json"
   },
   {
    "name": "issuance_usd",
-   "points": 5924,
-   "bytes": 152994,
+   "points": 5925,
+   "bytes": 153020,
    "url": "series/issuance_usd.json"
   },
   {
    "name": "market_cap",
-   "points": 5924,
-   "bytes": 161784,
+   "points": 5925,
+   "bytes": 161813,
    "url": "series/market_cap.json"
   },
   {
    "name": "mvrv",
-   "points": 5924,
-   "bytes": 153931,
+   "points": 5925,
+   "bytes": 153957,
    "url": "series/mvrv.json"
   },
   {
    "name": "price",
-   "points": 6485,
-   "bytes": 143316,
+   "points": 6486,
+   "bytes": 143340,
    "url": "series/price.json"
   },
   {
    "name": "price_cm",
-   "points": 5924,
-   "bytes": 153254,
+   "points": 5925,
+   "bytes": 153280,
    "url": "series/price_cm.json"
   },
   {
    "name": "supply",
-   "points": 6480,
-   "bytes": 161337,
+   "points": 6481,
+   "bytes": 161361,
    "url": "series/supply.json"
   },
   {
    "name": "supply_cm",
-   "points": 5925,
-   "bytes": 169038,
+   "points": 5926,
+   "bytes": 169067,
    "url": "series/supply_cm.json"
   },
   {
    "name": "transactions",
-   "points": 6468,
-   "bytes": 138338,
+   "points": 6469,
+   "bytes": 138360,
    "url": "series/transactions.json"
   },
   {
    "name": "tx_volume_usd",
-   "points": 5861,
-   "bytes": 151327,
+   "points": 5862,
+   "bytes": 151353,
    "url": "series/tx_volume_usd.json"
   },
   {
    "name": "unique_addresses",
-   "points": 6454,
-   "bytes": 138811,
+   "points": 6455,
+   "bytes": 138833,
    "url": "series/unique_addresses.json"
   },
   {
    "name": "utxo_count",
-   "points": 6470,
-   "bytes": 153189,
+   "points": 6471,
+   "bytes": 153214,
    "url": "series/utxo_count.json"
   }
  ]
