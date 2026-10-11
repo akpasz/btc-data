@@ -64,3 +64,17 @@ def test_a_run_without_a_date_is_listed_but_not_a_trial():
     dates, prices, pos, _ = _synth(sig_days=(100,))
     tr = L.trigger_record(dates, prices, pos, [])
     assert tr['rows'][0]['status'] == 'no_date' and tr['scored'] == 0
+
+
+def test_stored_evaluations_are_carried_forward_between_recomputations():
+    """build_history returns a fresh document holding only the primary baseline.
+    On every non-Monday run the strict, bottom and critical-time results were
+    written out MISSING, recomputed the next day, and dropped again: they
+    flickered on alternate days, and the page section built from them with them.
+    Proven on the real layer: without the carry-forward a Sunday run published
+    none of the three; with it, all three."""
+    src = open(os.path.join(os.path.dirname(__file__), '..', 'fetch', 'fetch_all.py'), encoding='utf-8').read()
+    i = src.find('def src_lppls'); body = src[i:src.find('\ndef ', i + 10)]
+    assert 'else:' in body and 'CARRY THE STORED EVALUATIONS FORWARD' in body
+    for k in ('random_baseline_strict', 'random_baseline_negative', 'critical_time_test'):
+        assert f"'{k}'" in body[body.find('CARRY THE STORED'):], f'{k} must be carried forward'

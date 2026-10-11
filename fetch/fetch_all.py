@@ -584,6 +584,18 @@ def src_lppls():
         if _bad:
             print(f'  !!  lppls: evaluations missing or failed after recomputation: {_bad}', file=sys.stderr)
         with open(os.path.join(OUT, 'lppls.json'), 'w') as fh: json.dump(doc, fh, separators=(',', ':'))
+    else:
+        # CARRY THE STORED EVALUATIONS FORWARD on the days they are not
+        # recomputed. build_history returns a fresh document holding only the
+        # primary baseline, so on every non-Monday run the strict test, the
+        # bottom test and the critical-time test were written out MISSING. The
+        # next run saw them missing and recomputed them, so they appeared and
+        # vanished on alternate days and the page's "Three further tests"
+        # section flickered with them. Same history, same spec, same inputs:
+        # the stored results are still the right ones.
+        for _k in ('random_baseline_strict', 'random_baseline_negative', 'critical_time_test'):
+            if _usable(existing, _k):
+                doc[_k] = existing[_k]
     # EVERY CALL, EVERY RUN. Cheap and deterministic, so computed daily rather
     # than weekly: a new signal run must appear in the record the day it fires.
     try:
