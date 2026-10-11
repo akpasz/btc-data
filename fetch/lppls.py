@@ -328,3 +328,62 @@ def critical_time_test(dates, prices, series_pos, series_tc, threshold=0.5, tole
             'random_p5': float(np.percentile(dist, 5)), 'random_p95': float(np.percentile(dist, 95)),
             'p_random_at_least_observed': float((dist >= hit).mean())}
     return out
+
+
+def trigger_record(dates, prices, series_pos, series_tc, threshold=0.5, tolerance=30):
+    """Every call the model has made, one row per signal run, with what happened.
+
+    The critical-time test reports a count - one hit in sixteen. A count hides
+    the thing a reader most needs to see: the model HAS made spectacular calls,
+    and they are indistinguishable at the time from the misses around them. The
+    only honest way to show both is to list every call.
+
+    Uses EXACTLY the run definition and peak rule of critical_time_test (signal
+    days within seven days of each other form one run; the peak is the highest
+    close of the following 365 days), so the hit column here always sums to that
+    test's hit count. A test asserts it.
+
+    Runs whose forward year has not finished are listed as `pending`: the
+    model's date is shown, the outcome is not, and they are never scored.
+    """
+    p = np.asarray(prices, dtype=float); n = len(p)
+    idx = {d.isoformat(): i for i, d in enumerate(dates)}
+    tc = dict((d, float(v)) for d, v in series_tc if v is not None)
+    i0 = next((k for k in range(n) if dates[k] >= dt.date(2013, 1, 1)), 0)
+    sig = sorted(idx[d] for d, v in series_pos if v >= threshold and d in idx and idx[d] >= i0)
+    runs = []
+    for i in sig:
+        if runs and i - runs[-1][-1] <= 7: runs[-1].append(i)
+        else: runs.append([i])
+    rows = []
+    for r in runs:
+        i = r[0]; d0 = dates[i].isoformat(); off = tc.get(d0)
+        row = {'fired': d0, 'last_day': dates[r[-1]].isoformat(), 'signal_days': len(r),
+               'price': round(float(p[i]), 2),
+               'tc_days_ahead': round(off, 1) if off is not None else None,
+               'tc': (dates[i] + dt.timedelta(days=round(off))).isoformat() if off is not None else None}
+        complete = i < n - 366
+        if not complete:
+            row.update({'status': 'pending', 'scored': False}); rows.append(row); continue
+        seg = p[i + 1:i + 366]; k = int(np.argmax(seg)); peak = i + 1 + k
+        row.update({'peak_date': dates[peak].isoformat(), 'peak_price': round(float(p[peak]), 2),
+                    'gain_to_peak_pct': round(100 * (p[peak] / p[i] - 1), 1)})
+        if off is None or not (0 < off <= 365):
+            row.update({'status': 'no_date', 'scored': False,
+                        'why': 'no fitted critical time inside the following year, so the run is not a trial'})
+        else:
+            miss = peak - (i + off)
+            row.update({'miss_days': round(float(miss), 1), 'scored': True,
+                        'status': 'hit' if abs(miss) <= tolerance else ('top_came_later' if miss > 0 else 'top_came_earlier')})
+        rows.append(row)
+    scored = [x for x in rows if x['scored']]
+    return {'rule': ('one row per signal run (signal days within seven days of each other), with the critical '
+                     f'date fitted on its first day and the highest close of the following 365 days; a hit is a '
+                     f'peak within {tolerance} days of that date. Same definition as critical_time_test.'),
+            'tolerance_days': tolerance, 'runs': len(rows), 'scored': len(scored),
+            'hits': sum(1 for x in scored if x['status'] == 'hit'),
+            'top_came_later': sum(1 for x in scored if x['status'] == 'top_came_later'),
+            'top_came_earlier': sum(1 for x in scored if x['status'] == 'top_came_earlier'),
+            'median_gain_to_peak_pct': float(np.median([x['gain_to_peak_pct'] for x in rows if 'gain_to_peak_pct' in x])) if any('gain_to_peak_pct' in x for x in rows) else None,
+            'pending': sum(1 for x in rows if x['status'] == 'pending'),
+            'rows': rows}

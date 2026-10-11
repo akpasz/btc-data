@@ -584,6 +584,13 @@ def src_lppls():
         if _bad:
             print(f'  !!  lppls: evaluations missing or failed after recomputation: {_bad}', file=sys.stderr)
         with open(os.path.join(OUT, 'lppls.json'), 'w') as fh: json.dump(doc, fh, separators=(',', ':'))
+    # EVERY CALL, EVERY RUN. Cheap and deterministic, so computed daily rather
+    # than weekly: a new signal run must appear in the record the day it fires.
+    try:
+        doc['trigger_record'] = lppls.trigger_record(dates, prices, doc['series']['lppls_pos'], doc['series']['lppls_tc_days'])
+    except Exception as e:
+        doc['trigger_record'] = {'error': str(e)[:200]}
+    with open(os.path.join(OUT, 'lppls.json'), 'w') as fh: json.dump(doc, fh, separators=(',', ':'))
     n_pos = len(doc['series']['lppls_pos'])
     manifest['lppls'] = {'status': 'ok', 'fetched_at': NOW, 'source_url': 'computed from the blockchain.com daily price series',
                          'last_date': doc['series']['lppls_pos'][-1][0] if n_pos else None, 'points': n_pos,
