@@ -673,6 +673,26 @@ def _datahub_sp500_monthly():
             except ValueError: pass
     return sorted(out)
 
+def _datahub_sp500_dividends():
+    """Annualised S&P 500 dividend per share, monthly, from the same Shiller series.
+
+    The portfolio page needs a total-return equity leg: a price index leaves out
+    roughly a point and a half a year. Shiller's file carries the dividend
+    alongside the price, but it is updated irregularly and the dividend column
+    stops before the price column does (zeros after the last published month).
+    Only real, positive values are kept; portfolio.py extends the tail and says so."""
+    txt = get('https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv').text
+    out = []
+    for row in csv.DictReader(io.StringIO(txt)):
+        d = row.get('Date', ''); v = row.get('Dividend')
+        if d >= '2009-01-01' and v not in (None, ''):
+            try:
+                x = float(v)
+            except ValueError:
+                continue
+            if x > 0: out.append([d[:7] + '-01', x])
+    return sorted(out)
+
 def _datahub_gold_monthly():
     """Fallback for gold only: datahub's mirror of the same World Bank series, hosted on GitHub."""
     txt = get('https://raw.githubusercontent.com/datasets/gold-prices/main/data/monthly.csv').text
@@ -692,6 +712,8 @@ def src_relative():
         except Exception as e: errs.append(f'{key}: {e}')
     try: series['sp500_monthly'] = _datahub_sp500_monthly(); prov['sp500_monthly'] = "Robert Shiller's monthly S&P 500 series via datahub.io mirror on GitHub"
     except Exception as e: errs.append(f'sp500_monthly: {e}')
+    try: series['sp500_dividend_monthly'] = _datahub_sp500_dividends(); prov['sp500_dividend_monthly'] = "Robert Shiller's S&P 500 dividend (annualised, per share) via datahub.io mirror on GitHub"
+    except Exception as e: errs.append(f'sp500_dividend_monthly: {e}')
     for key, sid in [('sp500_daily', 'SP500'), ('nasdaq_daily', 'NASDAQCOM')]:
         try: series[key] = _fred_daily(sid); prov[key] = f'FRED {sid}'
         except Exception as e: errs.append(f'{key}: {e}')

@@ -407,13 +407,15 @@ class TestPortfolio:
         P = self._m()
         mm = [f'2020-{i:02d}' for i in range(1, 13)] + [f'2021-{i:02d}' for i in range(1, 13)]
         lv = {m: 100 * (1.01 ** i) for i, m in enumerate(mm)}
-        assets = {'equities': dict(lv), 'gold': dict(lv), 'btc': dict(lv)}
+        assets = {k: dict(lv) for k in ('equities', 'equities_tr', 'bonds', 'gold', 'btc')}
+        cash = {m: 2.0 + i / 10 for i, m in enumerate(mm)}
         window = mm[:13]
-        before, _ = P.build(assets, window, 10)
+        before = [P.build(assets, window, 10, base=b, cash=cash)[0] for b in P.BASE_MIXES]
         later = copy.deepcopy(assets)
         for k in later:
             later[k][mm[20]] *= 3.0
-        after, _ = P.build(later, window, 10)
+        cash2 = dict(cash); cash2[mm[20]] = 50.0
+        after = [P.build(later, window, 10, base=b, cash=cash2)[0] for b in P.BASE_MIXES]
         assert before == after, 'look-ahead: a future month changed a past window'
 
     def test_refuses_to_publish_on_a_tiny_sample(self):
@@ -438,6 +440,109 @@ class TestPortfolio:
         P = self._m()
         pts = [['2020-01-01', 10.0], ['2020-01-15', 20.0], ['2020-01-31', 30.0]]
         assert P.to_monthly(pts)['2020-01'] == 20.0, 'must be the mean, not 30.0'
+
+
+class TestPortfolioV2:
+    """Schema 2: a total-return equity leg, a bond leg, a month-by-month cash
+    rate, rolling windows, and a daily-close check on the worst fall. Every
+    expectation is hand-computed."""
+
+    def _m(self):
+        import portfolio
+        return portfolio
+
+    def test_a_bond_whose_yield_does_not_move_earns_its_coupon(self):
+        P = self._m()
+        assert abs(P.bond_month_return(0.03, 0.03) - 0.0025) < 1e-12, 'par bond: price stays 1, a month of 3% coupon'
+
+    def test_a_one_point_rise_in_yield_costs_a_ten_year_bond_about_eight_per_cent(self):
+        """Modified duration of a 10-year 3% par bond is about 8.6; a 1-point rise
+        costs roughly 8% after convexity, offset by a month of coupon."""
+        P = self._m()
+        r = P.bond_month_return(0.03, 0.04) * 100
+        assert -9.0 < r < -7.5, r
+
+    def test_total_return_adds_a_twelfth_of_the_annual_dividend(self):
+        P = self._m()
+        mm = ['2020-01', '2020-02']
+        lv = P.total_return_levels({'2020-01': 100.0, '2020-02': 100.0}, {'2020-02': 12.0}, mm)
+        assert abs(lv['2020-02'] - 1.01) < 1e-12, 'flat price, $12 a year on $100 is 1% a month'
+
+    def test_dividend_tail_is_extended_at_its_own_ten_year_growth_and_flagged(self):
+        P = self._m()
+        div = {'2010-06': 10.0, '2020-06': 20.0}
+        mm = ['2020-06', '2021-06']
+        full, first, g = P.extend_dividends(div, mm)
+        assert first == '2021-06'
+        assert abs(g - (2 ** 0.1 - 1)) < 1e-12
+        assert abs(full['2021-06'] - 20.0 * 2 ** 0.1) < 1e-9
+
+    def test_cash_rate_is_used_month_by_month(self):
+        """A higher cash rate must lower Sharpe; a flat 2% used to stand in for
+        every month, which overstated Sharpe whenever rates were higher."""
+        P = self._m()
+        mm = [f'2020-{i:02d}' for i in range(1, 13)] + ['2021-01', '2021-02']
+        lv = {m: 1.01 ** i * (1 + (0.02 if i % 2 else -0.02)) for i, m in enumerate(mm)}
+        A = {k: lv for k in ('equities_tr', 'bonds', 'btc')}
+        lo = P.build(A, mm, 10, cash={m: 0.0 for m in mm})[0]['sharpe']
+        hi = P.build(A, mm, 10, cash={m: 5.0 for m in mm})[0]['sharpe']
+        assert hi < lo
+
+    def test_rolling_counts_every_window_and_nothing_else(self):
+        P = self._m()
+        mm = [f'{2015 + i // 12}-{i % 12 + 1:02d}' for i in range(50)]
+        lv = {m: 1.01 ** i for i, m in enumerate(mm)}
+        bt = {m: 1.03 ** i for i, m in enumerate(mm)}
+        A = {'equities_tr': lv, 'bonds': lv, 'btc': bt}
+        r = P.rolling(A, mm, 'stocks_bonds', {m: 1.0 for m in mm}, 36)
+        assert r['windows'] == 50 - 36 == len(r['rows'])
+        assert r['rows'][0][0] == mm[0] and r['rows'][-1][0] == mm[50 - 36 - 1]
+        assert r['added_return_negative_share'] == 0.0, 'bitcoin outgrew the base in every window'
+
+    def test_the_default_base_is_stocks_and_bonds(self):
+        P = self._m()
+        assert P.DEFAULT_BASE == 'stocks_bonds'
+        assert P.BASE_MIXES['stocks_bonds']['weights'] == {'equities_tr': 0.6, 'bonds': 0.4}
+        for b in P.BASE_MIXES.values():
+            assert abs(sum(b['weights'].values()) - 1.0) < 1e-12
+
+    def test_refuses_to_fall_back_silently_to_the_old_base(self):
+        src = open(self._m().__file__, encoding='utf-8').read()
+        assert 'refusing to publish a v2 file' in src
+
+    def test_dividends_are_fetched(self):
+        import os
+        src = open(os.path.join(os.path.dirname(self._m().__file__), 'fetch_all.py'), encoding='utf-8').read()
+        assert "series['sp500_dividend_monthly'] = _datahub_sp500_dividends()" in src
+
+    def test_independent_verifier_agrees_and_catches_a_change(self, tmp_path):
+        """verify/verify_portfolio.py shares no code with the pipeline. Build a
+        small real file, check it passes, then alter one published figure and
+        check it fails."""
+        import json, os, subprocess, sys
+        P = self._m()
+        here = os.path.dirname(os.path.dirname(os.path.abspath(P.__file__)))
+        mm = [f'{2015 + i // 12}-{i % 12 + 1:02d}' for i in range(48)]
+        import math as _m
+        lv = lambda a, b: {m: (1 + a) ** i * (1 + b * _m.sin(i)) for i, m in enumerate(mm)}
+        A = {'equities_tr': lv(.008, .03), 'equities': lv(.006, .03), 'bonds': lv(.002, .01),
+             'gold': lv(.005, .04), 'btc': lv(.04, .25)}
+        cash = {m: 1.0 + 0.05 * i for i, m in enumerate(mm)}
+        doc = {'monthly': {k: [[m, v[m]] for m in mm] for k, v in A.items()},
+               'bases': {k: {'weights': v['weights']} for k, v in P.BASE_MIXES.items()},
+               'default_base': P.DEFAULT_BASE, 'ladders': {}, 'start_dates': [], 'rolling_windows': {}}
+        doc['monthly']['cash'] = [[m, cash[m]] for m in mm]
+        for b in P.BASE_MIXES:
+            doc['ladders'][b] = [dict(btc_pct=p, **P.build(A, mm, p, base=b, cash=cash)[0]) for p in P.WEIGHTS]
+        f = tmp_path / 'p.json'
+        f.write_text(json.dumps(doc))
+        v = os.path.join(here, 'verify', 'verify_portfolio.py')
+        ok = subprocess.run([sys.executable, v, str(f)], capture_output=True, text=True)
+        assert ok.returncode == 0, ok.stdout[-400:]
+        doc['ladders']['stocks_bonds'][4]['cagr_pct'] += 0.1
+        f.write_text(json.dumps(doc))
+        bad = subprocess.run([sys.executable, v, str(f)], capture_output=True, text=True)
+        assert bad.returncode == 1 and 'DIFFERS' in bad.stdout
 
 
 class TestConfidenceInterval:
