@@ -51,7 +51,13 @@ def main():
                              'price_30d_change_pct', 'price_vs_200d_pct', 'low_90d', 'high_90d',
                              'position_in_90d_range_pct', 'composite_percentile', 'fear_greed',
                              'fear_greed_percentile', 'drawdown_from_ath_pct', 'ath_close', 'ath_date',
-                             'days_since_halving', 'cycle_multiple')
+                             'days_since_halving', 'cycle_multiple',
+                             # the crowding composite is an average of three
+                             # percentiles, so its own range is narrow (about 30
+                             # to 58); a reading of 56 is near the top of it. The
+                             # dashboard ranks it in its own history, as the hub
+                             # and the flows page do, and needs the distribution
+                             'composite_sorted', 'funding_annualised_pct', 'dvol_percentile')
     # value_reference too: the dashboard states the alternative calibration
     # beside the headline premium, so the view must carry both
     # the fit windows too: the gauge names both, and a year typed into the
