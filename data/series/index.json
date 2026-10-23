@@ -10,14 +10,14 @@
   },
   {
    "name": "fees_usd",
-   "points": 6487,
-   "bytes": 162396,
+   "points": 6488,
+   "bytes": 162422,
    "url": "series/fees_usd.json"
   },
   {
    "name": "hash_rate",
-   "points": 6498,
-   "bytes": 169296,
+   "points": 6499,
+   "bytes": 169321,
    "url": "series/hash_rate.json"
   },
   {
@@ -40,50 +40,50 @@
   },
   {
    "name": "price",
-   "points": 6501,
-   "bytes": 143698,
+   "points": 6502,
+   "bytes": 143722,
    "url": "series/price.json"
   },
   {
    "name": "price_cm",
-   "points": 5940,
-   "bytes": 153668,
+   "points": 5941,
+   "bytes": 153694,
    "url": "series/price_cm.json"
   },
   {
    "name": "supply",
-   "points": 6496,
-   "bytes": 161764,
+   "points": 6497,
+   "bytes": 161792,
    "url": "series/supply.json"
   },
   {
    "name": "supply_cm",
-   "points": 5941,
-   "bytes": 169501,
+   "points": 5942,
+   "bytes": 169530,
    "url": "series/supply_cm.json"
   },
   {
    "name": "transactions",
-   "points": 6484,
-   "bytes": 138690,
+   "points": 6485,
+   "bytes": 138712,
    "url": "series/transactions.json"
   },
   {
    "name": "tx_volume_usd",
-   "points": 5877,
-   "bytes": 151746,
+   "points": 5878,
+   "bytes": 151772,
    "url": "series/tx_volume_usd.json"
   },
   {
    "name": "unique_addresses",
-   "points": 6470,
-   "bytes": 139163,
+   "points": 6471,
+   "bytes": 139185,
    "url": "series/unique_addresses.json"
   },
   {
    "name": "utxo_count",
-   "points": 6486,
-   "bytes": 153589,
+   "points": 6487,
+   "bytes": 153614,
    "url": "series/utxo_count.json"
   }
  ]
