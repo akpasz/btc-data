@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "generated_at": "2026-11-02T15:40:59+00:00",
+ "generated_at": "2026-11-02T19:31:14+00:00",
  "sources": {
   "blockchain": {
    "status": "ok",
@@ -44,7 +44,7 @@
   },
   "coinbase": {
    "status": "ok",
-   "fetched_at": "2026-11-02T15:40:59+00:00",
+   "fetched_at": "2026-11-02T19:31:14+00:00",
    "metrics": {
     "spot": 63
    },
@@ -68,11 +68,11 @@
   },
   "mempool": {
    "status": "ok",
-   "fetched_at": "2026-11-02T15:40:59+00:00",
+   "fetched_at": "2026-11-02T19:31:14+00:00",
    "metrics": {
-    "difficulty": 84,
+    "fee_fastest_sat_vb": 63,
     "hash_rate_ehs": 1158,
-    "fee_fastest_sat_vb": 63
+    "difficulty": 84
    },
    "last_date": "2026-11-02",
    "source_url": "https://mempool.space/api/v1/",
@@ -113,7 +113,7 @@
   },
   "fear_greed": {
    "status": "ok",
-   "fetched_at": "2026-11-02T15:40:59+00:00",
+   "fetched_at": "2026-11-02T19:31:14+00:00",
    "metrics": {
     "index": 3193
    },
@@ -125,7 +125,7 @@
   },
   "coingecko_global": {
    "status": "ok",
-   "fetched_at": "2026-11-02T15:40:59+00:00",
+   "fetched_at": "2026-11-02T19:31:14+00:00",
    "metrics": {
     "btc_dominance_pct": 62
    },
@@ -137,24 +137,24 @@
   },
   "derivatives": {
    "status": "ok",
-   "fetched_at": "2026-11-02T15:40:59+00:00",
+   "fetched_at": "2026-11-02T19:31:14+00:00",
    "metrics": {
-    "deribit_butterfly_25d_pts": 62,
-    "deribit_putcall_oi_ratio": 62,
-    "cme_btc_leveraged_short": 10,
-    "deribit_dvol_close": 1062,
-    "deribit_atm_iv_90d": 61,
-    "deribit_funding_8h_daily_mean": 423,
-    "deribit_atm_iv_30d": 62,
-    "okx_open_interest_usd": 241,
-    "deribit_atm_iv_180d": 61,
-    "cme_btc_leveraged_net": 10,
-    "cme_btc_leveraged_long": 10,
-    "deribit_atm_iv_7d": 61,
-    "deribit_term_slope_30_180_pts": 61,
-    "cme_btc_open_interest_contracts": 10,
     "deribit_skew_25d_pts": 62,
-    "deribit_basis_90d_ann_pct": 62
+    "deribit_atm_iv_30d": 62,
+    "deribit_butterfly_25d_pts": 62,
+    "deribit_term_slope_30_180_pts": 61,
+    "deribit_atm_iv_90d": 61,
+    "deribit_atm_iv_7d": 61,
+    "cme_btc_leveraged_short": 10,
+    "cme_btc_leveraged_net": 10,
+    "deribit_basis_90d_ann_pct": 62,
+    "deribit_putcall_oi_ratio": 62,
+    "deribit_dvol_close": 1062,
+    "cme_btc_open_interest_contracts": 10,
+    "okx_open_interest_usd": 242,
+    "cme_btc_leveraged_long": 10,
+    "deribit_funding_8h_daily_mean": 423,
+    "deribit_atm_iv_180d": 61
    },
    "last_date": "2026-11-02",
    "source_url": "Deribit, OKX, CFTC public endpoints",
@@ -162,74 +162,74 @@
    "age_days": 0,
    "expected_max_age_days": 2,
    "term_structure": {
-    "as_of": "2026-11-02T15:40:59+00:00",
+    "as_of": "2026-11-02T19:31:14+00:00",
     "curve": [
      {
       "expiry": "2026-11-05",
-      "days": 2.7,
-      "atm_iv": 43.58,
+      "days": 2.5,
+      "atm_iv": 46.78,
       "n_strikes": 50
      },
      {
       "expiry": "2026-11-06",
-      "days": 3.7,
-      "atm_iv": 41.94,
+      "days": 3.5,
+      "atm_iv": 44.05,
       "n_strikes": 56
      },
      {
       "expiry": "2026-11-13",
-      "days": 10.7,
-      "atm_iv": 38.58,
+      "days": 10.5,
+      "atm_iv": 39.84,
       "n_strikes": 40
      },
      {
       "expiry": "2026-11-20",
-      "days": 17.7,
-      "atm_iv": 37.48,
+      "days": 17.5,
+      "atm_iv": 38.49,
       "n_strikes": 40
      },
      {
       "expiry": "2026-11-27",
-      "days": 24.7,
-      "atm_iv": 36.7,
+      "days": 24.5,
+      "atm_iv": 37.34,
       "n_strikes": 96
      },
      {
       "expiry": "2026-12-25",
-      "days": 52.7,
-      "atm_iv": 37.54,
+      "days": 52.5,
+      "atm_iv": 37.95,
       "n_strikes": 120
      },
      {
       "expiry": "2027-01-29",
-      "days": 87.7,
-      "atm_iv": 37.68,
+      "days": 87.5,
+      "atm_iv": 37.95,
       "n_strikes": 88
      },
      {
       "expiry": "2027-03-26",
-      "days": 143.7,
-      "atm_iv": 38.29,
+      "days": 143.5,
+      "atm_iv": 38.5,
       "n_strikes": 104
      },
      {
       "expiry": "2027-06-25",
-      "days": 234.7,
-      "atm_iv": 39.23,
+      "days": 234.5,
+      "atm_iv": 39.21,
       "n_strikes": 108
      },
      {
       "expiry": "2027-09-24",
-      "days": 325.7,
-      "atm_iv": 39.46,
+      "days": 325.5,
+      "atm_iv": 39.49,
       "n_strikes": 90
      }
     ],
     "at_tenor": {
-     "7": 40.36,
-     "30": 36.86,
-     "90": 37.71,
-     "180": 38.66
+     "7": 41.95,
+     "30": 37.46,
+     "90": 37.97,
+     "180": 38.78
     },
     "note": "ATM IV per listed expiry (50-delta by interpolation, r=0); tenor values interpolated in days, never extrapolated. Slope is 180-day minus 30-day ATM IV in vol points: positive is the normal contango of a calm surface, negative (inverted) marks stress."
    }
@@ -358,35 +358,19 @@
   }
  },
  "ok": [
-  "blockchain",
   "coinbase",
   "coingecko_global",
-  "coinmetrics",
   "derivatives",
-  "etf_flows",
-  "etf_quarterly",
   "fear_greed",
-  "fred",
-  "lppls",
-  "macro",
-  "mempool",
-  "offshore_spot",
-  "relative",
-  "stablecoins"
+  "mempool"
  ],
  "errors": [],
- "stale": [
-  "blockchain",
-  "lppls"
- ],
- "health": "13 of 15 sources refreshed; blockchain is 4 day(s) old, lppls is 4 day(s) old",
- "health_state": "stale",
+ "stale": [],
+ "health": "all 5 sources refreshed",
+ "health_state": "ok",
  "health_note": "errors are sources with no usable value; stale are sources that did not refresh but still serve a value inside their expected age",
- "run_mode": "full",
- "degraded_sources": [
-  "blockchain",
-  "lppls"
- ],
+ "run_mode": "intraday",
+ "degraded_sources": [],
  "align": "ok",
  "kpis": "ok",
  "slim": "ok",
@@ -399,5 +383,12 @@
  "registry": "ok",
  "portfolio": "ok",
  "glance": "ok",
- "ledger": "ok"
+ "ledger": "ok",
+ "refreshed_this_run": [
+  "coinbase",
+  "coingecko_global",
+  "derivatives",
+  "fear_greed",
+  "mempool"
+ ]
 }
