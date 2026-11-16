@@ -5,7 +5,20 @@
   <id>tag:cryptoexponentials.com,2026:snapshot-feed</id>
   <link href="https://cryptoexponentials.com/tools/"/>
   <link rel="self" href="https://akpasz.github.io/btc-data/data/changes.atom"/>
-  <updated>2026-11-16T06:35:00Z</updated>
+  <updated>2026-11-16T16:05:06Z</updated>
+  <entry>
+    <title>Snapshot 2026-11-15</title>
+    <id>tag:cryptoexponentials.com,2026:snapshot:2026-11-15</id>
+    <updated>2026-11-16T16:05:06Z</updated>
+    <link href="https://cryptoexponentials.com/tools/"/>
+    <content type="text">Price 64,119 (-6.0% vs 2026-11-14)
+Metcalfe, validated 2017 79,022 (+0.0% vs 2026-11-14)
+Metcalfe, reference 2011 140,000 (+0.0% vs 2026-11-14)
+Power-law level 142,924 (+0.1% vs 2026-11-14)
+Realised price 53,730 (-0.1% vs 2026-11-14)
+Valuation state cheap (composite 18)
+Crowding composite 40</content>
+  </entry>
   <entry>
     <title>Snapshot 2026-11-14</title>
     <id>tag:cryptoexponentials.com,2026:snapshot:2026-11-14</id>
@@ -765,25 +778,12 @@ Crowding composite 46</content>
     <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-02</id>
     <updated>2026-09-03T12:23:18Z</updated>
     <link href="https://cryptoexponentials.com/tools/"/>
-    <content type="text">Price 77,411 (-1.5% vs 2026-09-01)
-Metcalfe, validated 2017 76,785 (+0.0% vs 2026-09-01)
-Metcalfe, reference 2011 137,075 (+0.0% vs 2026-09-01)
-Power-law level 136,606 (+0.1% vs 2026-09-01)
-Realised price 53,087 (+0.0% vs 2026-09-01)
+    <content type="text">Price 77,411
+Metcalfe, validated 2017 76,785
+Metcalfe, reference 2011 137,075
+Power-law level 136,606
+Realised price 53,087
 Valuation state average (composite 38)
 Crowding composite 34</content>
-  </entry>
-  <entry>
-    <title>Snapshot 2026-09-01</title>
-    <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-01</id>
-    <updated>2026-09-03T00:54:30Z</updated>
-    <link href="https://cryptoexponentials.com/tools/"/>
-    <content type="text">Price 78,550
-Metcalfe, validated 2017 76,755
-Metcalfe, reference 2011 137,034
-Power-law level 136,521
-Realised price 53,081
-Valuation state average (composite 40)
-Crowding composite 51</content>
   </entry>
 </feed>
