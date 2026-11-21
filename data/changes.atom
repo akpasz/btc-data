@@ -5,7 +5,20 @@
   <id>tag:cryptoexponentials.com,2026:snapshot-feed</id>
   <link href="https://cryptoexponentials.com/tools/"/>
   <link rel="self" href="https://akpasz.github.io/btc-data/data/changes.atom"/>
-  <updated>2026-11-21T11:09:21Z</updated>
+  <updated>2026-11-21T14:53:11Z</updated>
+  <entry>
+    <title>Snapshot 2026-11-20</title>
+    <id>tag:cryptoexponentials.com,2026:snapshot:2026-11-20</id>
+    <updated>2026-11-21T14:53:11Z</updated>
+    <link href="https://cryptoexponentials.com/tools/"/>
+    <content type="text">Price 61,894 (-4.6% vs 2026-11-18)
+Metcalfe, validated 2017 79,155 (+0.1% vs 2026-11-18)
+Metcalfe, reference 2011 140,181 (+0.1% vs 2026-11-18)
+Power-law level 143,288 (+0.0% vs 2026-11-18)
+Realised price 53,404 (-0.3% vs 2026-11-18)
+Valuation state cheap (composite 17)
+Crowding composite 34</content>
+  </entry>
   <entry>
     <title>Snapshot 2026-11-18</title>
     <id>tag:cryptoexponentials.com,2026:snapshot:2026-11-18</id>
@@ -765,25 +778,12 @@ Crowding composite 36</content>
     <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-06</id>
     <updated>2026-09-07T12:29:52Z</updated>
     <link href="https://cryptoexponentials.com/tools/"/>
-    <content type="text">Price 79,833 (+0.2% vs 2026-09-05)
-Metcalfe, validated 2017 76,906 (+0.0% vs 2026-09-05)
-Metcalfe, reference 2011 137,232 (+0.0% vs 2026-09-05)
-Power-law level 136,953 (+0.1% vs 2026-09-05)
-Realised price 53,159 (+0.0% vs 2026-09-05)
-Valuation state average (composite 41)
-Crowding composite 38</content>
-  </entry>
-  <entry>
-    <title>Snapshot 2026-09-05</title>
-    <id>tag:cryptoexponentials.com,2026:snapshot:2026-09-05</id>
-    <updated>2026-09-06T22:30:47Z</updated>
-    <link href="https://cryptoexponentials.com/tools/"/>
-    <content type="text">Price 79,677
-Metcalfe, validated 2017 76,880
-Metcalfe, reference 2011 137,201
-Power-law level 136,866
+    <content type="text">Price 79,833
+Metcalfe, validated 2017 76,906
+Metcalfe, reference 2011 137,232
+Power-law level 136,953
 Realised price 53,159
 Valuation state average (composite 41)
-Crowding composite 35</content>
+Crowding composite 38</content>
   </entry>
 </feed>
